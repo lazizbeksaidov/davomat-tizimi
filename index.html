@@ -709,107 +709,92 @@
     @keyframes slideUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
     @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
 
-    /* ─── BIRTHDAY ──────────────────────────────── */
+    /* ─── BIRTHDAY ─────────────────────────────── */
     .bday-banner {
-      background: linear-gradient(135deg, #fff8e6 0%, #fff3d0 100%);
-      border: 1.5px solid rgba(200,150,42,.3);
-      border-radius: var(--rl);
-      padding: 14px 20px;
-      margin-bottom: 18px;
+      background: linear-gradient(135deg,#fffbf0 0%,#fff4d0 100%);
+      border: 1.5px solid rgba(200,150,42,.28);
+      border-radius: var(--rl); padding: 14px 20px; margin-bottom: 18px;
       display: flex; align-items: center; gap: 14px;
-      box-shadow: 0 2px 12px rgba(200,150,42,.12);
+      box-shadow: 0 2px 14px rgba(200,150,42,.1);
       animation: fadeUp .4s ease;
     }
-    .bday-banner-emoji {
-      font-size: 32px;
-      animation: bdayBounce 1.2s ease infinite;
-      flex-shrink: 0;
-    }
-    @keyframes bdayBounce {
-      0%,100%{transform:translateY(0) rotate(-5deg)}
-      50%{transform:translateY(-6px) rotate(5deg)}
-    }
-    .bday-banner-names {
-      flex: 1; font-size: 14px; font-weight: 600; color: var(--navy);
-    }
-    .bday-banner-sub { font-size: 11.5px; color: var(--amber); font-weight: 500; margin-top: 2px; }
-    .bday-confetti {
-      position: absolute; pointer-events: none; top: 0; left: 0; right: 0; bottom: 0;
-      overflow: hidden; border-radius: var(--rl);
-    }
+    .bday-banner-ico { font-size: 34px; flex-shrink: 0; animation: bdBounce 1.5s ease infinite; }
+    @keyframes bdBounce { 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-7px) rotate(4deg)} }
+    .bday-banner-main { font-size: 14px; font-weight: 700; color: var(--navy); }
+    .bday-banner-sub { font-size: 12px; color: var(--amber); font-weight: 500; margin-top: 3px; }
     .bday-tag {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: linear-gradient(135deg, #fff3cd, #ffe58a);
-      border: 1px solid rgba(200,150,42,.35);
-      color: #7c5a00;
-      font-size: 10px; font-weight: 700; padding: 2px 8px;
-      border-radius: 20px; margin-left: 7px;
-      animation: bdayPop .4s cubic-bezier(.34,1.56,.64,1);
-      white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 3px;
+      background: linear-gradient(135deg,#fff3cd,#ffe58a);
+      border: 1px solid rgba(200,150,42,.35); color: #7c5500;
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+      margin-left: 7px; white-space: nowrap;
+      animation: bdPop .4s cubic-bezier(.34,1.56,.64,1);
     }
-    @keyframes bdayPop { from{transform:scale(0)} to{transform:scale(1)} }
+    @keyframes bdPop { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
     .bday-soon-tag {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: var(--cobalt-bg);
-      border: 1px solid rgba(30,76,190,.2);
-      color: var(--cobalt);
-      font-size: 10px; font-weight: 600; padding: 2px 8px;
-      border-radius: 20px; margin-left: 7px;
-      white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 3px;
+      background: var(--cobalt-bg); border: 1px solid rgba(30,76,190,.18);
+      color: var(--cobalt); font-size: 10px; font-weight: 600;
+      padding: 2px 8px; border-radius: 20px; margin-left: 7px; white-space: nowrap;
     }
-    .bday-upcoming-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: var(--rl);
-      overflow: hidden;
-      box-shadow: var(--s1);
-      margin-bottom: 18px;
+    .bday-widget { background: var(--white); border: 1px solid var(--border); border-radius: var(--rl); overflow: hidden; box-shadow: var(--s1); margin-bottom: 18px; }
+    .bday-widget-hd {
+      padding: 12px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 9px;
+      background: linear-gradient(90deg,#fffbf0,var(--white));
     }
-    .bday-upcoming-header {
-      padding: 13px 18px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 8px;
-      background: linear-gradient(90deg, #fffbf0, var(--white));
+    .bday-widget-hd-title { font-size: 13.5px; font-weight: 700; color: var(--navy); }
+    .bday-widget-hd-sub { font-size: 11px; color: var(--t3); margin-left: 7px; }
+    .bday-scroll { display: flex; gap: 10px; padding: 14px 16px; overflow-x: auto; }
+    .bday-card {
+      flex-shrink: 0; min-width: 128px; background: var(--cloud);
+      border: 1px solid var(--border); border-radius: 11px; padding: 12px 14px;
+      text-align: center; transition: transform .15s, box-shadow .15s;
     }
-    .bday-upcoming-list {
-      display: flex; gap: 0; overflow-x: auto; padding: 14px 16px; gap: 10px;
-    }
-    .bday-upcoming-item {
-      flex-shrink: 0;
-      background: var(--cloud);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 11px 14px;
-      min-width: 140px;
-      text-align: center;
-      transition: transform .15s, box-shadow .15s;
-      cursor: default;
-    }
-    .bday-upcoming-item:hover { transform: translateY(-2px); box-shadow: var(--s2); }
-    .bday-upcoming-item.today {
-      background: linear-gradient(135deg, #fff8e6, #fff3d0);
-      border-color: rgba(200,150,42,.35);
-    }
-    .bday-upcoming-avatar {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+    .bday-card:hover { transform: translateY(-2px); box-shadow: var(--s2); }
+    .bday-card.is-today { background: linear-gradient(135deg,#fffbf0,#fff3d0); border-color: rgba(200,150,42,.3); }
+    .bday-avatar {
+      width: 36px; height: 36px; border-radius: 50%; margin: 0 auto 8px;
+      background: linear-gradient(135deg,var(--gold),var(--gold-lt));
       color: var(--ink); font-weight: 700; font-size: 13px;
       display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 8px;
     }
-    .bday-upcoming-item.today .bday-upcoming-avatar {
-      box-shadow: 0 0 0 3px rgba(200,150,42,.3), 0 0 16px rgba(200,150,42,.25);
+    .bday-card.is-today .bday-avatar { box-shadow: 0 0 0 3px rgba(200,150,42,.25); }
+    .bday-fn { font-size: 11.5px; font-weight: 700; color: var(--navy); }
+    .bday-ln { font-size: 10px; color: var(--t3); }
+    .bday-date { font-size: 10px; color: var(--t3); margin-top: 3px; font-family: 'JetBrains Mono',monospace; }
+    .bday-days-pill { font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; display: inline-block; margin-top: 5px; }
+    .is-today .bday-days-pill { background: var(--gold-pale); color: var(--gold); }
+    .bday-card:not(.is-today) .bday-days-pill { background: var(--cobalt-bg); color: var(--cobalt); }
+    /* Full birthdays page */
+    .bday-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(175px,1fr)); gap: 12px; }
+    .bday-full-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: var(--rl);
+      padding: 20px 16px; text-align: center; box-shadow: var(--s1);
+      transition: transform .15s, box-shadow .15s; position: relative; overflow: hidden;
     }
-    .bday-upcoming-name { font-size: 11.5px; font-weight: 700; color: var(--navy); }
-    .bday-upcoming-date { font-size: 10.5px; color: var(--t3); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
-    .bday-upcoming-days {
-      font-size: 10px; font-weight: 700; margin-top: 5px;
-      padding: 2px 8px; border-radius: 20px; display: inline-block;
+    .bday-full-card:hover { transform: translateY(-2px); box-shadow: var(--s2); }
+    .bday-full-card.is-today { border-color: rgba(200,150,42,.4); background: linear-gradient(160deg,#fffbf0,#fff5d5); }
+    .bday-full-card.is-soon { border-color: rgba(30,76,190,.2); background: linear-gradient(160deg,#f0f5ff,var(--white)); }
+    .bday-full-stripe { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .bday-full-avatar {
+      width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 11px;
+      background: linear-gradient(135deg,var(--gold),var(--gold-lt));
+      color: var(--ink); font-weight: 800; font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
     }
-    .bday-upcoming-item.today .bday-upcoming-days { background: var(--gold-pale); color: var(--gold); }
-    .bday-upcoming-item:not(.today) .bday-upcoming-days { background: var(--cobalt-bg); color: var(--cobalt); }
+    .bday-full-card.is-today .bday-full-avatar { box-shadow: 0 0 0 4px rgba(200,150,42,.2),0 0 20px rgba(200,150,42,.2); }
+    .bday-full-name { font-size: 13px; font-weight: 700; color: var(--navy); }
+    .bday-full-date { font-size: 11.5px; color: var(--t3); font-family: 'JetBrains Mono',monospace; margin-top: 4px; }
+    .bday-full-age { font-size: 11px; color: var(--t4); margin-top: 3px; }
+    .bday-month-label {
+      font-size: 12px; font-weight: 700; color: var(--t2); text-transform: uppercase;
+      letter-spacing: .8px; margin: 22px 0 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .bday-month-label::after { content:''; flex:1; height:1px; background:var(--border); }
 
-
+    /* ─── RESPONSIVE ──────────────────────────── */
     @media(max-width:900px) {
       .login-wrap { grid-template-columns: 1fr; }
       .login-left { display: none; }
@@ -866,60 +851,60 @@ const EMPLOYEES = [
   "Axadov Izzatullo","Jo\u2018raqulov Jahongirbek","Jaynakov Temur",
   "Saidov Lazizbek","Pirbayev Berdiyor","Husainova Klara"
 ];
-// Tug'ilgan kunlar: "DD.MM.YYYY"
+function normalizeUz(s){return s.replace(/[\u2018\u2019\u02BC\u0060\u2018\u2019'`]/g,"")}
+
+/* ═══ TUG'ILGAN KUNLAR ═══ */
 const BIRTHDAYS = {
-  "Umrzoqov Bunyod":       "23.07.1988",
-  "Ermamatov Xurshid":     "29.03.1986",
-  "Nazarov Dilshod":       "29.06.1990",
-  "Akbarova Moxlaroyim":   "11.04.1998",
-  "Faxriddinov Oxunjon":   "29.04.1992",
-  "Hamdamov Shuxrat":      "05.03.1989",
-  "Nazarov Muzaffar":      "22.02.1984",
-  "Nurmamatov Oxunjon":    "22.12.1992",
-  "Xolmurodov Dostonjon":  "22.07.1997",
-  "Qurbonov Shavkat":      "23.11.1987",
-  "Narzullayev Rustam":    "12.09.1996",
-  "Islomov G\u2018ulomjon":"02.03.1986",
-  "Ibrohimov Shuhrat":     "25.04.1982",
-  "Barnoqulov Shahzod":    "11.10.2001",
-  "Axadov Izzatullo":      "05.07.1993",
+  "Umrzoqov Bunyod":          "23.07.1988",
+  "Ermamatov Xurshid":        "29.03.1986",
+  "Nazarov Dilshod":          "29.06.1990",
+  "Akbarova Moxlaroyim":      "11.04.1998",
+  "Faxriddinov Oxunjon":      "29.04.1992",
+  "Hamdamov Shuxrat":         "05.03.1989",
+  "Nazarov Muzaffar":         "22.02.1984",
+  "Nurmamatov Oxunjon":       "22.12.1992",
+  "Xolmurodov Dostonjon":     "22.07.1997",
+  "Qurbonov Shavkat":         "23.11.1987",
+  "Narzullayev Rustam":       "12.09.1996",
+  "Islomov G\u2018ulomjon":   "02.03.1986",
+  "Ibrohimov Shuhrat":        "25.04.1982",
+  "Barnoqulov Shahzod":       "11.10.2001",
+  "Axadov Izzatullo":         "05.07.1993",
   "Jo\u2018raqulov Jahongirbek":"04.03.2001",
-  "Jaynakov Temur":        "21.08.1988",
-  "Saidov Lazizbek":       "31.10.2002",
-  "Pirbayev Berdiyor":     "23.12.1989",
-  "Husainova Klara":       "30.11.1987"
+  "Jaynakov Temur":           "21.08.1988",
+  "Saidov Lazizbek":          "31.10.2002",
+  "Pirbayev Berdiyor":        "23.12.1989",
+  "Husainova Klara":          "30.11.1987"
 };
 
-// Tug'ilgan kun yordamchilar
-function parseBirthday(str){ // "DD.MM.YYYY"
+function parseBD(str){
   if(!str) return null;
-  const [d,m,y]=str.split(".").map(Number);
-  return {day:d, month:m, year:y};
+  const p=str.split(".");
+  return {d:Number(p[0]), m:Number(p[1]), y:Number(p[2])};
 }
-function isBirthdayToday(empName){
-  const b=parseBirthday(BIRTHDAYS[empName]);
+function bdToday(name){
+  const b=parseBD(BIRTHDAYS[name]);
   if(!b) return false;
-  const now=new Date();
-  return b.day===now.getDate() && b.month===(now.getMonth()+1);
+  const n=new Date();
+  return b.d===n.getDate()&&b.m===(n.getMonth()+1);
 }
-function daysUntilBirthday(empName){
-  const b=parseBirthday(BIRTHDAYS[empName]);
+function bdDays(name){
+  const b=parseBD(BIRTHDAYS[name]);
   if(!b) return 999;
   const now=new Date();
-  const thisYear=new Date(now.getFullYear(), b.month-1, b.day);
-  if(thisYear < now) thisYear.setFullYear(now.getFullYear()+1);
-  return Math.round((thisYear-now)/(1000*60*60*24));
+  const nowDay=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  let next=new Date(now.getFullYear(),b.m-1,b.d);
+  if(next<nowDay) next=new Date(now.getFullYear()+1,b.m-1,b.d);
+  return Math.round((next-nowDay)/(1000*60*60*24));
 }
-function calcAge(empName){
-  const b=parseBirthday(BIRTHDAYS[empName]);
+function bdAge(name){
+  const b=parseBD(BIRTHDAYS[name]);
   if(!b) return null;
-  const now=new Date();
-  let age=now.getFullYear()-b.year;
-  if(now.getMonth()+1 < b.month || (now.getMonth()+1===b.month && now.getDate()<b.day)) age--;
+  const n=new Date();
+  let age=n.getFullYear()-b.y;
+  if(n.getMonth()+1<b.m||(n.getMonth()+1===b.m&&n.getDate()<b.d)) age--;
   return age;
 }
-
-function normalizeUz(s){return s.replace(/[\u2018\u2019\u02BC\u0060\u2018\u2019'`]/g,"")}
 const USERS_INFO = {
   "kadr@boshqarma.uz":{role:"admin",name:"Kadrlar Bo\u2018limi"},
   "ravshan.azimov@boshqarma.uz":{role:"boss",name:"Azimov Ravshan",title:"Boshqarma boshlig\u2018i"},
@@ -978,71 +963,189 @@ function Ring({pct,size=44,stroke=5,color="var(--emerald)"}){
   );
 }
 
-/* ═══ BIRTHDAY BANNER ═══ */
+/* ═══ BIRTHDAY BANNER — bugun tug'ilgan kun ═══ */
 function BirthdayBanner(){
-  const todayBirthdays=EMPLOYEES.filter(emp=>isBirthdayToday(emp));
-  if(todayBirthdays.length===0) return null;
+  const list=EMPLOYEES.filter(e=>bdToday(e));
+  if(!list.length) return null;
   return(
-    <div className="bday-banner" style={{position:"relative"}}>
-      <div className="bday-banner-emoji">🎂</div>
+    <div className="bday-banner">
+      <div className="bday-banner-ico">🎂</div>
       <div style={{flex:1}}>
-        <div className="bday-banner-names">
-          {todayBirthdays.map((emp,i)=>(
-            <span key={emp}>
-              {i>0 && " · "}
-              🎉 <strong>{emp}</strong>
-              {calcAge(emp)!==null && <span style={{fontWeight:400,color:"var(--amber)",fontSize:13}}> {calcAge(emp)} yosh</span>}
+        <div className="bday-banner-main">
+          {list.map((e,i)=>(
+            <span key={e}>
+              {i>0&&" · "}
+              <span>🎉 {e}</span>
+              <span style={{color:"var(--amber)",fontWeight:400,fontSize:13}}> — {bdAge(e)} yosh!</span>
             </span>
           ))}
         </div>
-        <div className="bday-banner-sub">Bugun tug'ilgan kun! Hamkasbingizni tabrik qiling 🎊</div>
+        <div className="bday-banner-sub">Bugun tug'ilgan kun! Hamkasbingizni tabrik qilishni unutmang 🎊</div>
       </div>
-      <div style={{fontSize:28,animation:"bdayBounce 1.4s ease infinite",animationDelay:".3s"}}>🎈</div>
+      <div style={{fontSize:26,animation:"bdBounce 1.6s ease infinite",animationDelay:".4s"}}>🎈</div>
     </div>
   );
 }
 
 /* ═══ UPCOMING BIRTHDAYS WIDGET ═══ */
-function UpcomingBirthdays(){
-  const list=useMemo(()=>{
-    return EMPLOYEES
-      .map(emp=>({emp, days:daysUntilBirthday(emp), bd:parseBirthday(BIRTHDAYS[emp])}))
-      .filter(x=>x.days<=30)
-      .sort((a,b)=>a.days-b.days)
-      .slice(0,10);
-  },[]);
-  if(list.length===0) return null;
+function UpcomingWidget(){
+  const list=useMemo(()=>
+    EMPLOYEES
+      .map(e=>({e,d:bdDays(e),b:parseBD(BIRTHDAYS[e])}))
+      .filter(x=>x.d<=30)
+      .sort((a,b)=>a.d-b.d)
+  ,[]);
+  if(!list.length) return null;
   return(
-    <div className="bday-upcoming-card">
-      <div className="bday-upcoming-header">
-        <span style={{fontSize:16}}>🎂</span>
-        <div>
-          <span style={{fontSize:13.5,fontWeight:700,color:"var(--navy)"}}>Yaqinlashayotgan tug'ilgan kunlar</span>
-          <span style={{fontSize:11,color:"var(--t3)",marginLeft:8}}>Keyingi 30 kun ichida</span>
-        </div>
+    <div className="bday-widget">
+      <div className="bday-widget-hd">
+        <span style={{fontSize:18}}>🎂</span>
+        <span className="bday-widget-hd-title">Yaqinlashayotgan tug'ilgan kunlar</span>
+        <span className="bday-widget-hd-sub">Keyingi 30 kun</span>
       </div>
-      <div className="bday-upcoming-list">
-        {list.map(({emp,days,bd})=>{
-          const isToday=days===0;
-          const age=calcAge(emp);
+      <div className="bday-scroll">
+        {list.map(({e,d,b})=>{
+          const today=d===0;
+          const age=bdAge(e);
+          const parts=e.split(" ");
           return(
-            <div key={emp} className={`bday-upcoming-item ${isToday?"today":""}`}>
-              <div className="bday-upcoming-avatar">
-                {isToday?"🎂":emp.charAt(0)}
+            <div key={e} className={`bday-card ${today?"is-today":""}`}>
+              <div className="bday-avatar">{today?"🎂":e.charAt(0)}</div>
+              <div className="bday-fn">{parts[0]}</div>
+              <div className="bday-ln">{parts[1]||""}</div>
+              <div className="bday-date">
+                {String(b.d).padStart(2,"0")}.{String(b.m).padStart(2,"0")}
+                {age!=null&&<span style={{color:"var(--t5)"}}> · {today?age:age+1} yosh</span>}
               </div>
-              <div className="bday-upcoming-name">{emp.split(" ")[0]}</div>
-              <div className="bday-upcoming-name" style={{fontWeight:500,color:"var(--t3)",fontSize:10.5}}>{emp.split(" ")[1]}</div>
-              <div className="bday-upcoming-date">
-                {String(bd.day).padStart(2,"0")}.{String(bd.month).padStart(2,"0")}
-                {age!==null && <span style={{color:"var(--t4)"}}> · {isToday?age:age+1} yosh</span>}
-              </div>
-              <div className="bday-upcoming-days">
-                {isToday?"🎉 Bugun!":days===1?"Ertaga":days+" kun"}
+              <div className="bday-days-pill">
+                {today?"🎉 Bugun!":d===1?"Ertaga":d+" kun"}
               </div>
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ═══ BIRTHDAYS PAGE VIEW — barcha xodimlar ═══ */
+function BirthdaysView(){
+  const today=new Date();
+  const allData=useMemo(()=>
+    EMPLOYEES
+      .map(e=>{
+        const b=parseBD(BIRTHDAYS[e]);
+        const d=bdDays(e);
+        const age=bdAge(e);
+        return{e,b,d,age,isToday:d===0,isSoon:d<=7&&d>0};
+      })
+      .sort((a,b2)=>a.d-b2.d)
+  ,[]);
+
+  // Oylar bo'yicha guruhlash (hozirgi oydan boshlab)
+  const byMonth=useMemo(()=>{
+    const groups={};
+    EMPLOYEES.forEach(e=>{
+      const b=parseBD(BIRTHDAYS[e]);
+      if(!b) return;
+      const key=b.m;
+      if(!groups[key]) groups[key]=[];
+      groups[key].push({e,b,d:bdDays(e),age:bdAge(e),isToday:bdToday(e)});
+    });
+    // Oylarni hozirgi oydan boshlab tartiblash
+    const curM=today.getMonth()+1;
+    const order=[...Array(12)].map((_,i)=>((curM-1+i)%12)+1);
+    return order.filter(m=>groups[m]).map(m=>({m,items:groups[m].sort((a,b2)=>a.b.d-b2.b.d)}));
+  },[]);
+
+  const todayList=allData.filter(x=>x.isToday);
+  const soonList=allData.filter(x=>x.isSoon);
+
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Tug'ilgan Kunlar</div>
+          <div className="page-subtitle">Barcha xodimlarning tug'ilgan kun sanalari</div>
+        </div>
+      </div>
+
+      {/* Bugungi banner */}
+      {todayList.length>0&&<BirthdayBanner/>}
+
+      {/* Statistika */}
+      <div className="stats-grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",marginBottom:22}}>
+        <div className="stat-card c-amber">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">🎂</div></div>
+            <div className="stat-num">{todayList.length||<span style={{fontSize:18,color:"var(--t4)"}}>—</span>}</div>
+            <div className="stat-label">Bugun tug'ilgan kun</div>
+          </div>
+        </div>
+        <div className="stat-card c-cobalt">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">🎈</div></div>
+            <div className="stat-num">{soonList.length}</div>
+            <div className="stat-label">7 kun ichida</div>
+          </div>
+        </div>
+        <div className="stat-card c-navy">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">👥</div></div>
+            <div className="stat-num">{EMPLOYEES.length}</div>
+            <div className="stat-label">Jami xodimlar</div>
+          </div>
+        </div>
+        <div className="stat-card c-violet">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">🎯</div></div>
+            <div className="stat-num">{allData.filter(x=>x.d<=30).length}</div>
+            <div className="stat-label">30 kun ichida</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Oylar bo'yicha jadval */}
+      {byMonth.map(({m,items})=>(
+        <div key={m}>
+          <div className="bday-month-label">
+            {MONTHS[m-1]}
+            <span style={{fontSize:11,fontWeight:500,color:"var(--t4)",textTransform:"none",letterSpacing:0}}>{items.length} nafar</span>
+          </div>
+          <div className="bday-grid">
+            {items.map(({e,b,d,age,isToday})=>{
+              const isSoon=d<=7&&!isToday;
+              const parts=e.split(" ");
+              return(
+                <div key={e} className={`bday-full-card ${isToday?"is-today":isSoon?"is-soon":""}`}>
+                  <div className="bday-full-stripe" style={{
+                    background: isToday
+                      ?"linear-gradient(90deg,var(--gold),var(--gold-lt))"
+                      :isSoon
+                      ?"linear-gradient(90deg,var(--cobalt),#3463e8)"
+                      :"linear-gradient(90deg,var(--border),var(--border2))"
+                  }}/>
+                  <div className="bday-full-avatar">{isToday?"🎂":e.charAt(0)}</div>
+                  <div className="bday-full-name">{parts[0]}</div>
+                  <div style={{fontSize:11,color:"var(--t3)",marginBottom:4}}>{parts[1]||""}</div>
+                  <div className="bday-full-date">
+                    {String(b.d).padStart(2,"0")}.{String(b.m).padStart(2,"0")}.{b.y}
+                  </div>
+                  <div className="bday-full-age">{age!=null?(isToday?`${age} yoshga to'ldi!`:`${age+1} yoshga to'ladi`):"—"}</div>
+                  <div style={{marginTop:7}}>
+                    {isToday&&<span className="bday-tag">🎉 Bugun!</span>}
+                    {isSoon&&<span className="bday-soon-tag">🎈 {d} kun</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1072,7 +1175,7 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
   return(
     <div style={{animation:"fadeUp .35s ease"}}>
       <BirthdayBanner/>
-      <UpcomingBirthdays/>
+      <UpcomingWidget/>
       <div className="page-header">
         <div>
           <div className="page-title">{isAdmin?"Kunlik Davomat Hisoboti":canView?"Davomat Nazorati":"Kunlik Ko'rinish"}</div>
@@ -1168,8 +1271,8 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
                         onClick={()=>canView&&updateRecord("__openModal__",emp)}>
                         {emp}
                       </span>
-                      {isBirthdayToday(emp)&&<span className="bday-tag">🎂 Bugun tug'ilgan kun!</span>}
-                      {!isBirthdayToday(emp)&&daysUntilBirthday(emp)<=7&&<span className="bday-soon-tag">🎈 {daysUntilBirthday(emp)} kunda</span>}
+                      {bdToday(emp)&&<span className="bday-tag">🎂 Tug'ilgan kun!</span>}
+                      {!bdToday(emp)&&bdDays(emp)<=7&&<span className="bday-soon-tag">🎈 {bdDays(emp)} kun</span>}
                     </td>
                     <td>
                       {isAdmin
@@ -1260,11 +1363,8 @@ function WeeklyView({selectedDate,setSelectedDate,attendanceData,onEmpClick}){
           <tbody>{EMPLOYEES.map((emp,i)=>{const s=empStats[i];return(
             <tr key={emp}>
               <td><span className="row-num">{String(i+1).padStart(2,"0")}</span></td>
-              <td className="emp-name emp-link" onClick={()=>onEmpClick(emp)}>
-                {emp}
-                {isBirthdayToday(emp)&&<span className="bday-tag">🎂</span>}
-                {!isBirthdayToday(emp)&&daysUntilBirthday(emp)<=7&&<span className="bday-soon-tag">🎈{daysUntilBirthday(emp)}k</span>}
-              </td>
+              <td className="emp-name emp-link" onClick={()=>onEmpClick(emp)}>{emp}</td>
+              {weekDates.map(date=>{
                 const dk=fmtDate(date);const rec=attendanceData[dk]?.[safeKey(emp)];
                 const st=STATUSES[rec?.status||"present"];
                 const mins=(rec?.morning||0)+(rec?.afternoon||0);
@@ -1324,11 +1424,10 @@ function MonthlyView({attendanceData,onEmpClick}){
           const pct=Math.round(s.present/totalDays*100);
           return(<tr key={s.emp}>
             <td><span className="row-num">{String(i+1).padStart(2,"0")}</span></td>
-            <td className="emp-name emp-link" onClick={()=>onEmpClick(s.emp)}>
-              {s.emp}
-              {isBirthdayToday(s.emp)&&<span className="bday-tag">🎂</span>}
-              {!isBirthdayToday(s.emp)&&daysUntilBirthday(s.emp)<=7&&<span className="bday-soon-tag">🎈 {daysUntilBirthday(s.emp)}k</span>}
-            </td>
+            <td className="emp-name emp-link" onClick={()=>onEmpClick(s.emp)}>{s.emp}</td>
+            <td className="th-center">
+              <div style={{display:"flex",alignItems:"center",gap:7,justifyContent:"center"}}>
+                <div style={{width:50,height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${pct}%`,background:pct>=90?"var(--emerald)":pct>=70?"var(--gold)":"var(--ruby)",borderRadius:3}}/>
                 </div>
                 <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:11,fontWeight:700,color:"var(--navy)"}}>{s.present}/{totalDays}</span>
@@ -1514,6 +1613,33 @@ function StatsView({attendanceData,onEmpClick}){
   );
 }
 
+/* ═══ BIRTHDAY STAT CARD ═══ */
+function BirthdayStatCard({empName}){
+  const b=parseBD(BIRTHDAYS[empName]);
+  if(!b) return null;
+  const isToday=bdToday(empName);
+  const days=bdDays(empName);
+  const age=bdAge(empName);
+  const dateStr=String(b.d).padStart(2,"0")+"."+String(b.m).padStart(2,"0")+"."+b.y;
+  const subLabel=isToday
+    ? `🎉 Bugun ${age} yoshga to'ldi!`
+    : days===1
+    ? `Ertaga · ${age+1} yosh`
+    : `${days} kun qoldi · ${age+1} yosh`;
+  return(
+    <div className={`stat-card ${isToday?"c-amber":"c-cobalt"}`}>
+      <div className="stat-accent"/>
+      <div className="stat-card-inner">
+        <div className="stat-top">
+          <div className="stat-icon-wrap" style={{fontSize:18}}>🎂</div>
+        </div>
+        <div className="stat-num" style={{fontSize:17,letterSpacing:0}}>{dateStr}</div>
+        <div className="stat-label">{subLabel}</div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══ EMPLOYEE STATS ═══ */
 function EmployeeStats({empName,attendanceData,inModal=false}){
   const today=new Date();
@@ -1562,26 +1688,7 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
         <div className="stat-card c-violet"><div className="stat-accent"/>
           <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={stats.score} size={42} stroke={4} color={scColor}/></div>
           <div className="stat-num" style={{color:scColor}}>{stats.score}</div><div className="stat-label">Intizom bali</div></div></div>
-        {BIRTHDAYS[empName]&&(()=>{
-          const bd=parseBirthday(BIRTHDAYS[empName]);
-          const days=daysUntilBirthday(empName);
-          const isToday=isBirthdayToday(empName);
-          const age=calcAge(empName);
-          return(
-            <div className={`stat-card ${isToday?"c-amber":""}`} style={isToday?{}:{borderColor:"var(--border)"}}>
-              <div className="stat-accent" style={{background:isToday?"linear-gradient(90deg,var(--gold),var(--gold-lt))":"linear-gradient(90deg,var(--cobalt),#3463e8)"}}/>
-              <div className="stat-card-inner">
-                <div className="stat-top"><div className="stat-icon-wrap" style={{background:isToday?"var(--gold-pale)":"var(--cobalt-bg)",fontSize:18}}>{isToday?"🎂":"🎂"}</div></div>
-                <div className="stat-num" style={{fontSize:18,color:isToday?"var(--gold)":"var(--cobalt)"}}>
-                  {String(bd.day).padStart(2,"0")}.{String(bd.month).padStart(2,"0")}
-                </div>
-                <div className="stat-label" style={{color:isToday?"var(--amber)":"var(--t3)"}}>
-                  {isToday?`🎉 Bugun! ${age} yosh`:days===1?`Ertaga · ${age+1} yosh`:`${days} kunda · ${age+1} yosh`}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+        <BirthdayStatCard empName={empName}/>
       </div>
       <div className="table-card">
         <div className="table-header">
@@ -1768,13 +1875,15 @@ function App(){
     {k:"daily",icon:"📅",label:"Kunlik"},
     {k:"weekly",icon:"📆",label:"Haftalik"},
     {k:"monthly",icon:"🗓",label:"Oylik"},
-    {k:"stats",icon:"📊",label:"Statistika"}
+    {k:"stats",icon:"📊",label:"Statistika"},
+    {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"}
   ];
   const empNav=[
-    {k:"myStats",icon:"👤",label:"Shaxsiy Kabinet"}
+    {k:"myStats",icon:"👤",label:"Shaxsiy Kabinet"},
+    {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",myStats:"Shaxsiy Kabinet"};
+  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
 
   return(
@@ -1856,6 +1965,7 @@ function App(){
                 {view==="monthly"&&canManage&&<MonthlyView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="stats"&&canManage&&<StatsView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data}/>}
+                {view==="birthdays"&&<BirthdaysView/>}
               </>
           }
         </main>
