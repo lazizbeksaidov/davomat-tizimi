@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Xodimlar Monitoring Tizimi — Navoiy viloyati</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Core palette */
+      --ink:      #0a0e1a;
+      --ink-deep: #060810;
+      --navy:     #0f1e3d;
+      --navy-mid: #162752;
+      --navy-lt:  #1d3468;
+      --slate:    #2a3f6e;
+      --mist:     #e8edf5;
+      --cloud:    #f3f6fb;
+      --white:    #ffffff;
+
+      /* Gold accent */
+      --gold:     #c8962a;
+      --gold-lt:  #e8b84b;
+      --gold-pale:#fdf3de;
+      --gold-glow:rgba(200,150,42,.18);
+
+      /* Semantic */
+      --emerald:  #0d7a5b;
+      --emerald-bg:#e3f5ef;
+      --ruby:     #c0392b;
+      --ruby-bg:  #fdecea;
+      --amber:    #a16207;
+      --amber-bg: #fef9ee;
+      --cobalt:   #1e4cbe;
+      --cobalt-bg:#eaeffc;
+      --violet:   #6d28d9;
+      --violet-bg:#f3eeff;
+      --teal:     #0e7490;
+      --teal-bg:  #e0f5fb;
+      --ash:      #4b5563;
+      --ash-bg:   #f1f3f7;
+
+      /* Text */
+      --t1: #0a0e1a;
+      --t2: #374361;
+      --t3: #6b7896;
+      --t4: #9ba8c2;
+      --t5: #c4ccdb;
+
+      /* Surfaces */
+      --surface:  #ffffff;
+      --surface2: #f8fafd;
+      --surface3: #f0f4fa;
+      --border:   #e4e9f2;
+      --border2:  #d0d8e8;
+
+      /* Shadows */
+      --s1: 0 1px 3px rgba(10,14,26,.06), 0 1px 2px rgba(10,14,26,.04);
+      --s2: 0 4px 16px rgba(10,14,26,.08), 0 2px 6px rgba(10,14,26,.05);
+      --s3: 0 12px 40px rgba(10,14,26,.12), 0 4px 14px rgba(10,14,26,.08);
+      --s4: 0 24px 60px rgba(10,14,26,.16), 0 8px 20px rgba(10,14,26,.10);
+
+      --r: 10px;
+      --rl: 14px;
+      --rxl: 20px;
+
+      /* Sidebar */
+      --sidebar-w: 220px;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--cloud);
+      color: var(--t1);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--t4); }
+
+    /* ─── LOADING ─────────────────────────────── */
+    .fullscreen-loader {
+      position: fixed; inset: 0;
+      background: var(--ink);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 20px; z-index: 9999;
+      animation: loaderFade 0.3s ease 1.2s forwards;
+    }
+    @keyframes loaderFade { to { opacity: 0; pointer-events: none; } }
+    .loader-logo {
+      width: 56px; height: 56px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 40px var(--gold-glow);
+      animation: logoPulse 1.4s ease infinite;
+    }
+    @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+    .loader-dots { display: flex; gap: 6px; }
+    .loader-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.2);
+      animation: dotPulse 1.2s ease infinite;
+    }
+    .loader-dot:nth-child(2) { animation-delay: .15s; }
+    .loader-dot:nth-child(3) { animation-delay: .3s; }
+    @keyframes dotPulse { 0%,80%,100%{background:rgba(255,255,255,.2)} 40%{background:var(--gold-lt)} }
+
+    /* ─── LOGIN ─────────────────────────────────── */
+    .login-wrap {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 480px;
+      background: var(--ink);
+      position: relative;
+      overflow: hidden;
+    }
+    .login-canvas {
+      position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+    }
+    .login-canvas::before {
+      content: '';
+      position: absolute;
+      width: 900px; height: 900px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,150,42,.06) 0%, transparent 70%);
+      top: -300px; left: -200px;
+    }
+    .login-canvas::after {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(29,52,104,.4) 0%, transparent 70%);
+      bottom: -100px; left: 30%;
+    }
+    .login-grid-bg {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 56px 56px;
+    }
+
+    .login-left {
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 60px 70px; position: relative; z-index: 2;
+    }
+    .login-emblem {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 56px;
+    }
+    .login-emblem-mark {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 24px var(--gold-glow);
+      flex-shrink: 0;
+    }
+    .login-emblem-text h2 {
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,.7);
+      text-transform: uppercase; letter-spacing: 1.2px;
+    }
+    .login-emblem-text p { font-size: 11px; color: rgba(255,255,255,.3); margin-top: 3px; }
+    .login-headline {
+      font-family: 'Playfair Display', serif;
+      font-size: 50px; font-weight: 800;
+      color: #fff; line-height: 1.1; margin-bottom: 22px;
+      letter-spacing: -1px;
+    }
+    .login-headline em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--gold-lt) 0%, #f5e17a 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .login-desc { font-size: 14.5px; color: rgba(255,255,255,.38); line-height: 1.9; max-width: 380px; }
+    .login-features {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 52px;
+    }
+    .login-feat {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 12px; padding: 18px;
+      backdrop-filter: blur(8px);
+      transition: background .2s, border-color .2s;
+    }
+    .login-feat:hover { background: rgba(255,255,255,.07); border-color: rgba(200,150,42,.25); }
+    .login-feat-icon { font-size: 20px; margin-bottom: 10px; }
+    .login-feat-title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.8); margin-bottom: 5px; }
+    .login-feat-desc { font-size: 11px; color: rgba(255,255,255,.3); line-height: 1.6; }
+
+    .login-right {
+      background: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      padding: 48px 52px;
+      position: relative; z-index: 2;
+      box-shadow: -30px 0 80px rgba(0,0,0,.25);
+    }
+    .login-right::before {
+      content: '';
+      position: absolute; top: 0; left: 0; bottom: 0; width: 1px;
+      background: linear-gradient(180deg, transparent, rgba(200,150,42,.3), rgba(200,150,42,.3), transparent);
+    }
+    .login-card { width: 100%; max-width: 360px; }
+    .login-card-eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 20px;
+      background: var(--gold-pale); padding: 5px 12px; border-radius: 20px;
+    }
+    .login-card-title { font-family:'Playfair Display',serif; font-size: 30px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+    .login-card-sub { font-size: 13.5px; color: var(--t3); margin-bottom: 36px; }
+    .login-error {
+      background: var(--ruby-bg); border: 1px solid rgba(192,57,43,.12);
+      color: var(--ruby); padding: 12px 15px; border-radius: var(--r);
+      font-size: 12.5px; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 9px;
+      animation: shake .35s ease;
+    }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: block; font-size: 11px; font-weight: 600; color: var(--t3);
+      text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px;
+    }
+    .form-input {
+      width: 100%; padding: 13px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r); font-size: 14px; font-family: 'Outfit', sans-serif;
+      color: var(--t1); background: var(--cloud); outline: none;
+      transition: all .2s;
+    }
+    .form-input::placeholder { color: var(--t5); }
+    .form-input:focus { border-color: var(--gold); background: #fff; box-shadow: 0 0 0 4px var(--gold-glow); }
+    .login-btn {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-lt) 100%);
+      color: #fff; border: none; border-radius: var(--r);
+      font-size: 14.5px; font-weight: 600; font-family: 'Outfit', sans-serif;
+      cursor: pointer; transition: all .2s; margin-top: 6px;
+      display: flex; align-items: center; justify-content: center; gap: 9px;
+      box-shadow: 0 4px 20px rgba(10,14,26,.22);
+      letter-spacing: .2px;
+    }
+    .login-btn:hover:not(:disabled) { box-shadow: 0 8px 28px rgba(10,14,26,.3); transform: translateY(-1px); }
+    .login-btn:active { transform: translateY(0); }
+    .login-btn:disabled { opacity: .7; cursor: not-allowed; }
+    .login-divider { height: 1px; background: var(--border); margin: 28px 0; }
+    .login-secure {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11.5px; color: var(--t4);
+    }
+
+    /* ─── APP SHELL ────────────────────────────── */
+    .app { min-height: 100vh; display: flex; }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--ink);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      z-index: 300; overflow-y: auto;
+      box-shadow: 4px 0 24px rgba(0,0,0,.15);
+    }
+    .sidebar-top {
+      padding: 20px 18px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .sidebar-brand {
+      display: flex; align-items: center; gap: 11px;
+    }
+    .sidebar-logo {
+      width: 34px; height: 34px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 3px 12px var(--gold-glow);
+    }
+    .sidebar-name { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.9); line-height: 1.3; }
+    .sidebar-sub { font-size: 9.5px; color: rgba(255,255,255,.28); margin-top: 2px; }
+
+    .sidebar-nav { flex: 1; padding: 10px 10px; }
+    .nav-section-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+      color: rgba(255,255,255,.2); padding: 14px 8px 6px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px; border-radius: 9px;
+      font-size: 13px; font-weight: 500; color: rgba(255,255,255,.42);
+      cursor: pointer; transition: all .18s; margin-bottom: 2px;
+      border: 1px solid transparent;
+      user-select: none;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.8); }
+    .nav-item.active {
+      background: rgba(200,150,42,.12);
+      border-color: rgba(200,150,42,.2);
+      color: var(--gold-lt);
+      font-weight: 600;
+    }
+    .nav-item-icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+      background: rgba(255,255,255,.05);
+      transition: background .18s;
+    }
+    .nav-item.active .nav-item-icon { background: rgba(200,150,42,.15); }
+    .nav-item-badge {
+      margin-left: auto; font-size: 9px; font-weight: 700;
+      background: var(--ruby); color: #fff;
+      padding: 1px 6px; border-radius: 10px;
+    }
+
+    .sidebar-footer {
+      padding: 14px 12px;
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 10px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.06);
+      margin-bottom: 8px;
+    }
+    .sidebar-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--ink);
+      flex-shrink: 0;
+    }
+    .sidebar-user-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role { font-size: 9.5px; color: rgba(255,255,255,.3); text-transform: uppercase; letter-spacing: .5px; }
+    .logout-btn {
+      width: 100%; padding: 8px 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      color: rgba(255,255,255,.35);
+      font-size: 11.5px; font-weight: 600; font-family: 'Outfit', sans-serif;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all .18s;
+    }
+    .logout-btn:hover { background: rgba(192,57,43,.12); color: #ff8a7a; border-color: rgba(192,57,43,.25); }
+
+    /* Main content */
+    .content {
+      margin-left: var(--sidebar-w);
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Topbar */
+    .topbar {
+      background: var(--white);
+      height: 58px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 26px;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 200;
+      box-shadow: var(--s1);
+    }
+    .topbar-left { display: flex; align-items: center; gap: 14px; }
+    .topbar-breadcrumb {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; color: var(--t3);
+    }
+    .topbar-breadcrumb-cur {
+      font-size: 13px; font-weight: 600; color: var(--navy);
+    }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .topbar-clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px; font-weight: 600;
+      color: var(--t3);
+      background: var(--cloud);
+      padding: 5px 12px; border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .topbar-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px rgba(13,122,91,.4);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .topbar-status {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 500; color: var(--t3);
+    }
+
+    /* ─── MAIN AREA ─────────────────────────────── */
+    .main { flex: 1; padding: 26px 28px 48px; }
+    .page-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 22px; flex-wrap: wrap; gap: 14px;
+    }
+    .page-title { font-size: 22px; font-weight: 700; color: var(--navy); letter-spacing: -.3px; }
+    .page-subtitle { font-size: 13px; color: var(--t3); margin-top: 3px; }
+    .page-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    /* Date navigation */
+    .date-nav { display: flex; align-items: center; gap: 4px; }
+    .date-nav-btn {
+      width: 32px; height: 32px; background: var(--surface);
+      border: 1.5px solid var(--border); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; cursor: pointer; color: var(--t2); transition: all .15s;
+    }
+    .date-nav-btn:hover { border-color: var(--navy); color: var(--navy); background: var(--cloud); }
+    .date-display {
+      padding: 6px 14px; background: var(--white);
+      border: 1.5px solid var(--border2); border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 600;
+      color: var(--navy); white-space: nowrap;
+    }
+    .date-input {
+      padding: 6px 12px; background: var(--white);
+      border: 1.5px solid var(--border2); border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 600;
+      color: var(--navy); outline: none; cursor: pointer;
+    }
+    .date-input:focus { border-color: var(--gold); }
+    .action-btn {
+      padding: 7px 14px; background: var(--white); border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 12px; font-weight: 600; font-family: 'Outfit', sans-serif;
+      color: var(--t2); cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: all .15s;
+    }
+    .action-btn:hover { border-color: var(--navy); color: var(--navy); }
+    .action-btn.primary {
+      background: var(--navy); color: #fff; border-color: var(--navy);
+      box-shadow: 0 2px 8px rgba(10,14,26,.15);
+    }
+    .action-btn.primary:hover { background: var(--navy-lt); }
+
+    /* ─── STAT CARDS ───────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+      gap: 12px; margin-bottom: 22px;
+    }
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--rl); padding: 18px 20px;
+      box-shadow: var(--s1); position: relative; overflow: hidden;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--s2); }
+    .stat-accent {
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      border-radius: var(--rl) var(--rl) 0 0;
+    }
+    .stat-card-inner { position: relative; }
+    .stat-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+    .stat-icon-wrap {
+      width: 36px; height: 36px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .stat-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 30px; font-weight: 700; color: var(--navy);
+      line-height: 1; margin-bottom: 4px;
+      letter-spacing: -1px;
+    }
+    .stat-num sup { font-size: 13px; font-weight: 500; color: var(--t3); font-family: 'Outfit', sans-serif; letter-spacing: 0; }
+    .stat-label { font-size: 12px; font-weight: 500; color: var(--t3); }
+    .stat-trend {
+      font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 20px;
+      margin-top: 6px; display: inline-flex; align-items: center; gap: 3px;
+    }
+
+    /* Color variants */
+    .c-green .stat-accent { background: linear-gradient(90deg, #0d7a5b, #16a85e); }
+    .c-green .stat-icon-wrap { background: var(--emerald-bg); }
+    .c-amber .stat-accent { background: linear-gradient(90deg, var(--gold), var(--gold-lt)); }
+    .c-amber .stat-icon-wrap { background: var(--amber-bg); }
+    .c-red .stat-accent { background: linear-gradient(90deg, #e74c3c, var(--ruby)); }
+    .c-red .stat-icon-wrap { background: var(--ruby-bg); }
+    .c-cobalt .stat-accent { background: linear-gradient(90deg, #1a42b0, #3463e8); }
+    .c-cobalt .stat-icon-wrap { background: var(--cobalt-bg); }
+    .c-navy .stat-accent { background: linear-gradient(90deg, var(--navy), var(--navy-lt)); }
+    .c-navy .stat-icon-wrap { background: rgba(15,30,61,.07); }
+    .c-violet .stat-accent { background: linear-gradient(90deg, var(--violet), #8b5cf6); }
+    .c-violet .stat-icon-wrap { background: var(--violet-bg); }
+
+    /* ─── TABLE CARD ────────────────────────────── */
+    .table-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--rl); overflow: hidden;
+      box-shadow: var(--s2);
+    }
+    .table-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 14px; flex-wrap: wrap;
+      background: var(--white);
+    }
+    .table-title { font-size: 14.5px; font-weight: 700; color: var(--navy); }
+    .table-meta { font-size: 11.5px; color: var(--t3); margin-top: 2px; }
+    .scroll-x { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      padding: 10px 14px;
+      background: var(--cloud);
+      color: var(--t3); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .9px;
+      border-bottom: 1px solid var(--border2); text-align: left; white-space: nowrap;
+    }
+    .th-center { text-align: center !important; }
+    .th-right { text-align: right !important; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--cloud); }
+    td { padding: 9px 14px; vertical-align: middle; }
+    .row-num {
+      font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+      color: var(--t5); font-weight: 500;
+    }
+    .emp-name { font-weight: 600; color: var(--navy); font-size: 13px; }
+    .emp-link { cursor: pointer; color: var(--cobalt); transition: color .12s; }
+    .emp-link:hover { color: var(--navy); text-decoration: underline; }
+
+    /* Status badge */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+      letter-spacing: .1px;
+    }
+
+    /* Controls */
+    .status-select {
+      padding: 6px 10px;
+      background: var(--cloud); border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 12px; font-weight: 500; font-family: 'Outfit', sans-serif;
+      color: var(--t1); cursor: pointer; outline: none; min-width: 155px;
+      transition: border-color .15s;
+    }
+    .status-select:focus { border-color: var(--gold); }
+    .status-select:disabled { opacity: .55; cursor: default; }
+    .num-input {
+      width: 64px; padding: 6px 5px;
+      background: var(--cloud); border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 12px; font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      text-align: center; color: var(--navy); outline: none; transition: all .15s;
+    }
+    .num-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-glow); }
+    .num-input:disabled { opacity: .55; cursor: default; }
+    .text-input {
+      width: 100%; min-width: 120px; padding: 6px 10px;
+      background: var(--cloud); border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 12px; font-family: 'Outfit', sans-serif;
+      color: var(--t1); outline: none; transition: border-color .15s;
+    }
+    .text-input:focus { border-color: var(--gold); }
+    .text-input:disabled { opacity: .55; cursor: default; background: transparent; border-color: transparent; padding-left: 0; }
+    .late-val {
+      color: var(--ruby); font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .zero-val { color: var(--t5); }
+    .search-input {
+      padding: 7px 12px 7px 34px;
+      background: var(--cloud); border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 12px; font-family: 'Outfit', sans-serif;
+      color: var(--t1); outline: none; width: 200px; transition: all .18s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ba8c2' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: 11px center;
+    }
+    .search-input:focus { border-color: var(--gold); width: 250px; background-color: var(--white); }
+
+    /* Weekday header */
+    .wday-h { font-size: 11.5px; font-weight: 700; color: var(--navy); }
+    .wday-d { font-size: 10px; color: var(--t3); margin-top: 2px; }
+
+    /* ─── PERIOD TABS ─────────────────────────── */
+    .period-tabs {
+      display: flex; gap: 2px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 9px; padding: 3px; width: fit-content; margin-bottom: 16px;
+    }
+    .period-tab {
+      padding: 5px 14px; border: none; background: transparent;
+      border-radius: 7px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+      font-family: 'Outfit', sans-serif; transition: all .15s; color: var(--t3);
+    }
+    .period-tab.active { background: var(--navy); color: #fff; box-shadow: 0 2px 8px rgba(10,14,26,.15); }
+    .period-tab:hover:not(.active) { color: var(--t1); }
+
+    /* Sort buttons */
+    .sort-btn {
+      padding: 5px 10px; border: 1px solid var(--border);
+      background: var(--surface); border-radius: 7px;
+      font-size: 10.5px; font-weight: 600; cursor: pointer;
+      font-family: 'Outfit', sans-serif; color: var(--t3); transition: all .15s;
+    }
+    .sort-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+    /* ─── DIVIDER CARD ROW ───────────────────── */
+    .section-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 14px; margin-bottom: 16px;
+    }
+
+    /* Bar chart inside card */
+    .bar-item {
+      display: flex; align-items: center; gap: 9px;
+      margin-bottom: 8px; cursor: pointer; transition: opacity .15s;
+    }
+    .bar-item:hover { opacity: .8; }
+    .bar-track {
+      flex: 1; height: 22px; background: var(--cloud);
+      border-radius: 5px; overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 5px;
+      transition: width .5s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ─── FOOTER ───────────────────────────────── */
+    .footer {
+      padding: 14px 28px;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; color: var(--t4);
+      background: var(--white);
+    }
+    .footer-badge {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--cloud); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 13px;
+      font-size: 10.5px; color: var(--t3); font-weight: 500;
+    }
+
+    /* ─── MODAL ─────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(6,8,16,.65);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 900; padding: 20px;
+      animation: fadeIn .2s ease;
+    }
+    .modal-box {
+      background: var(--cloud);
+      border-radius: var(--rxl); width: 100%; max-width: 1080px;
+      max-height: 90vh; overflow-y: auto;
+      position: relative; box-shadow: var(--s4);
+      padding: 26px 30px;
+      animation: slideUp .25s cubic-bezier(.4,0,.2,1);
+    }
+    .modal-close {
+      position: absolute; top: 20px; right: 22px;
+      width: 32px; height: 32px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--t3); font-size: 14px; border-radius: 50%;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all .18s; z-index: 10;
+    }
+    .modal-close:hover { background: var(--ruby-bg); color: var(--ruby); border-color: rgba(192,57,43,.2); }
+
+    /* ─── TOAST ─────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--navy); color: #fff;
+      padding: 10px 18px; border-radius: 9px;
+      font-size: 12.5px; font-weight: 600;
+      box-shadow: var(--s3); z-index: 9999;
+      display: flex; align-items: center; gap: 8px;
+      animation: toastIn .3s cubic-bezier(.4,0,.2,1), toastOut .3s ease 2.4s forwards;
+      border-left: 3px solid var(--gold);
+    }
+    @keyframes toastIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes toastOut { to{opacity:0;transform:translateY(8px)} }
+
+    /* ─── EMPTY STATE ─────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 70px 20px; color: var(--t3);
+    }
+    .empty-icon { font-size: 40px; margin-bottom: 14px; opacity: .5; }
+    .empty-title { font-size: 15px; font-weight: 600; color: var(--t2); }
+    .empty-sub { font-size: 12px; color: var(--t4); margin-top: 5px; }
+
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
+
+    /* ─── RESPONSIVE ──────────────────────────── */
+    @media(max-width:900px) {
+      .login-wrap { grid-template-columns: 1fr; }
+      .login-left { display: none; }
+      .login-right { min-height: 100vh; }
+      .sidebar { width: 64px; }
+      .sidebar-name, .sidebar-sub, .nav-item span, .nav-section-label,
+      .sidebar-user-name, .sidebar-user-role, .logout-btn span { display: none; }
+      .nav-item { justify-content: center; }
+      .content { margin-left: 64px; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+    }
+    @media(max-width:600px) {
+      .main { padding: 14px 12px 36px; }
+      .topbar { padding: 0 14px; }
+      .sidebar { display: none; }
+      .content { margin-left: 0; }
+    }
+    @media print {
+      .sidebar,.topbar,.date-nav,.action-btn,.footer,.modal-close,.period-tabs,.search-input { display: none !important; }
+      .content { margin-left: 0; }
+      body, .modal-box { background: white; }
+      .table-card { box-shadow: none; border: 1px solid #ddd; }
+      .status-select, .num-input { border: none; background: transparent; -webkit-appearance: none; }
+      .text-input { border: none; background: transparent; padding-left: 0; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState, useMemo, useEffect, useRef, useCallback} = React;
+
+/* ═══ FIREBASE ═══ */
+const firebaseConfig = {
+  apiKey: "AIzaSyDu_yGT0ERd2_8bofWvTFzNf1FcXIdNzrc",
+  authDomain: "xodimlar-7c13c.firebaseapp.com",
+  databaseURL: "https://xodimlar-7c13c-default-rtdb.firebaseio.com",
+  projectId: "xodimlar-7c13c",
+  storageBucket: "xodimlar-7c13c.firebasestorage.app",
+  messagingSenderId: "292290756095",
+  appId: "1:292290756095:web:2c9c03aaa6ac0f69697bca"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+
+/* ═══ DATA ═══ */
+const EMPLOYEES = [
+  "Umrzoqov Bunyod","Ermamatov Xurshid","Nazarov Dilshod",
+  "Akbarova Moxlaroyim","Faxriddinov Oxunjon",
+  "Hamdamov Shuxrat","Nazarov Muzaffar","Nurmamatov Oxunjon",
+  "Xolmurodov Dostonjon","Qurbonov Shavkat","Narzullayev Rustam",
+  "Islomov G\u2018ulomjon","Ibrohimov Shuhrat","Barnoqulov Shahzod",
+  "Axadov Izzatullo","Jo\u2018raqulov Jahongirbek","Jaynakov Temur",
+  "Saidov Lazizbek","Pirbayev Berdiyor","Husainova Klara"
+];
+function normalizeUz(s){return s.replace(/[\u2018\u2019\u02BC\u0060\u2018\u2019'`]/g,"")}
+const USERS_INFO = {
+  "kadr@boshqarma.uz":{role:"admin",name:"Kadrlar Bo\u2018limi"},
+  "ravshan.azimov@boshqarma.uz":{role:"boss",name:"Azimov Ravshan",title:"Boshqarma boshlig\u2018i"},
+  "elbek.gafforov@boshqarma.uz":{role:"boss",name:"G\u2018afforov Elbek",title:"Boshlig\u2018i o\u2018rinbosari"}
+};
+EMPLOYEES.forEach(emp=>{
+  const p=emp.split(" ");
+  const email=normalizeUz((p[1]+"."+p[0]).toLowerCase())+"@boshqarma.uz";
+  USERS_INFO[email]={role:"employee",name:emp};
+});
+
+const STATUSES = {
+  present:{label:"Ish joyida",color:"var(--emerald)",bg:"var(--emerald-bg)",icon:"✓",short:"IJ"},
+  late:{label:"Kechikdi",color:"var(--amber)",bg:"var(--amber-bg)",icon:"⏰",short:"K"},
+  sick:{label:"Bemor",color:"var(--ruby)",bg:"var(--ruby-bg)",icon:"🏥",short:"B"},
+  trip:{label:"Xizmat safari",color:"var(--cobalt)",bg:"var(--cobalt-bg)",icon:"✈",short:"XS"},
+  training:{label:"Malaka oshirish",color:"var(--violet)",bg:"var(--violet-bg)",icon:"📚",short:"MO"},
+  vacation:{label:"Ta\u2018til",color:"var(--teal)",bg:"var(--teal-bg)",icon:"🌴",short:"T"},
+  excused:{label:"Sababli",color:"var(--ash)",bg:"var(--ash-bg)",icon:"📋",short:"S"},
+  absent:{label:"Sababsiz",color:"var(--ruby)",bg:"var(--ruby-bg)",icon:"✗",short:"SS"}
+};
+const WDAYS=["Dushanba","Seshanba","Chorshanba","Payshanba","Juma"];
+const WSHORT=["Dush","Sesh","Chor","Pay","Jum"];
+const MONTHS=["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+
+/* ═══ HELPERS ═══ */
+function fmtDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function isWorkday(d){const w=d.getDay();return w>=1&&w<=5}
+function safeKey(s){return s.replace(/[\u2018\u2019\u02BC\u0060'`]/g,"").replace(/\s+/g,"_").replace(/[.#$/[\]]/g,"_")}
+function stepToWorkday(date,dir){const d=new Date(date);do{d.setDate(d.getDate()+dir)}while(!isWorkday(d));return d}
+function getWeekDates(date){
+  const d=new Date(date);const day=d.getDay();const diff=day===0?-6:1-day;
+  const mon=new Date(d);mon.setDate(d.getDate()+diff);
+  return Array.from({length:5},(_,i)=>{const dd=new Date(mon);dd.setDate(mon.getDate()+i);return dd})}
+function getMonthDates(yr,mo){
+  const list=[];const d=new Date(yr,mo,1);
+  while(d.getMonth()===mo){if(isWorkday(d))list.push(new Date(d));d.setDate(d.getDate()+1)}
+  return list}
+function fmtMins(m){if(!m)return"—";if(m<60)return`${m}d`;return`${Math.floor(m/60)}s ${m%60}d`}
+
+/* ═══ RING SVG ═══ */
+function Ring({pct,size=44,stroke=5,color="var(--emerald)"}){
+  const r=(size-stroke)/2;const circ=2*Math.PI*r;const offset=circ*(1-Math.min(1,pct/100));
+  return(
+    <svg width={size} height={size} style={{transform:"rotate(-90deg)"}}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border2)" strokeWidth={stroke}/>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+        style={{transition:"stroke-dashoffset .6s ease"}}/>
+      <text x={size/2} y={size/2} textAnchor="middle" dominantBaseline="central"
+        fontSize={size*0.22} fontWeight="700" fill="var(--navy)"
+        style={{transform:"rotate(90deg)",transformOrigin:"center",fontFamily:"JetBrains Mono,monospace"}}>
+        {Math.round(pct)}
+      </text>
+    </svg>
+  );
+}
+
+/* ═══ DAILY VIEW ═══ */
+function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecord}){
+  const isAdmin=user.role==="admin";
+  const canView=user.role==="admin"||user.role==="boss";
+  const dateKey=fmtDate(selectedDate);
+  const dayName=WDAYS[selectedDate.getDay()-1]||"Dam olish kuni";
+  const [search,setSearch]=useState("");
+  const counts=useMemo(()=>{
+    const c={present:0,late:0,absent:0,other:0,lateMins:0};
+    EMPLOYEES.forEach(emp=>{
+      const rec=attendanceData[dateKey]?.[safeKey(emp)];
+      const st=rec?.status||"present";
+      if(st==="present")c.present++;
+      else if(st==="late"){c.late++;c.present++}
+      else if(st==="absent")c.absent++;
+      else c.other++;
+      c.lateMins+=(rec?.morning||0)+(rec?.afternoon||0);
+    });
+    return c;
+  },[dateKey,attendanceData]);
+  const filtered=search?EMPLOYEES.filter(e=>e.toLowerCase().includes(search.toLowerCase())):EMPLOYEES;
+  const attendPct=Math.round(counts.present/EMPLOYEES.length*100);
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div>
+          <div className="page-title">{isAdmin?"Kunlik Davomat Hisoboti":canView?"Davomat Nazorati":"Kunlik Ko'rinish"}</div>
+          <div className="page-subtitle">{dayName} · {dateKey} · {EMPLOYEES.length} nafar xodim</div>
+        </div>
+        <div className="page-actions">
+          <div className="date-nav">
+            <button className="date-nav-btn" onClick={()=>setSelectedDate(prev=>stepToWorkday(prev,-1))}>‹</button>
+            <input type="date" className="date-input" value={dateKey} onChange={e=>{const d=new Date(e.target.value+"T12:00:00");if(isWorkday(d))setSelectedDate(d)}}/>
+            <button className="date-nav-btn" onClick={()=>setSelectedDate(prev=>stepToWorkday(prev,1))}>›</button>
+          </div>
+          {canView&&<button className="action-btn" onClick={()=>window.print()}>🖨 Chop</button>}
+        </div>
+      </div>
+
+      <div className="stats-grid">
+        <div className="stat-card c-green">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top">
+              <div className="stat-icon-wrap">✓</div>
+              <Ring pct={attendPct} size={42} stroke={4}/>
+            </div>
+            <div className="stat-num">{counts.present}</div>
+            <div className="stat-label">Ish joyida</div>
+          </div>
+        </div>
+        <div className="stat-card c-amber">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">⏰</div></div>
+            <div className="stat-num">{counts.late}</div>
+            <div className="stat-label">Kechikdi</div>
+          </div>
+        </div>
+        <div className="stat-card c-red">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">✗</div></div>
+            <div className="stat-num">{counts.absent}</div>
+            <div className="stat-label">Sababsiz</div>
+          </div>
+        </div>
+        <div className="stat-card c-cobalt">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">📋</div></div>
+            <div className="stat-num">{counts.other}</div>
+            <div className="stat-label">Boshqa holat</div>
+          </div>
+        </div>
+        {canView&&<div className="stat-card c-navy">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">⏱</div></div>
+            <div className="stat-num">{counts.lateMins}<sup> d</sup></div>
+            <div className="stat-label">Kechikish (daqiqa)</div>
+          </div>
+        </div>}
+      </div>
+
+      <div className="table-card">
+        <div className="table-header">
+          <div>
+            <div className="table-title">Xodimlar Ro'yxati</div>
+            <div className="table-meta">{filtered.length} ta xodim ko'rsatilmoqda</div>
+          </div>
+          <input className="search-input" placeholder="Ism bo'yicha qidirish..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        </div>
+        <div className="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th style={{width:44}}>№</th>
+                <th>F.I.O</th>
+                <th style={{width:170}}>Holat</th>
+                <th className="th-center" style={{width:110}}>09:00 kechikish</th>
+                <th className="th-center" style={{width:110}}>14:00 kechikish</th>
+                <th>Izoh</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((emp)=>{
+                const idx=EMPLOYEES.indexOf(emp);
+                const rec=attendanceData[dateKey]?.[safeKey(emp)]||{status:"present",morning:0,afternoon:0,note:""};
+                const active=["present","late"].includes(rec.status);
+                const stDef=STATUSES[rec.status]||STATUSES.present;
+                return(
+                  <tr key={emp}>
+                    <td><span className="row-num">{String(idx+1).padStart(2,"0")}</span></td>
+                    <td>
+                      <span className={`emp-name ${canView?"emp-link":""}`}
+                        onClick={()=>canView&&updateRecord("__openModal__",emp)}>
+                        {emp}
+                      </span>
+                    </td>
+                    <td>
+                      {isAdmin
+                        ? <select className="status-select" value={rec.status} onChange={e=>updateRecord(dateKey,emp,"status",e.target.value)}>
+                            {Object.entries(STATUSES).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}
+                          </select>
+                        : <span className="badge" style={{color:stDef.color,background:stDef.bg}}>{stDef.icon} {stDef.label}</span>
+                      }
+                    </td>
+                    <td className="th-center">
+                      {active
+                        ? <input type="number" min="0" max="480" disabled={!isAdmin} value={rec.morning} className="num-input"
+                            onChange={e=>updateRecord(dateKey,emp,"morning",Math.max(0,parseInt(e.target.value)||0))}/>
+                        : <span className="zero-val">—</span>}
+                    </td>
+                    <td className="th-center">
+                      {active
+                        ? <input type="number" min="0" max="240" disabled={!isAdmin} value={rec.afternoon} className="num-input"
+                            onChange={e=>updateRecord(dateKey,emp,"afternoon",Math.max(0,parseInt(e.target.value)||0))}/>
+                        : <span className="zero-val">—</span>}
+                    </td>
+                    <td>
+                      <input type="text" className="text-input" disabled={!isAdmin} value={rec.note}
+                        placeholder={isAdmin?"Izoh qo'shish...":""}
+                        onChange={e=>updateRecord(dateKey,emp,"note",e.target.value)}/>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ WEEKLY VIEW ═══ */
+function WeeklyView({selectedDate,setSelectedDate,attendanceData,onEmpClick}){
+  const weekDates=useMemo(()=>getWeekDates(selectedDate),[selectedDate]);
+  const empStats=useMemo(()=>EMPLOYEES.map(emp=>{
+    let present=0,late=0,absent=0,lateMins=0;
+    weekDates.forEach(d=>{
+      const rec=attendanceData[fmtDate(d)]?.[safeKey(emp)];const st=rec?.status||"present";
+      if(st==="present")present++;else if(st==="late"){late++;present++}else if(st==="absent")absent++;
+      lateMins+=(rec?.morning||0)+(rec?.afternoon||0);
+    });
+    return{emp,present,late,absent,lateMins};
+  }),[weekDates,attendanceData]);
+  const changeWeek=dir=>setSelectedDate(prev=>{const d=new Date(prev);d.setDate(d.getDate()+dir*7);return d});
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Haftalik Hisobot</div>
+          <div className="page-subtitle">{fmtDate(weekDates[0])} — {fmtDate(weekDates[4])}</div>
+        </div>
+        <div className="page-actions">
+          <div className="date-nav">
+            <button className="date-nav-btn" onClick={()=>changeWeek(-1)}>‹</button>
+            <span className="date-display">{fmtDate(weekDates[0])}</span>
+            <button className="date-nav-btn" onClick={()=>changeWeek(1)}>›</button>
+          </div>
+          <button className="action-btn" onClick={()=>window.print()}>🖨 Chop</button>
+        </div>
+      </div>
+      <div className="stats-grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))"}}>
+        <div className="stat-card c-amber"><div className="stat-accent"/>
+          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">⏰</div></div><div className="stat-num">{empStats.reduce((s,r)=>s+r.late,0)}</div><div className="stat-label">Kechikishlar</div></div></div>
+        <div className="stat-card c-red"><div className="stat-accent"/>
+          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">✗</div></div><div className="stat-num">{empStats.reduce((s,r)=>s+r.absent,0)}</div><div className="stat-label">Sababsiz yo'qlik</div></div></div>
+        <div className="stat-card c-navy"><div className="stat-accent"/>
+          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">⏱</div></div><div className="stat-num">{empStats.reduce((s,r)=>s+r.lateMins,0)}<sup> d</sup></div><div className="stat-label">Jami kechikish</div></div></div>
+      </div>
+      <div className="table-card">
+        <div className="table-header">
+          <div><div className="table-title">Haftalik Jadval</div><div className="table-meta">{EMPLOYEES.length} xodim × 5 ish kuni</div></div>
+        </div>
+        <div className="scroll-x">
+          <table><thead><tr>
+            <th style={{width:44}}>№</th><th style={{minWidth:160}}>F.I.O</th>
+            {weekDates.map((d,i)=><th key={i} className="th-center" style={{minWidth:90}}>
+              <div className="wday-h">{WSHORT[i]}</div><div className="wday-d">{fmtDate(d).slice(5)}</div>
+            </th>)}
+            <th className="th-center" style={{width:90}}>Kech.</th>
+            <th className="th-center" style={{width:72}}>Yo'q</th>
+          </tr></thead>
+          <tbody>{EMPLOYEES.map((emp,i)=>{const s=empStats[i];return(
+            <tr key={emp}>
+              <td><span className="row-num">{String(i+1).padStart(2,"0")}</span></td>
+              <td className="emp-name emp-link" onClick={()=>onEmpClick(emp)}>{emp}</td>
+              {weekDates.map(date=>{
+                const dk=fmtDate(date);const rec=attendanceData[dk]?.[safeKey(emp)];
+                const st=STATUSES[rec?.status||"present"];
+                const mins=(rec?.morning||0)+(rec?.afternoon||0);
+                return(<td key={dk} className="th-center">
+                  <span className="badge" style={{color:st.color,background:st.bg,fontSize:10.5}}>{st.icon} {st.short}</span>
+                  {mins>0&&<div style={{fontSize:9,color:"var(--ruby)",marginTop:2,fontFamily:"JetBrains Mono,monospace"}}>{mins}d</div>}
+                </td>);
+              })}
+              <td className="th-center">{s.lateMins>0?<span className="late-val">{s.lateMins}<span style={{fontSize:10,fontWeight:400}}> d</span></span>:<span className="zero-val">—</span>}</td>
+              <td className="th-center">{s.absent>0?<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>{s.absent}</span>:<span className="zero-val">—</span>}</td>
+            </tr>);
+          })}</tbody></table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ MONTHLY VIEW ═══ */
+function MonthlyView({attendanceData,onEmpClick}){
+  const today=new Date();const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
+  const monthDates=useMemo(()=>getMonthDates(yr,mon),[yr,mon]);
+  function prevMon(){if(mon===0){setMon(11);setYr(y=>y-1)}else setMon(m=>m-1)}
+  function nextMon(){if(mon===11){setMon(0);setYr(y=>y+1)}else setMon(m=>m+1)}
+  const empStats=useMemo(()=>EMPLOYEES.map(emp=>{
+    let present=0,late=0,absent=0,sick=0,trip=0,vacation=0,lateMins=0;
+    monthDates.forEach(d=>{const rec=attendanceData[fmtDate(d)]?.[safeKey(emp)];const st=rec?.status||"present";
+      if(st==="present")present++;else if(st==="late"){late++;present++}else if(st==="absent")absent++;
+      else if(st==="sick")sick++;else if(st==="trip")trip++;else if(st==="vacation")vacation++;
+      lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
+    return{emp,present,late,absent,sick,trip,vacation,lateMins};
+  }),[monthDates,attendanceData]);
+  const totalDays=monthDates.length;
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div><div className="page-title">Oylik Hisobot</div><div className="page-subtitle">{MONTHS[mon]} {yr} · {totalDays} ish kuni</div></div>
+        <div className="page-actions">
+          <div className="date-nav">
+            <button className="date-nav-btn" onClick={prevMon}>‹</button>
+            <span className="date-display">{MONTHS[mon].slice(0,3)} {yr}</span>
+            <button className="date-nav-btn" onClick={nextMon}>›</button>
+          </div>
+          <button className="action-btn" onClick={()=>window.print()}>🖨 Chop</button>
+        </div>
+      </div>
+      <div className="table-card">
+        <div className="table-header"><div><div className="table-title">Oylik Ko'rsatkichlar</div><div className="table-meta">{totalDays} ish kuni · {EMPLOYEES.length} xodim</div></div></div>
+        <div className="scroll-x"><table><thead><tr>
+          <th style={{width:44}}>№</th><th style={{minWidth:170}}>F.I.O</th>
+          <th className="th-center">Davomat</th><th className="th-center">Kech.</th>
+          <th className="th-center">Yo'q</th><th className="th-center">Kasal</th>
+          <th className="th-center">Safari</th><th className="th-center">Ta'til</th>
+          <th className="th-right">Kech. vaqti</th>
+        </tr></thead>
+        <tbody>{empStats.map((s,i)=>{
+          const pct=Math.round(s.present/totalDays*100);
+          return(<tr key={s.emp}>
+            <td><span className="row-num">{String(i+1).padStart(2,"0")}</span></td>
+            <td className="emp-name emp-link" onClick={()=>onEmpClick(s.emp)}>{s.emp}</td>
+            <td className="th-center">
+              <div style={{display:"flex",alignItems:"center",gap:7,justifyContent:"center"}}>
+                <div style={{width:50,height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${pct}%`,background:pct>=90?"var(--emerald)":pct>=70?"var(--gold)":"var(--ruby)",borderRadius:3}}/>
+                </div>
+                <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:11,fontWeight:700,color:"var(--navy)"}}>{s.present}/{totalDays}</span>
+              </div>
+            </td>
+            <td className="th-center">{s.late>0?<span className="badge" style={{color:"var(--amber)",background:"var(--amber-bg)"}}>{s.late}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-center">{s.absent>0?<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>{s.absent}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-center">{s.sick>0?<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>{s.sick}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-center">{s.trip>0?<span className="badge" style={{color:"var(--cobalt)",background:"var(--cobalt-bg)"}}>{s.trip}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-center">{s.vacation>0?<span className="badge" style={{color:"var(--teal)",background:"var(--teal-bg)"}}>{s.vacation}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-right">{s.lateMins>0?<span className="late-val">{fmtMins(s.lateMins)}</span>:<span className="zero-val">—</span>}</td>
+          </tr>);
+        })}</tbody></table></div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ STATS VIEW ═══ */
+function StatsView({attendanceData,onEmpClick}){
+  const today=new Date();
+  const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
+  const [period,setPeriod]=useState("monthly");const [sortBy,setSortBy]=useState("lateMins");
+  function getDates(){
+    if(period==="weekly")return getWeekDates(today);
+    if(period==="monthly")return getMonthDates(yr,mon);
+    if(period==="quarterly"){const q=Math.floor(mon/3);return[q*3,q*3+1,q*3+2].flatMap(m=>getMonthDates(yr,m))}
+    return Array.from({length:12},(_,i)=>i).flatMap(m=>getMonthDates(yr,m));
+  }
+  const dates=useMemo(getDates,[yr,mon,period]);const totalDays=dates.length;
+  function prevMon(){if(mon===0){setMon(11);setYr(y=>y-1)}else setMon(m=>m-1)}
+  function nextMon(){if(mon===11){setMon(0);setYr(y=>y+1)}else setMon(m=>m+1)}
+  const empStats=useMemo(()=>EMPLOYEES.map(emp=>{
+    let present=0,late=0,absent=0,sick=0,trip=0,training=0,vacation=0,excused=0,lateMins=0;
+    dates.forEach(d=>{const rec=attendanceData[fmtDate(d)]?.[safeKey(emp)];const st=rec?.status||"present";
+      if(st==="present")present++;else if(st==="late"){late++;present++}else if(st==="absent")absent++;
+      else if(st==="sick")sick++;else if(st==="trip")trip++;else if(st==="training")training++;
+      else if(st==="vacation")vacation++;else if(st==="excused")excused++;
+      lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
+    const score=Math.max(0,100-Math.round(lateMins/Math.max(1,totalDays*480)*100*8)-absent*5-late*2);
+    return{emp,present,late,absent,sick,trip,training,vacation,excused,lateMins,score};
+  }),[dates,attendanceData]);
+  const sorted=useMemo(()=>[...empStats].sort((a,b)=>sortBy==="present"?b.present-a.present:sortBy==="score"?b.score-a.score:b[sortBy]-a[sortBy]),[empStats,sortBy]);
+  const totals=empStats.reduce((t,s)=>({present:t.present+s.present,late:t.late+s.late,absent:t.absent+s.absent,sick:t.sick+s.sick,lateMins:t.lateMins+s.lateMins}),{present:0,late:0,absent:0,sick:0,lateMins:0});
+  const maxLate=Math.max(1,...sorted.map(s=>s.lateMins));
+  const avgScore=Math.round(empStats.reduce((s,e)=>s+e.score,0)/EMPLOYEES.length);
+  const pie=[
+    {l:"Ish joyida",v:totals.present,c:"var(--emerald)"},{l:"Kechikdi",v:totals.late,c:"var(--gold)"},
+    {l:"Kasal",v:totals.sick,c:"#e74c3c"},{l:"Sababsiz",v:totals.absent,c:"var(--ruby)"}
+  ].filter(d=>d.v>0);
+  const pieT=pie.reduce((s,d)=>s+d.v,0)||1;
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div><div className="page-title">Statistika va Tahlil</div><div className="page-subtitle">{MONTHS[mon]} {yr} · {totalDays} ish kuni</div></div>
+        <div className="page-actions">
+          <div className="date-nav">
+            <button className="date-nav-btn" onClick={prevMon}>‹</button>
+            <span className="date-display">{MONTHS[mon].slice(0,3)} {yr}</span>
+            <button className="date-nav-btn" onClick={nextMon}>›</button>
+          </div>
+          <button className="action-btn" onClick={()=>window.print()}>🖨 Chop</button>
+        </div>
+      </div>
+      <div className="period-tabs">
+        {[["weekly","Hafta"],["monthly","Oy"],["quarterly","Chorak"],["yearly","Yil"]].map(([k,v])=>
+          <button key={k} className={`period-tab ${period===k?"active":""}`} onClick={()=>setPeriod(k)}>{v}</button>)}
+      </div>
+      <div className="stats-grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))"}}>
+        <div className="stat-card c-green"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">✓</div><Ring pct={totals.present/(totalDays*EMPLOYEES.length)*100} size={42} stroke={4}/></div>
+          <div className="stat-num">{totals.present}</div><div className="stat-label">Jami davomat</div></div></div>
+        <div className="stat-card c-amber"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">⏰</div></div>
+          <div className="stat-num">{totals.late}</div><div className="stat-label">Kechikishlar</div></div></div>
+        <div className="stat-card c-navy"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">⏱</div></div>
+          <div className="stat-num">{totals.lateMins}<sup> d</sup></div><div className="stat-label">Kechikish (daqiqa)</div></div></div>
+        <div className="stat-card c-red"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">✗</div></div>
+          <div className="stat-num">{totals.absent}</div><div className="stat-label">Sababsiz yo'qlik</div></div></div>
+        <div className="stat-card c-violet"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={avgScore} size={42} stroke={4} color={avgScore>=80?"var(--emerald)":avgScore>=60?"var(--gold)":"var(--ruby)"}/></div>
+          <div className="stat-num">{avgScore}</div><div className="stat-label">O'rtacha intizom</div></div></div>
+      </div>
+
+      <div className="section-grid">
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">📊 Kechikish Reytingi</div><div className="table-meta">Eng ko'p kechikkan xodimlar</div></div>
+          </div>
+          <div style={{padding:"14px 18px",maxHeight:380,overflowY:"auto"}}>
+            {sorted.filter(s=>s.lateMins>0).length===0&&
+              <div style={{textAlign:"center",color:"var(--t4)",padding:28,fontSize:12}}>Bu davrda kechikish qayd etilmagan ✓</div>}
+            {sorted.filter(s=>s.lateMins>0).slice(0,15).map((s,i)=>(
+              <div key={s.emp} className="bar-item" onClick={()=>onEmpClick(s.emp)}>
+                <span style={{width:20,fontSize:10,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",textAlign:"right",flexShrink:0}}>{i+1}</span>
+                <span style={{width:105,fontSize:12,fontWeight:600,color:"var(--navy)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}}>{s.emp.split(" ")[0]}</span>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{
+                    width:`${Math.max(4,s.lateMins/maxLate*100)}%`,
+                    background:s.lateMins>120?"linear-gradient(90deg,#e74c3c,var(--ruby))":"linear-gradient(90deg,var(--gold),var(--gold-lt))"
+                  }}/>
+                </div>
+                <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,fontWeight:700,color:s.lateMins>60?"var(--ruby)":"var(--amber)",width:52,textAlign:"right",flexShrink:0}}>{fmtMins(s.lateMins)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="table-card">
+          <div className="table-header"><div><div className="table-title">🥧 Holat Taqsimoti</div><div className="table-meta">Barcha xodimlar umumiy ko'rsatkichi</div></div></div>
+          <div style={{padding:"22px",display:"flex",alignItems:"center",justifyContent:"center",gap:30,flexWrap:"wrap"}}>
+            <div style={{position:"relative"}}>
+              <svg width="160" height="160" viewBox="0 0 160 160">
+                {(()=>{let off=0;const r=60,cx=80,cy=80,circ=2*Math.PI*r;
+                  return pie.map((d,i)=>{const pct=d.v/pieT;const dashLen=pct*circ;const dashOff=-off*circ;off+=pct;
+                  return<circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={d.c} strokeWidth="26"
+                    strokeDasharray={`${dashLen} ${circ-dashLen}`} strokeDashoffset={dashOff}
+                    style={{transform:"rotate(-90deg)",transformOrigin:"center",transition:"all .5s ease"}}/>});
+                })()}
+                <circle cx="80" cy="80" r="40" fill="white"/>
+                <text x="80" y="74" textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--navy)"
+                  style={{fontFamily:"JetBrains Mono,monospace"}}>{pieT}</text>
+                <text x="80" y="94" textAnchor="middle" fontSize="9.5" fill="var(--t3)">jami holat</text>
+              </svg>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {pie.map((d,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:9,fontSize:12.5}}>
+                  <span style={{width:10,height:10,borderRadius:3,background:d.c,flexShrink:0}}/>
+                  <span style={{color:"var(--t2)",fontWeight:500,minWidth:80}}>{d.l}</span>
+                  <span style={{fontFamily:"JetBrains Mono,monospace",fontWeight:700,color:"var(--navy)",minWidth:30}}>{d.v}</span>
+                  <span style={{fontSize:11,color:"var(--t4)"}}>{Math.round(d.v/pieT*100)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="table-card">
+        <div className="table-header">
+          <div><div className="table-title">Batafsil Ko'rsatkichlar</div><div className="table-meta">{totalDays} kun · {EMPLOYEES.length} xodim</div></div>
+          <div style={{display:"flex",gap:3}}>
+            {[["lateMins","Kechikish"],["late","Soni"],["absent","Yo'qlik"],["score","Intizom"]].map(([k,v])=>
+              <button key={k} className={`sort-btn ${sortBy===k?"active":""}`} onClick={()=>setSortBy(k)}>{v}</button>)}
+          </div>
+        </div>
+        <div className="scroll-x"><table><thead><tr>
+          <th style={{width:44}}>№</th><th style={{minWidth:165}}>F.I.O</th>
+          <th className="th-center">Davomat</th><th className="th-center">Kech.</th>
+          <th className="th-center">Yo'q</th><th className="th-center">Kasal</th>
+          <th className="th-center">Safari</th><th className="th-right">Vaqt</th>
+          <th className="th-center" style={{width:100}}>Intizom</th>
+        </tr></thead>
+        <tbody>{sorted.map((s,i)=>{
+          const sc=s.score;const scColor=sc>=85?"var(--emerald)":sc>=65?"var(--gold)":"var(--ruby)";
+          return(<tr key={s.emp}>
+            <td><span className="row-num">{String(i+1).padStart(2,"0")}</span></td>
+            <td className="emp-name emp-link" onClick={()=>onEmpClick(s.emp)}>{s.emp}</td>
+            <td className="th-center">
+              <span style={{fontFamily:"JetBrains Mono,monospace",fontWeight:700,color:"var(--navy)"}}>{s.present}</span>
+              <span style={{color:"var(--t4)",fontSize:10}}>/{totalDays}</span>
+            </td>
+            <td className="th-center">{s.late>0?<span className="badge" style={{color:"var(--amber)",background:"var(--amber-bg)"}}>{s.late}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-center">{s.absent>0?<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>{s.absent}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-center">{s.sick>0?<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>{s.sick}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-center">{s.trip>0?<span className="badge" style={{color:"var(--cobalt)",background:"var(--cobalt-bg)"}}>{s.trip}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-right">{s.lateMins>0?<span className="late-val">{fmtMins(s.lateMins)}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-center">
+              <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"center"}}>
+                <div style={{width:38,height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${sc}%`,background:scColor,borderRadius:3,transition:"width .4s ease"}}/>
+                </div>
+                <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:11.5,fontWeight:700,color:scColor,minWidth:22}}>{sc}</span>
+              </div>
+            </td>
+          </tr>);
+        })}</tbody></table></div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ EMPLOYEE STATS ═══ */
+function EmployeeStats({empName,attendanceData,inModal=false}){
+  const today=new Date();
+  const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
+  const [weekBase,setWeekBase]=useState(new Date());
+  const weekDates=useMemo(()=>getWeekDates(weekBase),[weekBase]);
+  const monthDates=useMemo(()=>getMonthDates(yr,mon),[yr,mon]);
+  function prevMon(){if(mon===0){setMon(11);setYr(y=>y-1)}else setMon(m=>m-1)}
+  function nextMon(){if(mon===11){setMon(0);setYr(y=>y+1)}else setMon(m=>m+1)}
+  const stats=useMemo(()=>{
+    let presentOnly=0,late=0,lateMins=0,absent=0,sick=0,other=0;
+    monthDates.forEach(d=>{
+      const rec=attendanceData[fmtDate(d)]?.[safeKey(empName)];const st=rec?.status||"present";
+      if(st==="present")presentOnly++;else if(st==="late")late++;else if(st==="absent")absent++;
+      else if(st==="sick")sick++;else other++;
+      lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
+    const total=monthDates.length;
+    const score=Math.max(0,100-Math.round(lateMins/Math.max(1,total*480)*100*8)-absent*5-late*2);
+    return{presentOnly,late,totalPresent:presentOnly+late,lateMins,absent,sick,other,total,score};
+  },[empName,monthDates,attendanceData]);
+  const attendPct=stats.total?Math.round(stats.totalPresent/stats.total*100):0;
+  const scColor=stats.score>=85?"var(--emerald)":stats.score>=65?"var(--gold)":"var(--ruby)";
+  return(
+    <div>
+      <div className="page-header" style={inModal?{borderBottom:"1px solid var(--border)",paddingBottom:16,marginBottom:20}:{}}>
+        <div>
+          <div className="page-title">{inModal?empName:"Shaxsiy Statistika"}</div>
+          <div className="page-subtitle">{inModal?"Shaxsiy davomat statistikasi":empName} · {MONTHS[mon]} {yr}</div>
+        </div>
+        <div className="date-nav">
+          <button className="date-nav-btn" onClick={prevMon}>‹</button>
+          <span className="date-display">{MONTHS[mon].slice(0,3)} {yr}</span>
+          <button className="date-nav-btn" onClick={nextMon}>›</button>
+        </div>
+      </div>
+      <div className="stats-grid">
+        <div className="stat-card c-green"><div className="stat-accent"/>
+          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">✓</div><Ring pct={attendPct} size={42} stroke={4}/></div>
+          <div className="stat-num">{stats.totalPresent}<sup>/{stats.total}</sup></div><div className="stat-label">Davomat</div></div></div>
+        <div className="stat-card c-amber"><div className="stat-accent"/>
+          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">⏰</div></div>
+          <div className="stat-num">{stats.late}</div><div className="stat-label">Kechikish soni</div></div></div>
+        <div className="stat-card c-red"><div className="stat-accent"/>
+          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">⏱</div></div>
+          <div className="stat-num">{stats.lateMins}<sup> d</sup></div><div className="stat-label">Kechikish vaqti</div></div></div>
+        <div className="stat-card c-violet"><div className="stat-accent"/>
+          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={stats.score} size={42} stroke={4} color={scColor}/></div>
+          <div className="stat-num" style={{color:scColor}}>{stats.score}</div><div className="stat-label">Intizom bali</div></div></div>
+      </div>
+      <div className="table-card">
+        <div className="table-header">
+          <div><div className="table-title">Haftalik Ko'rinish</div><div className="table-meta">{fmtDate(weekDates[0])} — {fmtDate(weekDates[4])}</div></div>
+          <div className="date-nav">
+            <button className="date-nav-btn" onClick={()=>setWeekBase(p=>{const d=new Date(p);d.setDate(d.getDate()-7);return d})}>‹</button>
+            <button className="date-nav-btn" onClick={()=>setWeekBase(p=>{const d=new Date(p);d.setDate(d.getDate()+7);return d})}>›</button>
+          </div>
+        </div>
+        <div className="scroll-x"><table><thead><tr>
+          <th>Sana</th><th>Kun</th><th>Holat</th>
+          <th className="th-center">09:00</th><th className="th-center">14:00</th><th>Izoh</th>
+        </tr></thead>
+        <tbody>{weekDates.map((date,i)=>{
+          const dk=fmtDate(date);
+          const rec=attendanceData[dk]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
+          const st=STATUSES[rec.status];const isToday=dk===fmtDate(today);
+          return(
+            <tr key={dk} style={isToday?{background:"rgba(200,150,42,.04)"}:{}}>
+              <td>
+                <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12.5,fontWeight:isToday?700:500,color:isToday?"var(--gold)":"inherit"}}>{dk}</span>
+                {isToday&&<span className="badge" style={{color:"var(--gold)",background:"var(--gold-pale)",marginLeft:6,fontSize:9}}>Bugun</span>}
+              </td>
+              <td style={{color:"var(--t3)",fontSize:12}}>{WDAYS[i]}</td>
+              <td><span className="badge" style={{color:st.color,background:st.bg}}>{st.icon} {st.label}</span></td>
+              <td className="th-center">{rec.morning>0?<span className="late-val">{rec.morning} d</span>:<span className="zero-val">—</span>}</td>
+              <td className="th-center">{rec.afternoon>0?<span className="late-val">{rec.afternoon} d</span>:<span className="zero-val">—</span>}</td>
+              <td style={{color:"var(--t3)",fontSize:12}}>{rec.note||<span className="zero-val">—</span>}</td>
+            </tr>
+          );
+        })}</tbody></table></div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ MAIN APP ═══ */
+function App(){
+  const [user,setUser]=useState(null);
+  const [loginU,setLoginU]=useState("");
+  const [loginP,setLoginP]=useState("");
+  const [loginErr,setLoginErr]=useState("");
+  const [view,setView]=useState("daily");
+  const [selDate,setSelDate]=useState(new Date());
+  const [data,setData]=useState({});
+  const [loading,setLoading]=useState(true);
+  const [authLoading,setAuthLoading]=useState(false);
+  const [toast,setToast]=useState(null);
+  const [modalEmp,setModalEmp]=useState(null);
+  const [clock,setClock]=useState(new Date());
+  const toastRef=useRef(null);
+
+  useEffect(()=>{const t=setInterval(()=>setClock(new Date()),30000);return()=>clearInterval(t)},[]);
+
+  useEffect(()=>{
+    const unsub=auth.onAuthStateChanged((fUser)=>{
+      if(fUser){
+        const email=fUser.email.toLowerCase();
+        const info=USERS_INFO[email]||{role:"employee",name:email};
+        setUser({email,...info});
+        setView(info.role==="employee"?"myStats":"daily");
+      }else setUser(null);
+      setLoading(false);
+    });
+    return()=>unsub();
+  },[]);
+
+  useEffect(()=>{
+    if(!user)return;
+    const ref=db.ref("attendance");
+    ref.on("value",(snap)=>setData(snap.val()||{}),(err)=>console.error(err));
+    return()=>ref.off();
+  },[user]);
+
+  function showToast(msg){
+    setToast(msg);
+    if(toastRef.current)clearTimeout(toastRef.current);
+    toastRef.current=setTimeout(()=>setToast(null),3000);
+  }
+
+  function handleLogin(){
+    if(!loginU.trim()||!loginP.trim())return;
+    setAuthLoading(true);
+    const fullEmail=loginU.trim().toLowerCase().includes("@")?loginU.trim().toLowerCase():loginU.trim().toLowerCase()+"@boshqarma.uz";
+    auth.signInWithEmailAndPassword(fullEmail,loginP)
+      .then(()=>{setLoginErr("");setLoginU("");setLoginP("");})
+      .catch(()=>{setAuthLoading(false);setLoginErr("Login yoki parol noto'g'ri!");});
+  }
+
+  function handleLogout(){auth.signOut();}
+
+  function dispatch(dateKey,emp,field,value){
+    if(dateKey==="__openModal__"){setModalEmp(emp);return;}
+    if(user?.role!=="admin")return;
+    const empKey=safeKey(emp);
+    const ex=data[dateKey]?.[empKey]||{status:"present",morning:0,afternoon:0,note:""};
+    let rec={...ex,[field]:value};
+    if(field==="status"&&!["present","late"].includes(value)){rec.morning=0;rec.afternoon=0;}
+    if(field==="morning"&&value>0&&rec.status==="present")rec.status="late";
+    if(field==="morning"&&value===0&&rec.afternoon===0&&rec.status==="late")rec.status="present";
+    db.ref(`attendance/${dateKey}/${empKey}`).set(rec)
+      .then(()=>showToast("✓ Muvaffaqiyatli saqlandi"))
+      .catch(()=>showToast("⚠ Tarmoqda xatolik yuz berdi"));
+  }
+
+  /* LOGIN */
+  if(loading)return(
+    <div className="fullscreen-loader">
+      <div className="loader-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a0e1a" strokeWidth="2.5">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div className="loader-dots">
+        <div className="loader-dot"/><div className="loader-dot"/><div className="loader-dot"/>
+      </div>
+    </div>
+  );
+
+  if(!user)return(
+    <div className="login-wrap">
+      <div className="login-canvas"><div className="login-grid-bg"/></div>
+      <div className="login-left">
+        <div className="login-emblem">
+          <div className="login-emblem-mark">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2.5">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div className="login-emblem-text">
+            <h2>Navoiy viloyati</h2>
+            <p>Investitsiyalar, sanoat va savdo boshqarmasi</p>
+          </div>
+        </div>
+        <h1 className="login-headline">Xodimlar<br/><em>Monitoring</em><br/>Tizimi</h1>
+        <p className="login-desc">Xodimlar davomati va intizomini real vaqtda kuzatish, tahlil qilish va hisobot shakllashtirish uchun raqamli platforma.</p>
+        <div className="login-features">
+          <div className="login-feat"><div className="login-feat-icon">📊</div><div className="login-feat-title">Real-time tahlil</div><div className="login-feat-desc">Kunlik, haftalik, oylik statistika</div></div>
+          <div className="login-feat"><div className="login-feat-icon">🔐</div><div className="login-feat-title">Shaxsiy kirish</div><div className="login-feat-desc">Har bir xodim uchun alohida login</div></div>
+          <div className="login-feat"><div className="login-feat-icon">🎯</div><div className="login-feat-title">Intizom bali</div><div className="login-feat-desc">Avtomatik hisoblangan ko'rsatkich</div></div>
+        </div>
+      </div>
+      <div className="login-right">
+        <div className="login-card" style={{animation:"slideUp .4s ease"}}>
+          <div className="login-card-eyebrow">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Xavfsiz Kirish
+          </div>
+          <h1 className="login-card-title">Tizimga Kirish</h1>
+          <p className="login-card-sub">Shaxsiy login va parolingizni kiriting</p>
+          {loginErr&&<div className="login-error"><span>⚠</span>{loginErr}</div>}
+          <div className="form-group">
+            <label className="form-label">Login</label>
+            <input className="form-input" placeholder="ism.familiya" value={loginU}
+              onChange={e=>setLoginU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} autoFocus autoComplete="username"/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Parol</label>
+            <input className="form-input" type="password" placeholder="••••••••" value={loginP}
+              onChange={e=>setLoginP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} autoComplete="current-password"/>
+          </div>
+          <button className="login-btn" onClick={handleLogin} disabled={authLoading}>
+            {authLoading
+              ? <><span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .7s linear infinite"}}/> Tekshirilmoqda...</>
+              : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Kirish</>
+            }
+          </button>
+          <div className="login-divider"/>
+          <div className="login-secure">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Firebase Authentication · SSL himoyalangan
+          </div>
+        </div>
+      </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+
+  /* APP */
+  const isAdmin=user.role==="admin";
+  const isBoss=user.role==="boss";
+  const canManage=isAdmin||isBoss;
+  const adminNav=[
+    {k:"daily",icon:"📅",label:"Kunlik"},
+    {k:"weekly",icon:"📆",label:"Haftalik"},
+    {k:"monthly",icon:"🗓",label:"Oylik"},
+    {k:"stats",icon:"📊",label:"Statistika"}
+  ];
+  const empNav=[
+    {k:"myStats",icon:"👤",label:"Shaxsiy"},
+    {k:"daily",icon:"📅",label:"Umumiy"}
+  ];
+  const navItems=canManage?adminNav:empNav;
+  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",myStats:"Shaxsiy Statistika"};
+  const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
+
+  return(
+    <div className="app">
+      {/* SIDEBAR */}
+      <nav className="sidebar">
+        <div className="sidebar-top">
+          <div className="sidebar-brand">
+            <div className="sidebar-logo">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <div>
+              <div className="sidebar-name">Xodimlar Monitoring</div>
+              <div className="sidebar-sub">Navoiy viloyati</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="sidebar-nav">
+          <div className="nav-section-label">Asosiy</div>
+          {navItems.map(({k,icon,label})=>(
+            <div key={k} className={`nav-item ${view===k?"active":""}`} onClick={()=>setView(k)}>
+              <div className="nav-item-icon">{icon}</div>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <div className="sidebar-avatar">{user.name.charAt(0)}</div>
+            <div style={{minWidth:0}}>
+              <div className="sidebar-user-name">{user.name.split(" ").slice(0,2).join(" ")}</div>
+              <div className="sidebar-user-role">{roleLabel}</div>
+            </div>
+          </div>
+          <button className="logout-btn" onClick={handleLogout}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span>Chiqish</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* CONTENT */}
+      <div className="content">
+        {/* TOPBAR */}
+        <div className="topbar">
+          <div className="topbar-left">
+            <div className="topbar-breadcrumb">
+              <span>Boshqarma</span>
+              <span style={{color:"var(--border2)"}}>›</span>
+              <span className="topbar-breadcrumb-cur">{viewLabels[view]}</span>
+            </div>
+          </div>
+          <div className="topbar-right">
+            <div className="topbar-status">
+              <div className="topbar-dot"/>
+              <span>Tizim faol</span>
+            </div>
+            <div className="topbar-clock">
+              {clock.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"})}
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN */}
+        <main className="main">
+          {loading
+            ? <div className="empty-state"><div className="empty-icon">⏳</div><div className="empty-title">Yuklanmoqda...</div><div className="empty-sub">Firebase bilan ulanish o'rnatilmoqda</div></div>
+            : <>
+                {view==="daily"&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} updateRecord={dispatch}/>}
+                {view==="weekly"&&canManage&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
+                {view==="monthly"&&canManage&&<MonthlyView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
+                {view==="stats"&&canManage&&<StatsView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
+                {view==="myStats"&&user.role==="employee"&&<EmployeeStats empName={user.name} attendanceData={data}/>}
+              </>
+          }
+        </main>
+
+        {/* FOOTER */}
+        <footer className="footer">
+          <span>© {new Date().getFullYear()} Navoiy viloyati investitsiyalar, sanoat va savdo boshqarmasi</span>
+          <div className="footer-badge">
+            <span style={{width:7,height:7,borderRadius:"50%",background:"var(--emerald)",display:"inline-block",boxShadow:"0 0 6px rgba(13,122,91,.5)"}}/>
+            Firebase Real-time · SSL himoyalangan
+          </div>
+        </footer>
+      </div>
+
+      {/* TOAST */}
+      {toast&&<div className="toast">{toast}</div>}
+
+      {/* MODAL */}
+      {modalEmp&&canManage&&(
+        <div className="modal-overlay" onClick={()=>setModalEmp(null)}>
+          <div className="modal-box" onClick={e=>e.stopPropagation()}>
+            <button className="modal-close" onClick={()=>setModalEmp(null)}>✕</button>
+            <EmployeeStats empName={modalEmp} attendanceData={data} inModal={true}/>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
