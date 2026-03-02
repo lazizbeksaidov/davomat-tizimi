@@ -1310,8 +1310,8 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
     <div>
       <div className="page-header" style={inModal?{borderBottom:"1px solid var(--border)",paddingBottom:16,marginBottom:20}:{}}>
         <div>
-          <div className="page-title">{inModal?empName:"Shaxsiy Statistika"}</div>
-          <div className="page-subtitle">{inModal?"Shaxsiy davomat statistikasi":empName} · {MONTHS[mon]} {yr}</div>
+          <div className="page-title">{inModal?empName:"Shaxsiy Kabinetim"}</div>
+          <div className="page-subtitle">{inModal?"Shaxsiy davomat statistikasi":empName+" · Davomat statistikasi"} · {MONTHS[mon]} {yr}</div>
         </div>
         <div className="date-nav">
           <button className="date-nav-btn" onClick={prevMon}>‹</button>
@@ -1521,11 +1521,10 @@ function App(){
     {k:"stats",icon:"📊",label:"Statistika"}
   ];
   const empNav=[
-    {k:"myStats",icon:"👤",label:"Shaxsiy"},
-    {k:"daily",icon:"📅",label:"Umumiy"}
+    {k:"myStats",icon:"👤",label:"Shaxsiy Kabinet"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",myStats:"Shaxsiy Statistika"};
+  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",myStats:"Shaxsiy Kabinet"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
 
   return(
@@ -1602,11 +1601,11 @@ function App(){
           {loading
             ? <div className="empty-state"><div className="empty-icon">⏳</div><div className="empty-title">Yuklanmoqda...</div><div className="empty-sub">Firebase bilan ulanish o'rnatilmoqda</div></div>
             : <>
-                {view==="daily"&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} updateRecord={dispatch}/>}
+                {view==="daily"&&canManage&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} updateRecord={dispatch}/>}
                 {view==="weekly"&&canManage&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="monthly"&&canManage&&<MonthlyView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="stats"&&canManage&&<StatsView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
-                {view==="myStats"&&user.role==="employee"&&<EmployeeStats empName={user.name} attendanceData={data}/>}
+                {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data}/>}
               </>
           }
         </main>
