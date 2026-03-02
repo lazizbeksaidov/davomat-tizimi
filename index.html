@@ -709,7 +709,107 @@
     @keyframes slideUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
     @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
 
-    /* ─── RESPONSIVE ──────────────────────────── */
+    /* ─── BIRTHDAY ──────────────────────────────── */
+    .bday-banner {
+      background: linear-gradient(135deg, #fff8e6 0%, #fff3d0 100%);
+      border: 1.5px solid rgba(200,150,42,.3);
+      border-radius: var(--rl);
+      padding: 14px 20px;
+      margin-bottom: 18px;
+      display: flex; align-items: center; gap: 14px;
+      box-shadow: 0 2px 12px rgba(200,150,42,.12);
+      animation: fadeUp .4s ease;
+    }
+    .bday-banner-emoji {
+      font-size: 32px;
+      animation: bdayBounce 1.2s ease infinite;
+      flex-shrink: 0;
+    }
+    @keyframes bdayBounce {
+      0%,100%{transform:translateY(0) rotate(-5deg)}
+      50%{transform:translateY(-6px) rotate(5deg)}
+    }
+    .bday-banner-names {
+      flex: 1; font-size: 14px; font-weight: 600; color: var(--navy);
+    }
+    .bday-banner-sub { font-size: 11.5px; color: var(--amber); font-weight: 500; margin-top: 2px; }
+    .bday-confetti {
+      position: absolute; pointer-events: none; top: 0; left: 0; right: 0; bottom: 0;
+      overflow: hidden; border-radius: var(--rl);
+    }
+    .bday-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: linear-gradient(135deg, #fff3cd, #ffe58a);
+      border: 1px solid rgba(200,150,42,.35);
+      color: #7c5a00;
+      font-size: 10px; font-weight: 700; padding: 2px 8px;
+      border-radius: 20px; margin-left: 7px;
+      animation: bdayPop .4s cubic-bezier(.34,1.56,.64,1);
+      white-space: nowrap;
+    }
+    @keyframes bdayPop { from{transform:scale(0)} to{transform:scale(1)} }
+    .bday-soon-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--cobalt-bg);
+      border: 1px solid rgba(30,76,190,.2);
+      color: var(--cobalt);
+      font-size: 10px; font-weight: 600; padding: 2px 8px;
+      border-radius: 20px; margin-left: 7px;
+      white-space: nowrap;
+    }
+    .bday-upcoming-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--rl);
+      overflow: hidden;
+      box-shadow: var(--s1);
+      margin-bottom: 18px;
+    }
+    .bday-upcoming-header {
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(90deg, #fffbf0, var(--white));
+    }
+    .bday-upcoming-list {
+      display: flex; gap: 0; overflow-x: auto; padding: 14px 16px; gap: 10px;
+    }
+    .bday-upcoming-item {
+      flex-shrink: 0;
+      background: var(--cloud);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      min-width: 140px;
+      text-align: center;
+      transition: transform .15s, box-shadow .15s;
+      cursor: default;
+    }
+    .bday-upcoming-item:hover { transform: translateY(-2px); box-shadow: var(--s2); }
+    .bday-upcoming-item.today {
+      background: linear-gradient(135deg, #fff8e6, #fff3d0);
+      border-color: rgba(200,150,42,.35);
+    }
+    .bday-upcoming-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+      color: var(--ink); font-weight: 700; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 8px;
+    }
+    .bday-upcoming-item.today .bday-upcoming-avatar {
+      box-shadow: 0 0 0 3px rgba(200,150,42,.3), 0 0 16px rgba(200,150,42,.25);
+    }
+    .bday-upcoming-name { font-size: 11.5px; font-weight: 700; color: var(--navy); }
+    .bday-upcoming-date { font-size: 10.5px; color: var(--t3); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+    .bday-upcoming-days {
+      font-size: 10px; font-weight: 700; margin-top: 5px;
+      padding: 2px 8px; border-radius: 20px; display: inline-block;
+    }
+    .bday-upcoming-item.today .bday-upcoming-days { background: var(--gold-pale); color: var(--gold); }
+    .bday-upcoming-item:not(.today) .bday-upcoming-days { background: var(--cobalt-bg); color: var(--cobalt); }
+
+
     @media(max-width:900px) {
       .login-wrap { grid-template-columns: 1fr; }
       .login-left { display: none; }
@@ -766,6 +866,59 @@ const EMPLOYEES = [
   "Axadov Izzatullo","Jo\u2018raqulov Jahongirbek","Jaynakov Temur",
   "Saidov Lazizbek","Pirbayev Berdiyor","Husainova Klara"
 ];
+// Tug'ilgan kunlar: "DD.MM.YYYY"
+const BIRTHDAYS = {
+  "Umrzoqov Bunyod":       "23.07.1988",
+  "Ermamatov Xurshid":     "29.03.1986",
+  "Nazarov Dilshod":       "29.06.1990",
+  "Akbarova Moxlaroyim":   "11.04.1998",
+  "Faxriddinov Oxunjon":   "29.04.1992",
+  "Hamdamov Shuxrat":      "05.03.1989",
+  "Nazarov Muzaffar":      "22.02.1984",
+  "Nurmamatov Oxunjon":    "22.12.1992",
+  "Xolmurodov Dostonjon":  "22.07.1997",
+  "Qurbonov Shavkat":      "23.11.1987",
+  "Narzullayev Rustam":    "12.09.1996",
+  "Islomov G\u2018ulomjon":"02.03.1986",
+  "Ibrohimov Shuhrat":     "25.04.1982",
+  "Barnoqulov Shahzod":    "11.10.2001",
+  "Axadov Izzatullo":      "05.07.1993",
+  "Jo\u2018raqulov Jahongirbek":"04.03.2001",
+  "Jaynakov Temur":        "21.08.1988",
+  "Saidov Lazizbek":       "31.10.2002",
+  "Pirbayev Berdiyor":     "23.12.1989",
+  "Husainova Klara":       "30.11.1987"
+};
+
+// Tug'ilgan kun yordamchilar
+function parseBirthday(str){ // "DD.MM.YYYY"
+  if(!str) return null;
+  const [d,m,y]=str.split(".").map(Number);
+  return {day:d, month:m, year:y};
+}
+function isBirthdayToday(empName){
+  const b=parseBirthday(BIRTHDAYS[empName]);
+  if(!b) return false;
+  const now=new Date();
+  return b.day===now.getDate() && b.month===(now.getMonth()+1);
+}
+function daysUntilBirthday(empName){
+  const b=parseBirthday(BIRTHDAYS[empName]);
+  if(!b) return 999;
+  const now=new Date();
+  const thisYear=new Date(now.getFullYear(), b.month-1, b.day);
+  if(thisYear < now) thisYear.setFullYear(now.getFullYear()+1);
+  return Math.round((thisYear-now)/(1000*60*60*24));
+}
+function calcAge(empName){
+  const b=parseBirthday(BIRTHDAYS[empName]);
+  if(!b) return null;
+  const now=new Date();
+  let age=now.getFullYear()-b.year;
+  if(now.getMonth()+1 < b.month || (now.getMonth()+1===b.month && now.getDate()<b.day)) age--;
+  return age;
+}
+
 function normalizeUz(s){return s.replace(/[\u2018\u2019\u02BC\u0060\u2018\u2019'`]/g,"")}
 const USERS_INFO = {
   "kadr@boshqarma.uz":{role:"admin",name:"Kadrlar Bo\u2018limi"},
@@ -825,6 +978,75 @@ function Ring({pct,size=44,stroke=5,color="var(--emerald)"}){
   );
 }
 
+/* ═══ BIRTHDAY BANNER ═══ */
+function BirthdayBanner(){
+  const todayBirthdays=EMPLOYEES.filter(emp=>isBirthdayToday(emp));
+  if(todayBirthdays.length===0) return null;
+  return(
+    <div className="bday-banner" style={{position:"relative"}}>
+      <div className="bday-banner-emoji">🎂</div>
+      <div style={{flex:1}}>
+        <div className="bday-banner-names">
+          {todayBirthdays.map((emp,i)=>(
+            <span key={emp}>
+              {i>0 && " · "}
+              🎉 <strong>{emp}</strong>
+              {calcAge(emp)!==null && <span style={{fontWeight:400,color:"var(--amber)",fontSize:13}}> {calcAge(emp)} yosh</span>}
+            </span>
+          ))}
+        </div>
+        <div className="bday-banner-sub">Bugun tug'ilgan kun! Hamkasbingizni tabrik qiling 🎊</div>
+      </div>
+      <div style={{fontSize:28,animation:"bdayBounce 1.4s ease infinite",animationDelay:".3s"}}>🎈</div>
+    </div>
+  );
+}
+
+/* ═══ UPCOMING BIRTHDAYS WIDGET ═══ */
+function UpcomingBirthdays(){
+  const list=useMemo(()=>{
+    return EMPLOYEES
+      .map(emp=>({emp, days:daysUntilBirthday(emp), bd:parseBirthday(BIRTHDAYS[emp])}))
+      .filter(x=>x.days<=30)
+      .sort((a,b)=>a.days-b.days)
+      .slice(0,10);
+  },[]);
+  if(list.length===0) return null;
+  return(
+    <div className="bday-upcoming-card">
+      <div className="bday-upcoming-header">
+        <span style={{fontSize:16}}>🎂</span>
+        <div>
+          <span style={{fontSize:13.5,fontWeight:700,color:"var(--navy)"}}>Yaqinlashayotgan tug'ilgan kunlar</span>
+          <span style={{fontSize:11,color:"var(--t3)",marginLeft:8}}>Keyingi 30 kun ichida</span>
+        </div>
+      </div>
+      <div className="bday-upcoming-list">
+        {list.map(({emp,days,bd})=>{
+          const isToday=days===0;
+          const age=calcAge(emp);
+          return(
+            <div key={emp} className={`bday-upcoming-item ${isToday?"today":""}`}>
+              <div className="bday-upcoming-avatar">
+                {isToday?"🎂":emp.charAt(0)}
+              </div>
+              <div className="bday-upcoming-name">{emp.split(" ")[0]}</div>
+              <div className="bday-upcoming-name" style={{fontWeight:500,color:"var(--t3)",fontSize:10.5}}>{emp.split(" ")[1]}</div>
+              <div className="bday-upcoming-date">
+                {String(bd.day).padStart(2,"0")}.{String(bd.month).padStart(2,"0")}
+                {age!==null && <span style={{color:"var(--t4)"}}> · {isToday?age:age+1} yosh</span>}
+              </div>
+              <div className="bday-upcoming-days">
+                {isToday?"🎉 Bugun!":days===1?"Ertaga":days+" kun"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ═══ DAILY VIEW ═══ */
 function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecord}){
   const isAdmin=user.role==="admin";
@@ -849,6 +1071,8 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
   const attendPct=Math.round(counts.present/EMPLOYEES.length*100);
   return(
     <div style={{animation:"fadeUp .35s ease"}}>
+      <BirthdayBanner/>
+      <UpcomingBirthdays/>
       <div className="page-header">
         <div>
           <div className="page-title">{isAdmin?"Kunlik Davomat Hisoboti":canView?"Davomat Nazorati":"Kunlik Ko'rinish"}</div>
@@ -944,6 +1168,8 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
                         onClick={()=>canView&&updateRecord("__openModal__",emp)}>
                         {emp}
                       </span>
+                      {isBirthdayToday(emp)&&<span className="bday-tag">🎂 Bugun tug'ilgan kun!</span>}
+                      {!isBirthdayToday(emp)&&daysUntilBirthday(emp)<=7&&<span className="bday-soon-tag">🎈 {daysUntilBirthday(emp)} kunda</span>}
                     </td>
                     <td>
                       {isAdmin
@@ -1034,8 +1260,11 @@ function WeeklyView({selectedDate,setSelectedDate,attendanceData,onEmpClick}){
           <tbody>{EMPLOYEES.map((emp,i)=>{const s=empStats[i];return(
             <tr key={emp}>
               <td><span className="row-num">{String(i+1).padStart(2,"0")}</span></td>
-              <td className="emp-name emp-link" onClick={()=>onEmpClick(emp)}>{emp}</td>
-              {weekDates.map(date=>{
+              <td className="emp-name emp-link" onClick={()=>onEmpClick(emp)}>
+                {emp}
+                {isBirthdayToday(emp)&&<span className="bday-tag">🎂</span>}
+                {!isBirthdayToday(emp)&&daysUntilBirthday(emp)<=7&&<span className="bday-soon-tag">🎈{daysUntilBirthday(emp)}k</span>}
+              </td>
                 const dk=fmtDate(date);const rec=attendanceData[dk]?.[safeKey(emp)];
                 const st=STATUSES[rec?.status||"present"];
                 const mins=(rec?.morning||0)+(rec?.afternoon||0);
@@ -1095,10 +1324,11 @@ function MonthlyView({attendanceData,onEmpClick}){
           const pct=Math.round(s.present/totalDays*100);
           return(<tr key={s.emp}>
             <td><span className="row-num">{String(i+1).padStart(2,"0")}</span></td>
-            <td className="emp-name emp-link" onClick={()=>onEmpClick(s.emp)}>{s.emp}</td>
-            <td className="th-center">
-              <div style={{display:"flex",alignItems:"center",gap:7,justifyContent:"center"}}>
-                <div style={{width:50,height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}}>
+            <td className="emp-name emp-link" onClick={()=>onEmpClick(s.emp)}>
+              {s.emp}
+              {isBirthdayToday(s.emp)&&<span className="bday-tag">🎂</span>}
+              {!isBirthdayToday(s.emp)&&daysUntilBirthday(s.emp)<=7&&<span className="bday-soon-tag">🎈 {daysUntilBirthday(s.emp)}k</span>}
+            </td>
                   <div style={{height:"100%",width:`${pct}%`,background:pct>=90?"var(--emerald)":pct>=70?"var(--gold)":"var(--ruby)",borderRadius:3}}/>
                 </div>
                 <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:11,fontWeight:700,color:"var(--navy)"}}>{s.present}/{totalDays}</span>
@@ -1332,6 +1562,26 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
         <div className="stat-card c-violet"><div className="stat-accent"/>
           <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={stats.score} size={42} stroke={4} color={scColor}/></div>
           <div className="stat-num" style={{color:scColor}}>{stats.score}</div><div className="stat-label">Intizom bali</div></div></div>
+        {BIRTHDAYS[empName]&&(()=>{
+          const bd=parseBirthday(BIRTHDAYS[empName]);
+          const days=daysUntilBirthday(empName);
+          const isToday=isBirthdayToday(empName);
+          const age=calcAge(empName);
+          return(
+            <div className={`stat-card ${isToday?"c-amber":""}`} style={isToday?{}:{borderColor:"var(--border)"}}>
+              <div className="stat-accent" style={{background:isToday?"linear-gradient(90deg,var(--gold),var(--gold-lt))":"linear-gradient(90deg,var(--cobalt),#3463e8)"}}/>
+              <div className="stat-card-inner">
+                <div className="stat-top"><div className="stat-icon-wrap" style={{background:isToday?"var(--gold-pale)":"var(--cobalt-bg)",fontSize:18}}>{isToday?"🎂":"🎂"}</div></div>
+                <div className="stat-num" style={{fontSize:18,color:isToday?"var(--gold)":"var(--cobalt)"}}>
+                  {String(bd.day).padStart(2,"0")}.{String(bd.month).padStart(2,"0")}
+                </div>
+                <div className="stat-label" style={{color:isToday?"var(--amber)":"var(--t3)"}}>
+                  {isToday?`🎉 Bugun! ${age} yosh`:days===1?`Ertaga · ${age+1} yosh`:`${days} kunda · ${age+1} yosh`}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
       <div className="table-card">
         <div className="table-header">
