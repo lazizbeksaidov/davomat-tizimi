@@ -465,6 +465,17 @@
       transition: transform .15s, box-shadow .15s;
     }
     .stat-card:hover { transform: translateY(-2px); box-shadow: var(--s2); }
+    .stat-card.clickable { cursor: pointer; user-select: none; }
+    .stat-card.active-filter {
+      border-color: var(--navy);
+      box-shadow: 0 0 0 2px rgba(15,30,61,.1), var(--s2);
+    }
+    .stat-hint {
+      margin-top: 6px;
+      font-size: 10px;
+      color: var(--t4);
+      letter-spacing: .2px;
+    }
     .stat-accent {
       position: absolute; top: 0; left: 0; right: 0; height: 3px;
       border-radius: var(--rl) var(--rl) 0 0;
@@ -631,6 +642,42 @@
       margin-bottom: 8px; cursor: pointer; transition: opacity .15s;
     }
     .bar-item:hover { opacity: .8; }
+
+    .drill-list {
+      padding: 12px 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+    .drill-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 11px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      border-radius: 10px;
+    }
+    .drill-name {
+      color: var(--navy);
+      font-size: 12.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .drill-sub {
+      margin-top: 2px;
+      color: var(--t4);
+      font-size: 10.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 380px;
+    }
     .bar-track {
       flex: 1; height: 22px; background: var(--cloud);
       border-radius: 5px; overflow: hidden;
@@ -794,6 +841,352 @@
     }
     .bday-month-label::after { content:''; flex:1; height:1px; background:var(--border); }
 
+    /* ─── REAL-TIME MONITORING ───────────────── */
+    .monitor-realtime {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--emerald-bg);
+      border: 1px solid rgba(13,122,91,.2);
+      color: var(--emerald);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .2px;
+    }
+    .monitor-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px rgba(13,122,91,.55);
+      animation: pulse 1.8s infinite;
+      flex-shrink: 0;
+    }
+    .monitor-list {
+      padding: 12px 16px 14px;
+      display: flex; flex-direction: column; gap: 8px;
+      max-height: 360px; overflow-y: auto;
+    }
+    .monitor-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      border-radius: 10px;
+      transition: background .12s, border-color .12s;
+    }
+    .monitor-row:hover { background: var(--white); border-color: var(--border2); }
+    .monitor-name {
+      color: var(--navy);
+      font-size: 12.5px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .monitor-sub {
+      margin-top: 2px;
+      color: var(--t4);
+      font-size: 10.5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 320px;
+    }
+    .monitor-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--navy);
+      flex-shrink: 0;
+    }
+    .kpi-list {
+      padding: 14px 18px 18px;
+      display: flex; flex-direction: column; gap: 9px;
+    }
+    .kpi-row {
+      display: flex; align-items: center; gap: 9px;
+    }
+    .kpi-label {
+      min-width: 122px;
+      max-width: 122px;
+      color: var(--t2);
+      font-size: 12px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .kpi-track {
+      flex: 1;
+      height: 8px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .kpi-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width .4s ease;
+    }
+    .kpi-val {
+      min-width: 42px;
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 700;
+      color: var(--navy);
+    }
+    .report-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .report-note { font-size: 11.5px; color: var(--t3); }
+    .report-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .weekday-panel { padding: 14px 18px 18px; }
+    .weekday-row-pro {
+      display: grid;
+      grid-template-columns: 88px 1fr 58px;
+      gap: 9px;
+      align-items: center;
+      margin-bottom: 9px;
+    }
+    .weekday-lbl {
+      font-size: 11.5px; font-weight: 700; color: var(--navy);
+      white-space: nowrap;
+    }
+    .weekday-track {
+      height: 10px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .weekday-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg,var(--ruby),#ef4444);
+      transition: width .4s ease;
+    }
+    .weekday-val {
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 700; color: var(--navy);
+      white-space: nowrap;
+    }
+    .weekday-focus {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; flex-wrap: wrap;
+    }
+    .weekday-focus-title { font-size: 12px; font-weight: 700; color: var(--t2); }
+    .weekday-focus-sub { font-size: 11px; color: var(--t3); margin-top: 3px; }
+    .monitor-heat-title {
+      margin-top: 12px;
+      font-size: 11px; font-weight: 700; color: var(--t3);
+      text-transform: uppercase; letter-spacing: .6px;
+    }
+    .heatmap-wrap { padding: 14px 18px 18px; }
+    .heatmap-legend {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; margin-bottom: 12px;
+      font-size: 10.5px; color: var(--t3);
+    }
+    .heatmap-legend-chip {
+      width: 14px; height: 10px; border-radius: 3px; border: 1px solid rgba(10,14,26,.06);
+    }
+    .heatmap-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+      gap: 8px;
+    }
+    .heat-cell {
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      min-height: 54px;
+      padding: 7px 6px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .heat-cell:hover { transform: translateY(-1px); box-shadow: var(--s1); }
+    .heat-cell-day {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; font-weight: 700;
+      color: var(--navy);
+    }
+    .heat-cell-score {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; font-weight: 700;
+      color: var(--t3);
+    }
+    .heat-l0 { background: #f5f8fc; }
+    .heat-l1 { background: #e9f7ef; border-color: #ccead9; }
+    .heat-l2 { background: #fef6df; border-color: #f4df9f; }
+    .heat-l3 { background: #fde8d4; border-color: #f7c699; }
+    .heat-l4 { background: #fde4e1; border-color: #f0b8b2; }
+    .hourly-wrap { padding: 12px 18px 16px; display: flex; flex-direction: column; gap: 9px; }
+    .hour-row {
+      display: grid;
+      grid-template-columns: 52px 1fr 42px;
+      gap: 8px;
+      align-items: center;
+    }
+    .hour-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px; color: var(--t3); font-weight: 600;
+    }
+    .hour-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 700; color: var(--navy);
+      text-align: right;
+    }
+    .weekday-insight {
+      margin-top: 10px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      flex-wrap: wrap;
+    }
+    .weekday-title { font-size: 12px; color: var(--t2); font-weight: 700; }
+    .weekday-sub { font-size: 11px; color: var(--t3); margin-top: 2px; }
+    .emp-live-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .emp-live-note {
+      margin-top: 7px;
+      font-size: 11px;
+      color: var(--t3);
+      line-height: 1.5;
+    }
+    .emp-live-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--border);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .emp-live-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width .4s ease;
+    }
+    .emp-live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+    /* YANGLANGAN SHAXSIY TAHLIL VA TA'TIL KARTALARI */
+    .self-analysis-card { margin-bottom: 14px; }
+    .self-analysis-grid {
+      padding: 16px 18px 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit,minmax(210px,1fr));
+      gap: 12px;
+    }
+    .self-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface2);
+      padding: 14px;
+      display: flex; flex-direction: column;
+    }
+    .self-item-top {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 700; color: var(--navy);
+      margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .self-item-main {
+      font-size: 13px; font-weight: 700; color: var(--t1);
+      line-height: 1.4;
+    }
+    .self-item-sub {
+      margin-top: 5px;
+      font-size: 11.5px; color: var(--t3);
+      line-height: 1.45;
+    }
+    .self-badge {
+      margin-top: auto;
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--cobalt);
+      background: var(--cobalt-bg);
+      border: 1px solid rgba(30,76,190,.15);
+    }
+    .vacation-card { margin-bottom: 14px; }
+    .vacation-body {
+      padding: 16px 18px 18px;
+      display: grid;
+      grid-template-columns: minmax(220px,280px) 1fr;
+      gap: 16px;
+    }
+    .vacation-main {
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--navy), var(--navy-lt));
+      padding: 16px 18px;
+      color: white;
+      box-shadow: 0 4px 16px rgba(15,30,61,.15);
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .vacation-main-title {
+      font-size: 10.5px; font-weight: 700; color: var(--gold-lt);
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .vacation-main-month {
+      margin-top: 6px;
+      font-size: 26px; font-weight: 800; color: var(--white);
+      letter-spacing: -.5px;
+    }
+    .vacation-main-sub {
+      margin-top: 8px;
+      font-size: 11.5px; color: rgba(255,255,255,.7); line-height: 1.5;
+    }
+    .vacation-status {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 10.5px; font-weight: 700;
+    }
+    .vacation-strip {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface2);
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(6,minmax(0,1fr));
+      gap: 8px;
+      align-content: start;
+    }
+    .vac-chip {
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      background: #fff;
+      min-height: 48px;
+      padding: 8px 4px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 4px; transition: all 0.2s;
+    }
+    .vac-chip .m {
+      font-size: 11px; font-weight: 700; color: var(--t2);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .vac-chip .d { font-size: 9px; color: var(--t4); font-family: 'JetBrains Mono', monospace; }
+    .vac-chip.is-current { border-color: var(--gold); background: var(--gold-pale); box-shadow: 0 2px 8px var(--gold-glow); }
+    .vac-chip.is-current .m { color: var(--gold); }
+    .vac-chip.is-plan { border-color: var(--cobalt); background: var(--cobalt-bg); }
+    .vac-chip.is-plan .m { color: var(--cobalt); }
+    .vac-chip.is-used { border-color: var(--border); background: var(--ash-bg); opacity: 0.7;}
+
     /* ─── RESPONSIVE ──────────────────────────── */
     @media(max-width:900px) {
       .login-wrap { grid-template-columns: 1fr; }
@@ -805,6 +1198,10 @@
       .nav-item { justify-content: center; }
       .content { margin-left: 64px; }
       .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .kpi-label { min-width: 96px; max-width: 96px; }
+      .hour-row { grid-template-columns: 44px 1fr 36px; }
+      .vacation-body { grid-template-columns: 1fr; }
+      .vacation-strip { grid-template-columns: repeat(4,minmax(0,1fr)); }
     }
     @media(max-width:600px) {
       .main { padding: 14px 12px 36px; }
@@ -929,6 +1326,27 @@ const STATUSES = {
 const WDAYS=["Dushanba","Seshanba","Chorshanba","Payshanba","Juma"];
 const WSHORT=["Dush","Sesh","Chor","Pay","Jum"];
 const MONTHS=["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+const VACATION_PLAN = {
+  "Umrzoqov Bunyod": {month: 9},
+  "Ermamatov Xurshid": {month: 6},
+  "Faxriddinov Oxunjon": {month: 7},
+  "Akbarova Moxlaroyim": {month: 11},
+  "Hamdamov Shuxrat": {month: 4},
+  "Nazarov Muzaffar": {month: 7},
+  "Nurmamatov Oxunjon": {month: 10},
+  "Xolmurodov Dostonjon": {month: 9},
+  "Qurbonov Shavkat": {month: 8},
+  "Narzullayev Rustam": {month: 10},
+  "Islomov G\u2018ulomjon": {month: 3},
+  "Ibrohimov Shuhrat": {month: 5},
+  "Barnoqulov Shahzod": {month: 8},
+  "Axadov Izzatullo": {month: 10},
+  "Jo\u2018raqulov Jahongirbek": {month: 6},
+  "Jaynakov Temur": {month: 0, used: true, note: "Foydalanilgan"},
+  "Saidov Lazizbek": {month: 8},
+  "Pirbayev Berdiyor": {month: 0, used: true, note: "Foydalanilgan"},
+  "Husainova Klara": {month: 6}
+};
 
 /* ═══ HELPERS ═══ */
 function fmtDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -1157,6 +1575,10 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
   const dateKey=fmtDate(selectedDate);
   const dayName=WDAYS[selectedDate.getDay()-1]||"Dam olish kuni";
   const [search,setSearch]=useState("");
+  const [statusDrill,setStatusDrill]=useState(null);
+
+  useEffect(()=>{ setStatusDrill(null); },[dateKey]);
+
   const counts=useMemo(()=>{
     const c={present:0,late:0,absent:0,other:0,lateMins:0};
     EMPLOYEES.forEach(emp=>{
@@ -1170,6 +1592,54 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
     });
     return c;
   },[dateKey,attendanceData]);
+
+  const toggleDrill=useCallback((key)=>{
+    setStatusDrill(prev=>prev===key?null:key);
+  },[]);
+
+  const onDrillKey=useCallback((e,key)=>{
+    if(e.key==="Enter"||e.key===" "){
+      e.preventDefault();
+      toggleDrill(key);
+    }
+  },[toggleDrill]);
+
+  const drillRows=useMemo(()=>{
+    if(!statusDrill) return [];
+    const rows=EMPLOYEES.map(emp=>{
+      const rec=attendanceData[dateKey]?.[safeKey(emp)]||{status:"present",morning:0,afternoon:0,note:""};
+      const st=rec.status||"present";
+      const morning=rec.morning||0;
+      const afternoon=rec.afternoon||0;
+      return{
+        emp,
+        st,
+        morning,
+        afternoon,
+        mins:morning+afternoon,
+        note:rec.note||""
+      };
+    });
+    const picked=rows.filter(r=>{
+      if(statusDrill==="late") return r.st==="late"||r.mins>0;
+      if(statusDrill==="absent") return r.st==="absent";
+      if(statusDrill==="other") return !["present","late","absent"].includes(r.st);
+      return false;
+    });
+    if(statusDrill==="late") picked.sort((a,b)=>b.mins-a.mins||a.emp.localeCompare(b.emp));
+    else picked.sort((a,b)=>a.emp.localeCompare(b.emp));
+    return picked;
+  },[statusDrill,attendanceData,dateKey]);
+
+  const drillTitle=statusDrill==="late"
+    ?"Kechikkan xodimlar ro'yxati"
+    :statusDrill==="absent"
+    ?"Sababsiz kelmaganlar ro'yxati"
+    :"Boshqa holatdagi xodimlar";
+  const drillMeta=statusDrill==="late"
+    ?`${dateKey} · kechikish bo'yicha ${drillRows.length} ta xodim`
+    :`${dateKey} · ${drillRows.length} ta xodim`;
+
   const filtered=search?EMPLOYEES.filter(e=>e.toLowerCase().includes(search.toLowerCase())):EMPLOYEES;
   const attendPct=Math.round(counts.present/EMPLOYEES.length*100);
   return(
@@ -1203,28 +1673,46 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
             <div className="stat-label">Ish joyida</div>
           </div>
         </div>
-        <div className="stat-card c-amber">
+        <div className={`stat-card c-amber clickable ${statusDrill==="late"?"active-filter":""}`}
+          onClick={()=>toggleDrill("late")}
+          onKeyDown={e=>onDrillKey(e,"late")}
+          role="button"
+          tabIndex={0}
+          aria-label="Kechikkan xodimlarni ko'rish">
           <div className="stat-accent"/>
           <div className="stat-card-inner">
             <div className="stat-top"><div className="stat-icon-wrap">⏰</div></div>
             <div className="stat-num">{counts.late}</div>
             <div className="stat-label">Kechikdi</div>
+            <div className="stat-hint">Ro'yxatni ko'rish</div>
           </div>
         </div>
-        <div className="stat-card c-red">
+        <div className={`stat-card c-red clickable ${statusDrill==="absent"?"active-filter":""}`}
+          onClick={()=>toggleDrill("absent")}
+          onKeyDown={e=>onDrillKey(e,"absent")}
+          role="button"
+          tabIndex={0}
+          aria-label="Sababsiz kelmaganlarni ko'rish">
           <div className="stat-accent"/>
           <div className="stat-card-inner">
             <div className="stat-top"><div className="stat-icon-wrap">✗</div></div>
             <div className="stat-num">{counts.absent}</div>
             <div className="stat-label">Sababsiz</div>
+            <div className="stat-hint">Ro'yxatni ko'rish</div>
           </div>
         </div>
-        <div className="stat-card c-cobalt">
+        <div className={`stat-card c-cobalt clickable ${statusDrill==="other"?"active-filter":""}`}
+          onClick={()=>toggleDrill("other")}
+          onKeyDown={e=>onDrillKey(e,"other")}
+          role="button"
+          tabIndex={0}
+          aria-label="Boshqa holatdagilarni ko'rish">
           <div className="stat-accent"/>
           <div className="stat-card-inner">
             <div className="stat-top"><div className="stat-icon-wrap">📋</div></div>
             <div className="stat-num">{counts.other}</div>
             <div className="stat-label">Boshqa holat</div>
+            <div className="stat-hint">Ro'yxatni ko'rish</div>
           </div>
         </div>
         {canView&&<div className="stat-card c-navy">
@@ -1236,6 +1724,44 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
           </div>
         </div>}
       </div>
+
+      {statusDrill&&(
+        <div className="table-card" style={{marginBottom:16}}>
+          <div className="table-header">
+            <div>
+              <div className="table-title">{drillTitle}</div>
+              <div className="table-meta">{drillMeta}</div>
+            </div>
+            <button className="action-btn" onClick={()=>setStatusDrill(null)}>Yopish</button>
+          </div>
+          <div className="drill-list">
+            {drillRows.length===0&&(
+              <div style={{textAlign:"center",color:"var(--t4)",padding:"18px 8px",fontSize:12}}>
+                Ushbu holat bo'yicha xodim topilmadi
+              </div>
+            )}
+            {drillRows.map((r)=>{
+              const st=statusDrill==="late"?STATUSES.late:(STATUSES[r.st]||STATUSES.present);
+              return(
+                <div key={r.emp} className="drill-row">
+                  <div style={{minWidth:0}}>
+                    <div className={`drill-name ${canView?"emp-link":""}`} onClick={()=>canView&&updateRecord("__openModal__",r.emp)}>{r.emp}</div>
+                    <div className="drill-sub">
+                      {statusDrill==="late"
+                        ?`09:00: ${r.morning} d · 14:00: ${r.afternoon} d${r.note?` · ${r.note}`:""}`
+                        :(r.note||"Izoh kiritilmagan")}
+                    </div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                    {statusDrill==="late"&&<span className="late-val">{r.mins} d</span>}
+                    <span className="badge" style={{color:st.color,background:st.bg}}>{st.icon} {st.label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="table-card">
         <div className="table-header">
@@ -1645,25 +2171,156 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
   const today=new Date();
   const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
   const [weekBase,setWeekBase]=useState(new Date());
+  const [liveNow,setLiveNow]=useState(new Date());
+  useEffect(()=>{
+    const t=setInterval(()=>setLiveNow(new Date()),60000);
+    return()=>clearInterval(t);
+  },[]);
   const weekDates=useMemo(()=>getWeekDates(weekBase),[weekBase]);
   const monthDates=useMemo(()=>getMonthDates(yr,mon),[yr,mon]);
   function prevMon(){if(mon===0){setMon(11);setYr(y=>y-1)}else setMon(m=>m-1)}
   function nextMon(){if(mon===11){setMon(0);setYr(y=>y+1)}else setMon(m=>m+1)}
+
+  const todayKey=fmtDate(liveNow);
+  const todayRec=attendanceData[todayKey]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
+  const todayState=STATUSES[todayRec.status]||STATUSES.present;
+  const workStatuses=["present","late","trip","training"];
+
+  function getDayProgressMins(dt){
+    if(!isWorkday(dt)) return 0;
+    const cur=dt.getHours()*60+dt.getMinutes();
+    const mStart=9*60,mEnd=13*60,aStart=14*60,aEnd=18*60;
+    if(cur<=mStart) return 0;
+    if(cur<mEnd) return cur-mStart;
+    if(cur<aStart) return mEnd-mStart;
+    if(cur<aEnd) return (mEnd-mStart)+(cur-aStart);
+    return 480;
+  }
+
+  function getStaticWorkedMins(rec){
+    const st=rec?.status||"present";
+    if(!workStatuses.includes(st)) return 0;
+    if(st==="present"||st==="late"){
+      const delay=Math.max(0,(rec?.morning||0)+(rec?.afternoon||0));
+      return Math.max(0,480-delay);
+    }
+    return 480;
+  }
+
+  function getRealtimeWorkedMins(rec,dt){
+    const st=rec?.status||"present";
+    if(!isWorkday(dt)||!workStatuses.includes(st)) return 0;
+    const progress=getDayProgressMins(dt);
+    if(st==="present"||st==="late"){
+      const cur=dt.getHours()*60+dt.getMinutes();
+      let penalty=0;
+      if(cur>=9*60) penalty+=Math.max(0,rec?.morning||0);
+      if(cur>=14*60) penalty+=Math.max(0,rec?.afternoon||0);
+      return Math.max(0,progress-penalty);
+    }
+    return progress;
+  }
+
+  function fmtWorked(mins){
+    const v=Math.max(0,Math.round(mins||0));
+    return `${Math.floor(v/60)} soat ${v%60} daq`;
+  }
+
+  const todayWorkedMins=useMemo(()=>getRealtimeWorkedMins(todayRec,liveNow),[todayRec,liveNow]);
+  const todayWorkedPct=Math.min(100,Math.round(todayWorkedMins/480*100));
+
   const stats=useMemo(()=>{
-    let presentOnly=0,late=0,lateMins=0,absent=0,sick=0,other=0;
+    let presentOnly=0,late=0,lateMins=0,absent=0,sick=0,other=0,workedDays=0;
     monthDates.forEach(d=>{
       const rec=attendanceData[fmtDate(d)]?.[safeKey(empName)];const st=rec?.status||"present";
       if(st==="present")presentOnly++;else if(st==="late")late++;else if(st==="absent")absent++;
       else if(st==="sick")sick++;else other++;
+      if(workStatuses.includes(st)) workedDays++;
       lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
     const total=monthDates.length;
     const score=Math.max(0,100-Math.round(lateMins/Math.max(1,total*480)*100*8)-absent*5-late*2);
-    return{presentOnly,late,totalPresent:presentOnly+late,lateMins,absent,sick,other,total,score};
+    return{presentOnly,late,totalPresent:presentOnly+late,lateMins,absent,sick,other,workedDays,total,score};
   },[empName,monthDates,attendanceData]);
+
+  // YANGLIK: Bu oy ishlashi reja qilingan jami soat
+  const plannedMonthHours = monthDates.length * 8;
+  const monthWorkedPct=monthDates.length?Math.min(100,Math.round((today.getDate()/31)*100)):0;
+  const lateRate=stats.total?Math.round(stats.late/stats.total*100):0;
   const attendPct=stats.total?Math.round(stats.totalPresent/stats.total*100):0;
   const scColor=stats.score>=85?"var(--emerald)":stats.score>=65?"var(--gold)":"var(--ruby)";
+
+  const lateByWeekday=useMemo(()=>{
+    const dayStats=[1,2,3,4,5].map((_,i)=>({name:WDAYS[i],count:0,lateMins:0}));
+    monthDates.forEach(d=>{
+      const w=d.getDay();
+      if(w<1||w>5) return;
+      const rec=attendanceData[fmtDate(d)]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
+      const mins=(rec.morning||0)+(rec.afternoon||0);
+      if((rec.status||"present")==="late"||mins>0){
+        dayStats[w-1].count+=1;
+        dayStats[w-1].lateMins+=mins;
+      }
+    });
+    return dayStats;
+  },[monthDates,attendanceData,empName]);
+
+  const peakLateDay=useMemo(()=>{
+    const best=[...lateByWeekday].sort((a,b)=>b.count-a.count||b.lateMins-a.lateMins)[0];
+    if(!best||best.count===0) return null;
+    return best;
+  },[lateByWeekday]);
+
+  const weekProductivity=useMemo(()=>{
+    const groups=[];
+    monthDates.forEach(d=>{
+      if(groups.length===0||d.getDay()===1){
+        groups.push({idx:groups.length+1,start:new Date(d),end:new Date(d),worked:0,lateMins:0,lateCount:0,days:0});
+      }
+      const g=groups[groups.length-1];
+      const rec=attendanceData[fmtDate(d)]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
+      const mins=(rec.morning||0)+(rec.afternoon||0);
+      g.days+=1;
+      g.worked+=getStaticWorkedMins(rec);
+      g.end=new Date(d);
+      g.lateMins+=mins;
+      if((rec.status||"present")==="late"||mins>0) g.lateCount+=1;
+    });
+    const rows=groups.map(g=>({
+      ...g,
+      score:g.days?Math.round(g.worked/(g.days*480)*100):0
+    }));
+    const best=[...rows].sort((a,b)=>b.score-a.score||a.lateMins-b.lateMins)[0]||null;
+    return{rows,best};
+  },[monthDates,attendanceData,empName]);
+
+  function fmtShort(d){
+    return `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}`;
+  }
+
+  const selfInsight=useMemo(()=>{
+    if(!weekProductivity.best) return "Yetarli ma'lumot yo'q.";
+    if(!peakLateDay) return "Kechikish deyarli kuzatilmadi, hozirgi intizom rejimini xuddi shunday ushlab turing.";
+    return `${peakLateDay.name} kuni ishga kelish vaqtini 10-15 daqiqa oldinga surish tizimda ijobiy natija va yuqori samaradorlik ko'rsatadi.`;
+  },[weekProductivity,peakLateDay]);
+
+  const vacationPlan=VACATION_PLAN[empName]||null;
+  const currentMonth=liveNow.getMonth();
+  const vacationMonthName=vacationPlan?MONTHS[vacationPlan.month]:"Belgilanmagan";
+  const vacationDistance=vacationPlan?((vacationPlan.month-currentMonth+12)%12):null;
+  const vacationStatus=useMemo(()=>{
+    if(!vacationPlan) return {label:"Reja kiritilmagan",kind:"unknown"};
+    if(vacationPlan.used) return {label:"Foydalanilgan",kind:"done"};
+    if(vacationPlan.month===currentMonth) return {label:"Joriy oy rejasi",kind:"now"};
+    return {label:`${vacationDistance} oy qoldi`,kind:"plan"};
+  },[vacationPlan,currentMonth,vacationDistance]);
+  const vacationNote=!vacationPlan
+    ? "Xodim uchun ta'til oyi hali belgilanmagan."
+    : vacationPlan.used
+    ? "Mehnat ta'tili ushbu yil uchun to'liq foydalanilgan."
+    : "Reja ko'rinishida berilgan. Yakuniy chiqish sanasi buyruq asosida tasdiqlanadi.";
+
   return(
-    <div>
+    <div style={{animation:"fadeUp .35s ease"}}>
       <div className="page-header" style={inModal?{borderBottom:"1px solid var(--border)",paddingBottom:16,marginBottom:20}:{}}>
         <div>
           <div className="page-title">{inModal?empName:"Shaxsiy Kabinetim"}</div>
@@ -1675,6 +2332,124 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
           <button className="date-nav-btn" onClick={nextMon}>›</button>
         </div>
       </div>
+
+      <div className="emp-live-grid">
+        <div className="stat-card c-cobalt">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top">
+              <div className="stat-icon-wrap">🕒</div>
+              <span className="badge" style={{color:todayState.color,background:todayState.bg,fontSize:10}}>{todayState.icon} {todayState.label}</span>
+            </div>
+            <div className="stat-num">{Math.floor(todayWorkedMins/60)}<sup> soat</sup></div>
+            <div className="stat-label">Bugungi ish vaqti (real vaqt)</div>
+            <div className="emp-live-note">
+              {isWorkday(liveNow)
+                ? `${fmtWorked(todayWorkedMins)} · ${liveNow.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"})}`
+                : "Bugun dam olish kuni"}
+            </div>
+            <div className="emp-live-track"><div className="emp-live-fill" style={{width:`${todayWorkedPct}%`,background:"linear-gradient(90deg,var(--cobalt),#3463e8)"}}/></div>
+          </div>
+        </div>
+
+        <div className="stat-card c-green">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top">
+              <div className="stat-icon-wrap">⏱</div>
+              <Ring pct={monthWorkedPct} size={42} stroke={4}/>
+            </div>
+            <div className="stat-num">{plannedMonthHours}<sup> soat</sup></div>
+            <div className="stat-label">Bu oy ishlashi reja qilingan soat</div>
+            <div className="emp-live-note">Jami {monthDates.length} ta rasmiy ish kuni mavjud</div>
+            <div className="emp-live-track"><div className="emp-live-fill" style={{width:`${monthWorkedPct}%`,background:"linear-gradient(90deg,var(--emerald),#22c55e)"}}/></div>
+          </div>
+        </div>
+
+        <div className="stat-card c-amber">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">⏰</div></div>
+            <div className="stat-num">{stats.late}<sup> marta</sup></div>
+            <div className="stat-label">Qancha kechikish bo'lgan</div>
+            <div className="emp-live-note">Jami {stats.lateMins} daqiqa kechikish</div>
+            <span className="emp-live-pill" style={{color:"var(--amber)",background:"var(--amber-bg)"}}>Ulushi: {lateRate}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="table-card vacation-card">
+        <div className="table-header">
+          <div>
+            <div className="table-title">Mehnat ta'tili rejasi</div>
+            <div className="table-meta">Joriy yil uchun tasdiqlangan grafik</div>
+          </div>
+        </div>
+        <div className="vacation-body">
+          <div className="vacation-main">
+            <div className="vacation-main-title">Rejalashtirilgan oy</div>
+            <div className="vacation-main-month">{vacationMonthName}</div>
+            <div>
+              <span className={`vacation-status ${vacationStatus.kind}`} style={vacationStatus.kind==="done"?{background:"rgba(255,255,255,0.2)", color:"white"} : vacationStatus.kind==="now"?{background:"var(--gold)", color:"var(--navy)"}:{background:"rgba(255,255,255,0.1)", color:"white"}}>
+                {vacationStatus.kind==="done"?"✓":vacationStatus.kind==="now"?"⏳":"📅"} {vacationStatus.label}
+              </span>
+            </div>
+            <div className="vacation-main-sub">{vacationNote}</div>
+          </div>
+          <div className="vacation-strip">
+            {MONTHS.map((m,idx)=>{
+              const isPlan=!!vacationPlan&&idx===vacationPlan.month;
+              const isCurrent=idx===currentMonth;
+              const isUsed=isPlan&&!!vacationPlan?.used;
+              return(
+                <div key={m} className={`vac-chip ${isPlan?"is-plan":""} ${isCurrent?"is-current":""} ${isUsed?"is-used":""}`}>
+                  <div className="m">{m.slice(0,3)}</div>
+                  <div className="d">{isUsed?"done":isPlan?"plan":isCurrent?"now":"-"}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="table-card self-analysis-card">
+        <div className="table-header">
+          <div>
+            <div className="table-title">Shaxsiy Intizom Tahlili</div>
+            <div className="table-meta">Asosiy ko'rsatkichlar va xulosalar</div>
+          </div>
+        </div>
+        <div className="self-analysis-grid">
+          <div className="self-item">
+            <div className="self-item-top">📌 Qaysi kun ko'proq kechikiladi</div>
+            <div className="self-item-main">{peakLateDay?peakLateDay.name:"Kechikish qayd etilmagan"}</div>
+            <div className="self-item-sub">
+              {peakLateDay
+                ? `${peakLateDay.count} marta · ${peakLateDay.lateMins} daqiqa`
+                : "Joriy oy bo'yicha kechikish yo'q"}
+            </div>
+          </div>
+          <div className="self-item">
+            <div className="self-item-top">🚀 Qaysi haftada samaradorlik yuqori</div>
+            <div className="self-item-main">
+              {weekProductivity.best
+                ? `${weekProductivity.best.idx}-hafta (${fmtShort(weekProductivity.best.start)} - ${fmtShort(weekProductivity.best.end)})`
+                : "Ma'lumot yetarli emas"}
+            </div>
+            <div className="self-item-sub">
+              {weekProductivity.best
+                ? `Davomat darajasi: ${weekProductivity.best.score}% · Kechikish: ${weekProductivity.best.lateMins} daqiqa`
+                : "Haftalik kesim shakllanmagan"}
+            </div>
+          </div>
+          <div className="self-item" style={{background: "var(--cloud)", borderColor: "var(--border2)"}}>
+            <div className="self-item-top">🧠 Xulosa</div>
+            <div className="self-item-main" style={{color: "var(--navy)", fontWeight: "600", fontSize: "12.5px"}}>{selfInsight}</div>
+            <span className="self-badge">Intizom bali: {stats.score} / 100</span>
+          </div>
+        </div>
+      </div>
+
       <div className="stats-grid">
         <div className="stat-card c-green"><div className="stat-accent"/>
           <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">✓</div><Ring pct={attendPct} size={42} stroke={4}/></div>
