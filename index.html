@@ -3333,285 +3333,372 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
 /* ═══ SELFIE CHECKIN ═══ */
 function selfieCalcDist(lat1,lon1,lat2,lon2){
   var R=6371000,dLat=((lat2-lat1)*Math.PI)/180,dLon=((lon2-lon1)*Math.PI)/180;
-  var a=Math.sin(dLat/2)**2+Math.cos((lat1*Math.PI)/180)*Math.cos((lat2*Math.PI)/180)*Math.sin(dLon/2)**2;
+  var a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 function SelfieCheckin({user,attendanceData,showToast}){
-  const{useState,useEffect,useRef,useCallback,useMemo}=React;
-  const[gpsStatus,setGpsStatus]=useState("checking");
-  const[gpsData,setGpsData]=useState(null);
-  const[cameraActive,setCameraActive]=useState(false);
-  const[capturedPhoto,setCapturedPhoto]=useState(null);
-  const[liveTime,setLiveTime]=useState(new Date());
-  const[checkins,setCheckins]=useState({});
-  const[submitting,setSubmitting]=useState(false);
-  const[cameraError,setCameraError]=useState(null);
-  const videoRef=useRef(null);
-  const canvasRef=useRef(null);
-  const streamRef=useRef(null);
+  var{useState,useEffect,useRef,useCallback,useMemo}=React;
+  var[gpsStatus,setGpsStatus]=useState("checking");
+  var[gpsData,setGpsData]=useState(null);
+  var[cameraActive,setCameraActive]=useState(false);
+  var[capturedPhoto,setCapturedPhoto]=useState(null);
+  var[liveTime,setLiveTime]=useState(new Date());
+  var[checkins,setCheckins]=useState({});
+  var[submitting,setSubmitting]=useState(false);
+  var[cameraError,setCameraError]=useState(null);
+  var videoRef=useRef(null);
+  var canvasRef=useRef(null);
+  var streamRef=useRef(null);
+  var gpsTimerRef=useRef(null);
 
-  const todayKey=fmtDate(new Date());
-  const empKey=safeKey(user.name);
-  const curHour=liveTime.getHours();
-  const curSession=curHour<13?"morning":"afternoon";
-  const sesLabel=curSession==="morning"?"Ertalabki (09:00)":"Tushlikdan keyin (14:00)";
-  const sesIcon=curSession==="morning"?"🌅":"🌇";
+  var todayKey=fmtDate(new Date());
+  var empKey=safeKey(user.name);
+  var curHour=liveTime.getHours();
+  var curSession=curHour<13?"morning":"afternoon";
+  var sesLabel=curSession==="morning"?"Ertalabki (09:00)":"Tushlikdan keyin (14:00)";
+  var sesIcon=curSession==="morning"?"\u{1F305}":"\u{1F307}";
 
-  useEffect(()=>{
-    const ref=db.ref("checkins");
-    ref.on("value",snap=>setCheckins(snap.val()||{}));
-    return()=>ref.off();
+  var isSecure=location.protocol==="https:"||location.hostname==="localhost"||location.hostname==="127.0.0.1";
+
+  // Firebase
+  useEffect(function(){
+    var ref=db.ref("checkins");
+    ref.on("value",function(snap){setCheckins(snap.val()||{});});
+    return function(){ref.off();};
   },[]);
 
-  useEffect(()=>{
-    const t=setInterval(()=>setLiveTime(new Date()),1000);
-    return()=>clearInterval(t);
+  // Clock
+  useEffect(function(){
+    var t=setInterval(function(){setLiveTime(new Date());},1000);
+    return function(){clearInterval(t);};
   },[]);
 
-  useEffect(()=>{
+  // GPS — getCurrentPosition polling (works on Safari, Chrome, Firefox)
+  useEffect(function(){
     if(!navigator.geolocation){setGpsStatus("unavailable");return;}
-    const id=navigator.geolocation.watchPosition(
-      pos=>{
-        const dist=selfieCalcDist(pos.coords.latitude,pos.coords.longitude,OFFICE_LOCATION.lat,OFFICE_LOCATION.lng);
-        setGpsData({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy),distance:Math.round(dist)});
-        setGpsStatus(dist<=OFFICE_LOCATION.radius?"ok":"far");
-      },
-      err=>setGpsStatus(err.code===1?"denied":"unavailable"),
-      {enableHighAccuracy:true,timeout:15000,maximumAge:5000}
-    );
-    return()=>navigator.geolocation.clearWatch(id);
+    if(!isSecure){setGpsStatus("insecure");return;}
+
+    function checkPos(){
+      navigator.geolocation.getCurrentPosition(
+        function(pos){
+          var dist=selfieCalcDist(pos.coords.latitude,pos.coords.longitude,OFFICE_LOCATION.lat,OFFICE_LOCATION.lng);
+          setGpsData({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy),distance:Math.round(dist)});
+          setGpsStatus(dist<=OFFICE_LOCATION.radius?"ok":"far");
+        },
+        function(err){
+          if(err.code===1)setGpsStatus("denied");
+          else if(err.code===2)setGpsStatus("unavailable");
+          else if(err.code===3)setGpsStatus("timeout");
+          else setGpsStatus("error");
+        },
+        {enableHighAccuracy:true,timeout:10000,maximumAge:3000}
+      );
+    }
+    checkPos();
+    gpsTimerRef.current=setInterval(checkPos,5000);
+    return function(){if(gpsTimerRef.current)clearInterval(gpsTimerRef.current);};
   },[]);
 
-  useEffect(()=>()=>{
-    if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
+  // Cleanup
+  useEffect(function(){
+    return function(){
+      if(streamRef.current)streamRef.current.getTracks().forEach(function(t){t.stop();});
+    };
   },[]);
 
-  const myM=checkins[todayKey]?.[empKey]?.morning||null;
-  const myA=checkins[todayKey]?.[empKey]?.afternoon||null;
-  const curDone=curSession==="morning"?myM:myA;
-  const bothDone=myM&&myA;
-  const gpsOk=gpsStatus==="ok"||gpsStatus==="far";
+  var myM=checkins[todayKey]&&checkins[todayKey][empKey]?checkins[todayKey][empKey].morning:null;
+  var myA=checkins[todayKey]&&checkins[todayKey][empKey]?checkins[todayKey][empKey].afternoon:null;
+  var curDone=curSession==="morning"?myM:myA;
+  var bothDone=myM&&myA;
+  var gpsOk=gpsStatus==="ok"||gpsStatus==="far";
 
-  // Attach stream to video element AFTER React renders it
-  useEffect(()=>{
+  // Attach stream to video when camera activates
+  useEffect(function(){
     if(cameraActive&&streamRef.current&&videoRef.current){
-      videoRef.current.srcObject=streamRef.current;
-      videoRef.current.play().catch(()=>{});
+      try{
+        videoRef.current.srcObject=streamRef.current;
+        var p=videoRef.current.play();
+        if(p&&p.catch)p.catch(function(){});
+      }catch(e){}
     }
   },[cameraActive]);
 
-  const startCamera=useCallback(async()=>{
+  // Camera
+  var startCamera=useCallback(function(){
     if(!gpsOk)return;
     setCameraError(null);
-    if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}
-    try{
-      const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});
-      streamRef.current=s;
-      // Set cameraActive first — video element appears in DOM — then useEffect attaches stream
-      setCameraActive(true);
-    }catch(e){
-      setCameraError("Kamera ruxsati berilmadi. Brauzer sozlamalaridan ruxsat bering.");
-    }
-  },[gpsOk]);
+    if(!isSecure){setCameraError("HTTPS kerak. Bu sayt http:// orqali ochilgan — kamera ishlamaydi.");return;}
+    // Stop old
+    if(streamRef.current){streamRef.current.getTracks().forEach(function(t){t.stop();});streamRef.current=null;}
+    if(videoRef.current)videoRef.current.srcObject=null;
 
-  const stopCamera=useCallback(()=>{
-    if(streamRef.current){streamRef.current.getTracks().forEach(t=>t.stop());streamRef.current=null;}
-    if(videoRef.current){videoRef.current.srcObject=null;}
+    navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false})
+    .then(function(stream){
+      streamRef.current=stream;
+      setCameraActive(true);
+    })
+    .catch(function(err){
+      // Safari sometimes rejects facingMode, try without it
+      navigator.mediaDevices.getUserMedia({video:true,audio:false})
+      .then(function(stream){
+        streamRef.current=stream;
+        setCameraActive(true);
+      })
+      .catch(function(err2){
+        var msg="Kamera ishga tushmadi.";
+        if(err2.name==="NotAllowedError")msg="Kamera ruxsati berilmadi.\n\nSafari: Sozlamalar → Safari → Kamera → Ruxsat bering\nChrome: Manzil satridagi 🔒 → Kamera → Ruxsat bering";
+        else if(err2.name==="NotFoundError")msg="Kamera topilmadi. Qurilmangizda old kamera borligini tekshiring.";
+        else if(err2.name==="NotReadableError")msg="Kamera band. Boshqa ilova (Telegram, WhatsApp) kamerani ishlatyaptimi? Ularni yoping.";
+        else if(err2.name==="OverconstrainedError")msg="Kamera mos kelmadi. Sahifani yangilab qayta urinib ko'ring.";
+        else msg="Kamera xatosi: "+err2.message;
+        setCameraError(msg);
+      });
+    });
+  },[gpsOk,isSecure]);
+
+  var stopCamera=useCallback(function(){
+    if(streamRef.current){streamRef.current.getTracks().forEach(function(t){t.stop();});streamRef.current=null;}
+    if(videoRef.current)videoRef.current.srcObject=null;
     setCameraActive(false);
   },[]);
 
-  const capturePhoto=useCallback(()=>{
-    const vid=videoRef.current,cvs=canvasRef.current;
-    if(!vid||!cvs||vid.readyState<2)return;
-    const w=vid.videoWidth||640,h=vid.videoHeight||480;
+  // Capture
+  var capturePhoto=useCallback(function(){
+    var vid=videoRef.current,cvs=canvasRef.current;
+    if(!vid||!cvs)return;
+    if(vid.readyState<2||vid.videoWidth===0)return;
+    var w=vid.videoWidth,h=vid.videoHeight;
     cvs.width=w;cvs.height=h;
-    const ctx=cvs.getContext("2d");
+    var ctx=cvs.getContext("2d");
     ctx.translate(w,0);ctx.scale(-1,1);
     ctx.drawImage(vid,0,0,w,h);
     ctx.setTransform(1,0,0,1,0,0);
-    const now=new Date();
-    const tTxt=now.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-    const dTxt=fmtDate(now);
-    const F="'JetBrains Mono',monospace";
+    var now=new Date();
+    var tTxt=now.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    var dTxt=fmtDate(now);
+    var F="'JetBrains Mono',monospace";
+    // Top
     ctx.fillStyle="rgba(0,0,0,.6)";ctx.fillRect(0,0,w,36);
     ctx.font="bold 13px "+F;ctx.textAlign="left";
     ctx.fillStyle=curSession==="morning"?"#fbbf24":"#a78bfa";
     ctx.fillText(curSession==="morning"?"ERTALABKI":"TUSHLIK",10,24);
-    if(gpsData){ctx.textAlign="right";ctx.fillStyle=gpsStatus==="ok"?"#6ee7b7":"#fca5a5";ctx.font="bold 11px "+F;ctx.fillText("GPS:"+gpsData.distance+"m "+(gpsStatus==="ok"?"✓":"⚠"),w-10,24);}
+    if(gpsData){ctx.textAlign="right";ctx.fillStyle=gpsStatus==="ok"?"#6ee7b7":"#fca5a5";ctx.font="bold 11px "+F;ctx.fillText("GPS:"+gpsData.distance+"m "+(gpsStatus==="ok"?"\u2713":"\u26A0"),w-10,24);}
+    // Bottom
     ctx.fillStyle="rgba(0,0,0,.65)";ctx.fillRect(0,h-50,w,50);
     ctx.textAlign="center";ctx.fillStyle="#00FF88";ctx.font="bold 20px "+F;ctx.fillText(tTxt,w/2,h-26);
-    ctx.fillStyle="rgba(255,255,255,.5)";ctx.font="10px "+F;ctx.fillText(dTxt+" · "+OFFICE_LOCATION.address,w/2,h-8);
+    ctx.fillStyle="rgba(255,255,255,.5)";ctx.font="10px "+F;ctx.fillText(dTxt+" \u00B7 "+OFFICE_LOCATION.address,w/2,h-8);
     setCapturedPhoto(cvs.toDataURL("image/jpeg",0.6));
     stopCamera();
   },[stopCamera,gpsData,gpsStatus,curSession]);
 
-  const confirmCheckin=useCallback(async()=>{
+  // Confirm
+  var confirmCheckin=useCallback(function(){
     if(!capturedPhoto||submitting)return;
     setSubmitting(true);
-    const now=new Date();
-    const tStr=now.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-    const hr=now.getHours(),mn=now.getMinutes();
-    let late=0;
+    var now=new Date();
+    var tStr=now.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    var hr=now.getHours(),mn=now.getMinutes();
+    var late=0;
     if(curSession==="morning"){if(hr>9||(hr===9&&mn>0))late=(hr-9)*60+mn;}
     else{if(hr>14||(hr===14&&mn>0))late=(hr-14)*60+mn;}
-    try{
-      await db.ref("checkins/"+todayKey+"/"+empKey+"/"+curSession).set({
-        name:user.name,session:curSession,time:tStr,timestamp:now.toISOString(),lateMinutes:late,
-        gpsDistance:gpsData?.distance||0,gpsAccuracy:gpsData?.accuracy||0,
-        gpsLat:gpsData?.lat||0,gpsLng:gpsData?.lng||0,gpsOk:gpsStatus==="ok",photo:capturedPhoto
-      });
-      const rec=attendanceData[todayKey]?.[empKey]||{status:"present",morning:0,afternoon:0,note:""};
-      const u={};
-      if(curSession==="morning"){u.morning=late;if(late>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+"Selfie 09:00: "+tStr;}
-      else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+"Selfie 14:00: "+tStr;}
-      await db.ref("attendance/"+todayKey+"/"+empKey).update(u);
-      showToast("✓ "+(curSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!");
-      setCapturedPhoto(null);
-    }catch(e){showToast("⚠ Xatolik: "+(e.message||"Firebase muammo"));}
-    setSubmitting(false);
+
+    var checkinObj={
+      name:user.name,session:curSession,time:tStr,timestamp:now.toISOString(),lateMinutes:late,
+      gpsDistance:gpsData?gpsData.distance:0,gpsAccuracy:gpsData?gpsData.accuracy:0,
+      gpsLat:gpsData?gpsData.lat:0,gpsLng:gpsData?gpsData.lng:0,gpsOk:gpsStatus==="ok",photo:capturedPhoto
+    };
+    var rec=(attendanceData[todayKey]&&attendanceData[todayKey][empKey])||{status:"present",morning:0,afternoon:0,note:""};
+    var u={};
+    if(curSession==="morning"){u.morning=late;if(late>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+"Selfie 09:00: "+tStr;}
+    else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+"Selfie 14:00: "+tStr;}
+
+    db.ref("checkins/"+todayKey+"/"+empKey+"/"+curSession).set(checkinObj)
+    .then(function(){return db.ref("attendance/"+todayKey+"/"+empKey).update(u);})
+    .then(function(){
+      showToast("\u2713 "+(curSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!");
+      setCapturedPhoto(null);setSubmitting(false);
+    })
+    .catch(function(e){
+      showToast("\u26A0 Xatolik: "+(e.message||"Firebase muammo"));
+      setSubmitting(false);
+    });
   },[capturedPhoto,submitting,user,todayKey,empKey,gpsData,gpsStatus,attendanceData,curSession]);
 
-  const todayList=useMemo(()=>{
-    const tc=checkins[todayKey]||{};const list=[];
-    Object.entries(tc).forEach(([k,v])=>{
-      if(v.morning)list.push({key:k+"_m",...v.morning});
-      if(v.afternoon)list.push({key:k+"_a",...v.afternoon});
+  // Admin list
+  var todayList=useMemo(function(){
+    var tc=(checkins[todayKey])||{};var list=[];
+    Object.keys(tc).forEach(function(k){
+      var v=tc[k];
+      if(v&&v.morning)list.push(Object.assign({key:k+"_m"},v.morning));
+      if(v&&v.afternoon)list.push(Object.assign({key:k+"_a"},v.afternoon));
     });
-    return list.sort((a,b)=>(a.timestamp||"").localeCompare(b.timestamp||""));
+    list.sort(function(a,b){return(a.timestamp||"").localeCompare(b.timestamp||"");});
+    return list;
   },[checkins,todayKey]);
 
-  const canView=user.role==="admin"||user.role==="boss";
+  var canView=user.role==="admin"||user.role==="boss";
 
-  return(
-    <div className="selfie-wrap">
-      <canvas ref={canvasRef} style={{display:"none"}}/>
-      <div className="page-header"><div>
-        <div className="page-title">📸 Selfie Davomat</div>
-        <div className="page-subtitle">{todayKey} · {user.name}</div>
-      </div></div>
+  // GPS status text
+  var gpsMsg="";
+  if(gpsStatus==="checking")gpsMsg="GPS aniqlanmoqda...";
+  if(gpsStatus==="ok")gpsMsg="Ofis hududida";
+  if(gpsStatus==="far")gpsMsg="Ofisdan tashqarida";
+  if(gpsStatus==="denied")gpsMsg="GPS ruxsati berilmagan";
+  if(gpsStatus==="unavailable")gpsMsg="GPS mavjud emas";
+  if(gpsStatus==="timeout")gpsMsg="GPS javob bermadi — qayta urinilmoqda...";
+  if(gpsStatus==="insecure")gpsMsg="HTTPS kerak — sayt http:// orqali ochilgan";
+  if(gpsStatus==="error")gpsMsg="GPS xatosi";
+  var gpsSub=gpsData?(gpsData.distance+"m \u00B7 \u00B1"+gpsData.accuracy+"m"):(gpsStatus==="denied"?"Safari: Sozlamalar \u2192 Safari \u2192 Joylashuv \u2192 Ruxsat":"Kutilmoqda...");
+  var gpsColor=gpsStatus==="ok"?"var(--emerald)":gpsStatus==="far"?"var(--ruby)":"var(--cobalt)";
+  var gpsBg=gpsStatus==="ok"?"var(--emerald-bg)":gpsStatus==="far"?"var(--ruby-bg)":"var(--cobalt-bg)";
+  var gpsIcn=gpsStatus==="checking"?"\u{1F4E1}":gpsStatus==="ok"?"\u2705":gpsStatus==="far"?"\u{1F4CD}":"\u{1F6AB}";
 
-      {/* Session cards */}
-      <div style={{display:"flex",gap:10,marginBottom:16}}>
-        {[{d:myM,l:"Ertalabki",i:"🌅"},{d:myA,l:"Tushlik",i:"🌇"}].map(({d,l,i})=>(
-          <div key={l} style={{flex:1,padding:"14px 12px",borderRadius:"var(--rl)",background:d?(d.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)"):"var(--surface3)",border:"1px solid "+(d?(d.lateMinutes>0?"rgba(192,57,43,.12)":"rgba(13,122,91,.12)"):"var(--border)"),textAlign:"center"}}>
-            <div style={{fontSize:24,marginBottom:4}}>{d?(d.lateMinutes>0?"⏰":"✅"):i}</div>
-            <div style={{fontSize:11,fontWeight:700,color:"var(--navy)",marginBottom:3}}>{l}</div>
-            {d?(<>
-              <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:16,fontWeight:800,color:d.lateMinutes>0?"var(--ruby)":"var(--emerald)"}}>{d.time}</div>
-              <div style={{fontSize:10,marginTop:3,color:d.lateMinutes>0?"var(--ruby)":"var(--emerald)",fontWeight:600}}>{d.lateMinutes>0?d.lateMinutes+" daq kech":"Vaqtida ✓"}</div>
-            </>):(<div style={{fontSize:10,color:"var(--t4)",marginTop:2}}>Kutilmoqda</div>)}
-          </div>
-        ))}
-      </div>
+  return React.createElement("div",{className:"selfie-wrap"},
+    React.createElement("canvas",{ref:canvasRef,style:{display:"none"}}),
 
-      {/* Session indicator */}
-      {!curDone&&(
-        <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:curSession==="morning"?"var(--amber-bg)":"var(--violet-bg)",border:"1px solid "+(curSession==="morning"?"rgba(161,98,7,.12)":"rgba(109,40,217,.12)"),borderRadius:"var(--r)",marginBottom:12,fontSize:12,fontWeight:600,color:curSession==="morning"?"var(--amber)":"var(--violet)"}}>
-          <span style={{fontSize:20}}>{sesIcon}</span>
-          <span>{sesLabel}</span>
-          <span style={{marginLeft:"auto",fontFamily:"JetBrains Mono,monospace",fontSize:14,fontWeight:800}}>{liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}</span>
-        </div>
-      )}
+    // Header
+    React.createElement("div",{className:"page-header"},
+      React.createElement("div",null,
+        React.createElement("div",{className:"page-title"},"\u{1F4F8} Selfie Davomat"),
+        React.createElement("div",{className:"page-subtitle"},todayKey+" \u00B7 "+user.name)
+      )
+    ),
 
-      {/* Done */}
-      {curDone&&!canView?(
-        <div className="selfie-done-card">
-          <div className="selfie-done-icon">✅</div>
-          {curDone.photo&&<img src={curDone.photo} className="selfie-done-photo" alt=""/>}
-          <div className="selfie-done-title">{curSession==="morning"?"Ertalabki":"Tushlik"} qayd etilgan!</div>
-          <div className="selfie-done-sub">Vaqt: <strong>{curDone.time}</strong><br/>{curDone.lateMinutes>0?<span style={{color:"var(--ruby)"}}>Kechikish: {curDone.lateMinutes} daqiqa</span>:<span style={{color:"var(--emerald)"}}>Vaqtida ✓</span>}</div>
-          <div><span className="selfie-done-detail">🕐 {curDone.time}</span><span className="selfie-done-detail">📍 {curDone.gpsDistance}m</span></div>
-          {!bothDone&&<div style={{marginTop:14,padding:"10px 14px",background:"var(--surface3)",borderRadius:"var(--r)",fontSize:12,color:"var(--t3)"}}>💡 {curSession==="morning"?"Tushlikdan keyin (13:00 dan) yana selfie olishingiz kerak":"Ertalabki selfie olingan"}</div>}
-        </div>
-      ):!curDone&&(
-        <>
-          {/* GPS */}
-          <div style={{borderRadius:"var(--rl)",overflow:"hidden",border:"1px solid "+(gpsStatus==="ok"?"rgba(13,122,91,.15)":gpsStatus==="far"?"rgba(192,57,43,.15)":"rgba(30,76,190,.15)"),background:gpsStatus==="ok"?"var(--emerald-bg)":gpsStatus==="far"?"var(--ruby-bg)":"var(--cobalt-bg)",marginBottom:14}}>
-            <div style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:40,height:40,borderRadius:10,flexShrink:0,background:"rgba(0,0,0,.04)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>
-                {gpsStatus==="checking"?"📡":gpsStatus==="ok"?"✅":gpsStatus==="far"?"📍":"🚫"}
-              </div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:gpsStatus==="ok"?"var(--emerald)":gpsStatus==="far"?"var(--ruby)":"var(--cobalt)"}}>
-                  {gpsStatus==="checking"&&"GPS aniqlanmoqda..."}{gpsStatus==="ok"&&"Ofis hududida"}{gpsStatus==="far"&&"Ofisdan tashqarida"}{gpsStatus==="denied"&&"GPS ruxsati berilmagan"}{gpsStatus==="unavailable"&&"GPS mavjud emas"}
-                </div>
-                <div style={{fontSize:11,opacity:.7,marginTop:2}}>{gpsData?gpsData.distance+"m · ±"+gpsData.accuracy+"m":"Kutilmoqda..."}</div>
-              </div>
-              {gpsData&&<div style={{fontFamily:"JetBrains Mono,monospace",fontSize:20,fontWeight:800,color:gpsStatus==="ok"?"var(--emerald)":"var(--ruby)"}}>{gpsData.distance}m</div>}
-            </div>
-            {gpsData&&<div style={{height:4,background:"rgba(0,0,0,.06)"}}><div style={{height:"100%",width:Math.min(100,Math.round(gpsData.distance/OFFICE_LOCATION.radius*100))+"%",background:gpsStatus==="ok"?"var(--emerald)":"var(--ruby)",transition:"width .4s"}}/></div>}
-          </div>
+    // Session cards
+    React.createElement("div",{style:{display:"flex",gap:10,marginBottom:16}},
+      [{d:myM,l:"Ertalabki",i:"\u{1F305}"},{d:myA,l:"Tushlik",i:"\u{1F307}"}].map(function(s){
+        return React.createElement("div",{key:s.l,style:{flex:1,padding:"14px 12px",borderRadius:"var(--rl)",background:s.d?(s.d.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)"):"var(--surface3)",border:"1px solid "+(s.d?(s.d.lateMinutes>0?"rgba(192,57,43,.12)":"rgba(13,122,91,.12)"):"var(--border)"),textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:24,marginBottom:4}},s.d?(s.d.lateMinutes>0?"\u23F0":"\u2705"):s.i),
+          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"var(--navy)",marginBottom:3}},s.l),
+          s.d?React.createElement(React.Fragment,null,
+            React.createElement("div",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:16,fontWeight:800,color:s.d.lateMinutes>0?"var(--ruby)":"var(--emerald)"}},s.d.time),
+            React.createElement("div",{style:{fontSize:10,marginTop:3,color:s.d.lateMinutes>0?"var(--ruby)":"var(--emerald)",fontWeight:600}},s.d.lateMinutes>0?s.d.lateMinutes+" daq kech":"Vaqtida \u2713")
+          ):React.createElement("div",{style:{fontSize:10,color:"var(--t4)",marginTop:2}},"Kutilmoqda")
+        );
+      })
+    ),
 
-          {cameraError&&<div style={{padding:"12px 14px",background:"var(--ruby-bg)",border:"1px solid rgba(192,57,43,.15)",borderRadius:"var(--r)",marginBottom:14,fontSize:12,color:"var(--ruby)"}}>{cameraError}</div>}
+    // Session indicator
+    !curDone&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:curSession==="morning"?"var(--amber-bg)":"var(--violet-bg)",border:"1px solid "+(curSession==="morning"?"rgba(161,98,7,.12)":"rgba(109,40,217,.12)"),borderRadius:"var(--r)",marginBottom:12,fontSize:12,fontWeight:600,color:curSession==="morning"?"var(--amber)":"var(--violet)"}},
+      React.createElement("span",{style:{fontSize:20}},sesIcon),
+      React.createElement("span",null,sesLabel),
+      React.createElement("span",{style:{marginLeft:"auto",fontFamily:"JetBrains Mono,monospace",fontSize:14,fontWeight:800}},liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"}))
+    ),
 
-          {/* Camera */}
-          <div className="selfie-camera-box" style={{background:cameraActive?"#000":"var(--ink)"}}>
-            {!gpsOk&&!cameraActive&&!capturedPhoto&&(
-              <div style={{padding:"40px 30px",textAlign:"center"}}>
-                <div style={{fontSize:32,marginBottom:12}}>{gpsStatus==="checking"?"📡":"🚫"}</div>
-                {gpsStatus==="checking"?(<>
-                  <div style={{width:24,height:24,border:"3px solid rgba(255,255,255,.15)",borderTopColor:"var(--gold)",borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/>
-                  <div style={{color:"rgba(255,255,255,.6)",fontSize:13}}>GPS aniqlanmoqda...</div>
-                </>):(<>
-                  <div style={{color:"#fca5a5",fontSize:14,fontWeight:700}}>GPS yoqilmagan</div>
-                  <div style={{color:"rgba(255,255,255,.35)",fontSize:12,marginTop:8}}>Selfie uchun GPS <strong style={{color:"rgba(255,255,255,.7)"}}>majburiy</strong></div>
-                  <button onClick={()=>window.location.reload()} style={{marginTop:14,padding:"10px 24px",background:"var(--gold)",color:"var(--ink)",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>🔄 Yangilash</button>
-                </>)}
-              </div>
-            )}
-            {gpsOk&&!cameraActive&&!capturedPhoto&&(
-              <button className="selfie-start-btn" onClick={startCamera}>
-                <span style={{fontSize:48}}>{sesIcon}</span>
-                <span style={{fontSize:16,fontWeight:700}}>Kamerani yoqish</span>
-                <span style={{fontSize:11,opacity:.5}}>{sesLabel}</span>
-              </button>
-            )}
-            {cameraActive&&(
-              <div style={{width:"100%",position:"relative"}}>
-                <video ref={videoRef} autoPlay playsInline muted className="selfie-video"/>
-                <div className="selfie-time-overlay"><span className="selfie-time-badge">{liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}</span></div>
-                <div style={{position:"absolute",top:10,left:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:curSession==="morning"?"#fbbf24":"#a78bfa"}}>{curSession==="morning"?"☀ ERTALAB":"🌙 TUSHLIK"}</div>
-                {gpsData&&<div style={{position:"absolute",top:10,right:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:gpsStatus==="ok"?"#6ee7b7":"#fca5a5"}}>📍{gpsData.distance}m</div>}
-                <button className="selfie-capture-btn" onClick={capturePhoto}><div className="selfie-capture-inner"/></button>
-                <button onClick={stopCamera} style={{position:"absolute",bottom:14,left:14,padding:"6px 14px",background:"rgba(0,0,0,.5)",border:"none",borderRadius:8,color:"rgba(255,255,255,.6)",fontSize:11,cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>✕ Yopish</button>
-              </div>
-            )}
-            {capturedPhoto&&(
-              <div style={{width:"100%"}}>
-                <img src={capturedPhoto} className="selfie-preview-img" alt=""/>
-                <div className="selfie-preview-actions">
-                  <button className="selfie-retake-btn" onClick={()=>{setCapturedPhoto(null);startCamera();}}>🔄 Qayta</button>
-                  <button className="selfie-confirm-btn" onClick={confirmCheckin} disabled={submitting}>{submitting?"⏳ Saqlanmoqda...":"✅ Tasdiqlash"}</button>
-                </div>
-                {gpsStatus==="far"&&<div style={{padding:"8px 14px",background:"rgba(192,57,43,.15)",fontSize:11,color:"#fca5a5",textAlign:"center"}}>⚠ Ofisdan {gpsData?.distance}m uzoqda</div>}
-              </div>
-            )}
-          </div>
-        </>
-      )}
+    // Done card
+    curDone&&!canView?React.createElement("div",{className:"selfie-done-card"},
+      React.createElement("div",{className:"selfie-done-icon"},"\u2705"),
+      curDone.photo&&React.createElement("img",{src:curDone.photo,className:"selfie-done-photo",alt:""}),
+      React.createElement("div",{className:"selfie-done-title"},(curSession==="morning"?"Ertalabki":"Tushlik")+" qayd etilgan!"),
+      React.createElement("div",{className:"selfie-done-sub"},
+        "Vaqt: ",React.createElement("strong",null,curDone.time),React.createElement("br",null),
+        curDone.lateMinutes>0?React.createElement("span",{style:{color:"var(--ruby)"}},"Kechikish: "+curDone.lateMinutes+" daqiqa"):React.createElement("span",{style:{color:"var(--emerald)"}},"Vaqtida \u2713")
+      ),
+      React.createElement("div",null,
+        React.createElement("span",{className:"selfie-done-detail"},"\u{1F550} "+curDone.time),
+        React.createElement("span",{className:"selfie-done-detail"},"\u{1F4CD} "+curDone.gpsDistance+"m")
+      ),
+      !bothDone&&React.createElement("div",{style:{marginTop:14,padding:"10px 14px",background:"var(--surface3)",borderRadius:"var(--r)",fontSize:12,color:"var(--t3)"}},
+        "\u{1F4A1} "+(curSession==="morning"?"Tushlikdan keyin (13:00 dan) yana selfie olishingiz kerak":"Ertalabki selfie olingan")
+      )
+    ):
+    !curDone?React.createElement(React.Fragment,null,
+      // GPS
+      React.createElement("div",{style:{borderRadius:"var(--rl)",overflow:"hidden",border:"1px solid "+(gpsStatus==="ok"?"rgba(13,122,91,.15)":gpsStatus==="far"?"rgba(192,57,43,.15)":"rgba(30,76,190,.15)"),background:gpsBg,marginBottom:14}},
+        React.createElement("div",{style:{padding:"12px 16px",display:"flex",alignItems:"center",gap:12}},
+          React.createElement("div",{style:{width:40,height:40,borderRadius:10,flexShrink:0,background:"rgba(0,0,0,.04)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}},gpsIcn),
+          React.createElement("div",{style:{flex:1}},
+            React.createElement("div",{style:{fontSize:13,fontWeight:700,color:gpsColor}},gpsMsg),
+            React.createElement("div",{style:{fontSize:11,opacity:.7,marginTop:2}},gpsSub)
+          ),
+          gpsData&&React.createElement("div",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:20,fontWeight:800,color:gpsColor}},gpsData.distance+"m")
+        ),
+        gpsData&&React.createElement("div",{style:{height:4,background:"rgba(0,0,0,.06)"}},
+          React.createElement("div",{style:{height:"100%",width:Math.min(100,Math.round(gpsData.distance/OFFICE_LOCATION.radius*100))+"%",background:gpsStatus==="ok"?"var(--emerald)":"var(--ruby)",transition:"width .4s"}})
+        )
+      ),
 
-      {/* Admin */}
-      {canView&&todayList.length>0&&(
-        <div className="selfie-history-card">
-          <div className="table-header"><div><div className="table-title">Bugungi Selfie</div><div className="table-meta">{todayList.length} ta yozuv</div></div></div>
-          {todayList.map((c,i)=>(
-            <div key={c.key} className="selfie-history-item">
-              <span style={{fontSize:11,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",width:22}}>{i+1}</span>
-              {c.photo&&<img src={c.photo} className="selfie-history-photo" alt=""/>}
-              <div style={{flex:1,minWidth:0}}>
-                <div className="selfie-history-emp">{c.name}</div>
-                <div style={{fontSize:10,color:"var(--t3)"}}>{c.session==="morning"?"🌅":"🌇"} · {c.gpsDistance}m {c.gpsOk?"✓":"⚠"}</div>
-              </div>
-              <div style={{textAlign:"right"}}>
-                <div className="selfie-history-time">{c.time||"—"}</div>
-                <span className="selfie-history-badge" style={{color:c.lateMinutes>0?"var(--ruby)":"var(--emerald)",background:c.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)"}}>{c.lateMinutes>0?c.lateMinutes+"d":"✓"}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {canView&&todayList.length===0&&<div style={{textAlign:"center",color:"var(--t4)",padding:30,fontSize:13}}>Hali selfie qayd etilmagan</div>}
-    </div>
+      // Camera error
+      cameraError&&React.createElement("div",{style:{padding:"14px",background:"var(--ruby-bg)",border:"1px solid rgba(192,57,43,.15)",borderRadius:"var(--r)",marginBottom:14,fontSize:12,color:"var(--ruby)",whiteSpace:"pre-line",lineHeight:1.6}},cameraError),
+
+      // Camera box
+      React.createElement("div",{className:"selfie-camera-box",style:{background:cameraActive?"#000":"var(--ink)"}},
+        // GPS not ready
+        !gpsOk&&!cameraActive&&!capturedPhoto&&React.createElement("div",{style:{padding:"40px 30px",textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:32,marginBottom:12}},gpsStatus==="checking"?"\u{1F4E1}":"\u{1F6AB}"),
+          gpsStatus==="checking"?React.createElement(React.Fragment,null,
+            React.createElement("div",{style:{width:24,height:24,border:"3px solid rgba(255,255,255,.15)",borderTopColor:"var(--gold)",borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}),
+            React.createElement("div",{style:{color:"rgba(255,255,255,.6)",fontSize:13}},"GPS aniqlanmoqda...")
+          ):React.createElement(React.Fragment,null,
+            React.createElement("div",{style:{color:"#fca5a5",fontSize:14,fontWeight:700}},gpsMsg),
+            React.createElement("div",{style:{color:"rgba(255,255,255,.35)",fontSize:12,marginTop:8,lineHeight:1.7}},"Selfie uchun GPS ",React.createElement("strong",{style:{color:"rgba(255,255,255,.7)"}},"majburiy")),
+            React.createElement("div",{style:{color:"rgba(255,255,255,.3)",fontSize:11,marginTop:10,lineHeight:1.8}},
+              "\u{1F4F1} Safari: Sozlamalar \u2192 Safari \u2192 Joylashuv xizmatlari",
+              React.createElement("br",null),
+              "\u{1F4F1} Chrome: Manzil satri \u2192 \u{1F512} \u2192 Joylashuv \u2192 Ruxsat"
+            ),
+            React.createElement("button",{onClick:function(){window.location.reload();},style:{marginTop:14,padding:"10px 24px",background:"var(--gold)",color:"var(--ink)",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}},"\u{1F504} Yangilash")
+          )
+        ),
+
+        // Camera start button
+        gpsOk&&!cameraActive&&!capturedPhoto&&React.createElement("button",{className:"selfie-start-btn",onClick:startCamera},
+          React.createElement("span",{style:{fontSize:48}},sesIcon),
+          React.createElement("span",{style:{fontSize:16,fontWeight:700}},"Kamerani yoqish"),
+          React.createElement("span",{style:{fontSize:11,opacity:.5}},sesLabel)
+        ),
+
+        // Camera active — video + overlays
+        cameraActive&&React.createElement(React.Fragment,null,
+          React.createElement("video",{ref:videoRef,autoPlay:true,playsInline:true,muted:true,className:"selfie-video",style:{width:"100%",display:"block"},"webkit-playsinline":"true"}),
+          React.createElement("div",{style:{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"flex-end",pointerEvents:"none"}},
+          // Session badge
+          React.createElement("div",{style:{position:"absolute",top:10,left:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:curSession==="morning"?"#fbbf24":"#a78bfa"}},curSession==="morning"?"\u2600 ERTALAB":"\u{1F319} TUSHLIK"),
+          // GPS badge
+          gpsData&&React.createElement("div",{style:{position:"absolute",top:10,right:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:gpsStatus==="ok"?"#6ee7b7":"#fca5a5"}},"\u{1F4CD}"+gpsData.distance+"m"),
+          // Time
+          React.createElement("div",{className:"selfie-time-overlay"},React.createElement("span",{className:"selfie-time-badge"},liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"}))),
+          // Capture
+          React.createElement("button",{className:"selfie-capture-btn",onClick:capturePhoto,style:{pointerEvents:"auto"}},React.createElement("div",{className:"selfie-capture-inner"})),
+          // Close
+          React.createElement("button",{onClick:stopCamera,style:{position:"absolute",bottom:14,left:14,padding:"6px 14px",background:"rgba(0,0,0,.5)",border:"none",borderRadius:8,color:"rgba(255,255,255,.6)",fontSize:11,cursor:"pointer",fontFamily:"Outfit,sans-serif",pointerEvents:"auto"}},"\u2715 Yopish")
+        )
+        ),
+
+        // Preview
+        capturedPhoto&&React.createElement("div",{style:{width:"100%"}},
+          React.createElement("img",{src:capturedPhoto,className:"selfie-preview-img",alt:""}),
+          React.createElement("div",{className:"selfie-preview-actions"},
+            React.createElement("button",{className:"selfie-retake-btn",onClick:function(){setCapturedPhoto(null);startCamera();}},"\u{1F504} Qayta"),
+            React.createElement("button",{className:"selfie-confirm-btn",onClick:confirmCheckin,disabled:submitting},submitting?"\u23F3 Saqlanmoqda...":"\u2705 Tasdiqlash")
+          ),
+          gpsStatus==="far"&&React.createElement("div",{style:{padding:"8px 14px",background:"rgba(192,57,43,.15)",fontSize:11,color:"#fca5a5",textAlign:"center"}},"\u26A0 Ofisdan "+(gpsData?gpsData.distance:0)+"m uzoqda")
+        )
+      )
+    ):null,
+
+    // Admin list
+    canView&&todayList.length>0&&React.createElement("div",{className:"selfie-history-card"},
+      React.createElement("div",{className:"table-header"},React.createElement("div",null,
+        React.createElement("div",{className:"table-title"},"Bugungi Selfie"),
+        React.createElement("div",{className:"table-meta"},todayList.length+" ta yozuv")
+      )),
+      todayList.map(function(c,i){
+        return React.createElement("div",{key:c.key,className:"selfie-history-item"},
+          React.createElement("span",{style:{fontSize:11,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",width:22}},i+1),
+          c.photo&&React.createElement("img",{src:c.photo,className:"selfie-history-photo",alt:""}),
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{className:"selfie-history-emp"},c.name),
+            React.createElement("div",{style:{fontSize:10,color:"var(--t3)"}},(c.session==="morning"?"\u{1F305}":"\u{1F307}")+" \u00B7 "+c.gpsDistance+"m "+(c.gpsOk?"\u2713":"\u26A0"))
+          ),
+          React.createElement("div",{style:{textAlign:"right"}},
+            React.createElement("div",{className:"selfie-history-time"},c.time||"\u2014"),
+            React.createElement("span",{className:"selfie-history-badge",style:{color:c.lateMinutes>0?"var(--ruby)":"var(--emerald)",background:c.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)"}},c.lateMinutes>0?c.lateMinutes+"d":"\u2713")
+          )
+        );
+      })
+    ),
+    canView&&todayList.length===0&&React.createElement("div",{style:{textAlign:"center",color:"var(--t4)",padding:30,fontSize:13}},"Hali selfie qayd etilmagan")
   );
 }
 
