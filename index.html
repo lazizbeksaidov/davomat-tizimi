@@ -3327,7 +3327,7 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
 /* ═══ SELFIE CHECKIN ═══ */
 function SelfieCheckin({user, attendanceData, showToast}) {
   const {useState, useEffect, useRef, useCallback, useMemo} = React;
-  const [gpsStatus, setGpsStatus] = useState("checking"); // checking, ok, far, denied
+  const [gpsStatus, setGpsStatus] = useState("checking");
   const [gpsDistance, setGpsDistance] = useState(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState(null);
@@ -3341,27 +3341,35 @@ function SelfieCheckin({user, attendanceData, showToast}) {
   const todayKey = fmtDate(new Date());
   const empKey = safeKey(user.name);
 
-  // Load checkins from Firebase
+  // Session logic: before 13:00 = morning, 13:00+ = afternoon
+  const currentHour = liveTime.getHours();
+  const currentSession = currentHour < 13 ? "morning" : "afternoon";
+  const sessionLabel = currentSession === "morning" ? "Ertalabki (09:00)" : "Tushlikdan keyin (14:00)";
+  const sessionIcon = currentSession === "morning" ? "🌅" : "🌇";
+
+  // Load checkins
   useEffect(() => {
     const ref = db.ref("checkins");
     ref.on("value", snap => setCheckins(snap.val() || {}));
     return () => ref.off();
   }, []);
 
-  // Clock
   useEffect(() => {
     const t = setInterval(() => setLiveTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Cleanup camera
   useEffect(() => {
     return () => { if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop()); };
   }, []);
 
-  const myTodayCheckin = checkins[todayKey]?.[empKey] || null;
+  // My today's checkins (morning & afternoon separately)
+  const myMorning = checkins[todayKey]?.[empKey]?.morning || null;
+  const myAfternoon = checkins[todayKey]?.[empKey]?.afternoon || null;
+  const currentDone = currentSession === "morning" ? myMorning : myAfternoon;
+  const bothDone = myMorning && myAfternoon;
 
-  // GPS check
+  // GPS
   const checkGPS = useCallback(() => {
     setGpsStatus("checking");
     if (!navigator.geolocation) { setGpsStatus("denied"); return; }
@@ -3407,7 +3415,6 @@ function SelfieCheckin({user, attendanceData, showToast}) {
     canvas.height = video.videoHeight || 640;
     const ctx = canvas.getContext("2d");
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    // Timestamp overlay
     const now = new Date();
     const text = fmtDate(now) + " " + now.toLocaleTimeString("uz-UZ", {hour:"2-digit",minute:"2-digit",second:"2-digit"});
     ctx.fillStyle = "rgba(0,0,0,0.55)";
@@ -3416,19 +3423,17 @@ function SelfieCheckin({user, attendanceData, showToast}) {
     ctx.font = "bold 18px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
     ctx.fillText(text, canvas.width / 2, canvas.height - 14);
-    // GPS overlay
-    if (gpsDistance !== null) {
-      ctx.fillStyle = "rgba(0,0,0,0.45)";
-      ctx.fillRect(0, 0, canvas.width, 30);
-      ctx.fillStyle = gpsStatus === "ok" ? "#6ee7b7" : "#fca5a5";
-      ctx.font = "bold 12px 'JetBrains Mono', monospace";
-      ctx.textAlign = "left";
-      ctx.fillText("GPS: " + gpsDistance + "m " + (gpsStatus === "ok" ? "✓ Ofis hududida" : "⚠ Uzoqda"), 10, 20);
-    }
+    // Session badge on photo
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, canvas.width, 34);
+    ctx.fillStyle = currentSession === "morning" ? "#fbbf24" : "#818cf8";
+    ctx.font = "bold 13px 'JetBrains Mono', monospace";
+    ctx.textAlign = "left";
+    ctx.fillText((currentSession === "morning" ? "☀ ERTALABKI" : "🌙 TUSHLIK") + (gpsDistance !== null ? ("  |  GPS: " + gpsDistance + "m " + (gpsStatus === "ok" ? "✓" : "⚠")) : ""), 10, 22);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
     setCapturedPhoto(dataUrl);
     stopCamera();
-  }, [stopCamera, gpsDistance, gpsStatus]);
+  }, [stopCamera, gpsDistance, gpsStatus, currentSession]);
 
   const confirmCheckin = useCallback(async () => {
     if (!capturedPhoto || submitting) return;
@@ -3437,55 +3442,92 @@ function SelfieCheckin({user, attendanceData, showToast}) {
     const timeStr = now.toLocaleTimeString("uz-UZ", {hour:"2-digit",minute:"2-digit",second:"2-digit"});
     const hour = now.getHours();
     const minute = now.getMinutes();
-    let morningLate = 0;
-    if (hour > 9 || (hour === 9 && minute > 0)) {
-      morningLate = (hour - 9) * 60 + minute;
+
+    // Calculate lateness
+    let lateMinutes = 0;
+    if (currentSession === "morning") {
+      if (hour > 9 || (hour === 9 && minute > 0)) {
+        lateMinutes = (hour - 9) * 60 + minute;
+      }
+    } else {
+      if (hour > 14 || (hour === 14 && minute > 0)) {
+        lateMinutes = (hour - 14) * 60 + minute;
+      }
     }
 
     const checkinData = {
       name: user.name,
+      session: currentSession,
       time: timeStr,
       timestamp: now.toISOString(),
-      morningLate: morningLate,
+      lateMinutes: lateMinutes,
       gpsDistance: gpsDistance || 0,
       gpsOk: gpsStatus === "ok",
       photo: capturedPhoto
     };
 
     try {
-      // Save checkin
-      await db.ref("checkins/" + todayKey + "/" + empKey).set(checkinData);
-      // Auto-update attendance if late
+      // Save checkin under session key
+      await db.ref("checkins/" + todayKey + "/" + empKey + "/" + currentSession).set(checkinData);
+
+      // Auto-update attendance
       const existingRec = attendanceData[todayKey]?.[empKey] || { status: "present", morning: 0, afternoon: 0, note: "" };
-      if (morningLate > 0 && existingRec.morning === 0) {
-        await db.ref("attendance/" + todayKey + "/" + empKey).update({
-          status: "late",
-          morning: morningLate,
-          note: (existingRec.note ? existingRec.note + " | " : "") + "Selfie: " + timeStr
-        });
-      } else if (morningLate === 0) {
-        await db.ref("attendance/" + todayKey + "/" + empKey).update({
-          note: (existingRec.note ? existingRec.note + " | " : "") + "Selfie: " + timeStr
-        });
+      const updateData = {};
+      if (currentSession === "morning") {
+        updateData.morning = lateMinutes;
+        if (lateMinutes > 0) updateData.status = "late";
+        updateData.note = (existingRec.note ? existingRec.note + " | " : "") + "Selfie 09:00: " + timeStr;
+      } else {
+        updateData.afternoon = lateMinutes;
+        if (lateMinutes > 0 || existingRec.morning > 0) updateData.status = "late";
+        updateData.note = (existingRec.note ? existingRec.note + " | " : "") + "Selfie 14:00: " + timeStr;
       }
-      showToast("✓ Davomat muvaffaqiyatli qayd etildi!");
+      await db.ref("attendance/" + todayKey + "/" + empKey).update(updateData);
+      showToast("✓ " + (currentSession === "morning" ? "Ertalabki" : "Tushlik") + " davomat qayd etildi!");
     } catch(e) {
       showToast("⚠ Xatolik: " + (e.message || "Firebase bilan muammo"));
     }
     setSubmitting(false);
-  }, [capturedPhoto, submitting, user, todayKey, empKey, gpsDistance, gpsStatus, attendanceData]);
+  }, [capturedPhoto, submitting, user, todayKey, empKey, gpsDistance, gpsStatus, attendanceData, currentSession]);
 
-  // Today's all checkins (for admin)
+  // Admin: Today's all checkins flat list
   const todayCheckins = useMemo(() => {
     const tc = checkins[todayKey] || {};
-    return Object.entries(tc).map(([k, v]) => ({ key: k, ...v })).sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
+    const list = [];
+    Object.entries(tc).forEach(([k, v]) => {
+      if (v.morning) list.push({ key: k + "_m", empKey: k, ...v.morning });
+      if (v.afternoon) list.push({ key: k + "_a", empKey: k, ...v.afternoon });
+    });
+    return list.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
   }, [checkins, todayKey]);
 
   const isAdmin = user.role === "admin";
   const isBoss = user.role === "boss";
   const canView = isAdmin || isBoss;
 
-  const fmtTimeShort = (t) => t || "—";
+  // Session status card
+  const SessionCard = ({data, label, icon, targetTime}) => (
+    <div style={{
+      flex: 1, padding: "16px", borderRadius: "var(--rl)",
+      background: data ? (data.lateMinutes > 0 ? "var(--ruby-bg)" : "var(--emerald-bg)") : "var(--surface3)",
+      border: "1px solid " + (data ? (data.lateMinutes > 0 ? "rgba(192,57,43,.12)" : "rgba(13,122,91,.12)") : "var(--border)"),
+      textAlign: "center"
+    }}>
+      <div style={{fontSize: 28, marginBottom: 6}}>{data ? (data.lateMinutes > 0 ? "⏰" : "✅") : icon}</div>
+      <div style={{fontSize: 12, fontWeight: 700, color: "var(--navy)", marginBottom: 4}}>{label}</div>
+      {data ? (
+        <>
+          <div style={{fontFamily: "JetBrains Mono, monospace", fontSize: 18, fontWeight: 800, color: data.lateMinutes > 0 ? "var(--ruby)" : "var(--emerald)"}}>{data.time}</div>
+          <div style={{fontSize: 11, marginTop: 4, color: data.lateMinutes > 0 ? "var(--ruby)" : "var(--emerald)", fontWeight: 600}}>
+            {data.lateMinutes > 0 ? (data.lateMinutes + " daqiqa kech") : "Vaqtida ✓"}
+          </div>
+          {data.photo && <img src={data.photo} alt="" style={{width: 48, height: 48, borderRadius: 8, objectFit: "cover", marginTop: 8, border: "2px solid " + (data.lateMinutes > 0 ? "rgba(192,57,43,.2)" : "rgba(13,122,91,.2)")}}/>}
+        </>
+      ) : (
+        <div style={{fontSize: 11, color: "var(--t4)", marginTop: 2}}>Hali qayd etilmagan</div>
+      )}
+    </div>
+  );
 
   return (
     <div className="selfie-wrap">
@@ -3497,26 +3539,54 @@ function SelfieCheckin({user, attendanceData, showToast}) {
         </div>
       </div>
 
-      {/* Already checked in */}
-      {myTodayCheckin && !canView ? (
+      {/* Two session status cards */}
+      <div style={{display:"flex", gap: 10, marginBottom: 18}}>
+        <SessionCard data={myMorning} label="Ertalabki" icon="🌅" targetTime="09:00"/>
+        <SessionCard data={myAfternoon} label="Tushlikdan keyin" icon="🌇" targetTime="14:00"/>
+      </div>
+
+      {/* Current session indicator */}
+      {!currentDone && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10, padding: "12px 16px",
+          background: currentSession === "morning" ? "var(--amber-bg)" : "var(--violet-bg)",
+          border: "1px solid " + (currentSession === "morning" ? "rgba(161,98,7,.12)" : "rgba(109,40,217,.12)"),
+          borderRadius: "var(--rl)", marginBottom: 14, fontSize: 13, fontWeight: 600,
+          color: currentSession === "morning" ? "var(--amber)" : "var(--violet)"
+        }}>
+          <span style={{fontSize: 22}}>{sessionIcon}</span>
+          <span>Hozirgi smena: <strong>{sessionLabel}</strong></span>
+        </div>
+      )}
+
+      {/* Already done for this session */}
+      {currentDone && !canView ? (
         <div className="selfie-done-card">
           <div className="selfie-done-icon">✅</div>
-          {myTodayCheckin.photo && <img src={myTodayCheckin.photo} className="selfie-done-photo" alt=""/>}
-          <div className="selfie-done-title">Bugun qayd etilgan!</div>
+          {currentDone.photo && <img src={currentDone.photo} className="selfie-done-photo" alt=""/>}
+          <div className="selfie-done-title">{currentSession === "morning" ? "Ertalabki" : "Tushlik"} qayd etilgan!</div>
           <div className="selfie-done-sub">
-            Kelgan vaqt: <strong>{myTodayCheckin.time}</strong><br/>
-            {myTodayCheckin.morningLate > 0
-              ? <span style={{color:"var(--ruby)"}}>Kechikish: {myTodayCheckin.morningLate} daqiqa</span>
+            Kelgan vaqt: <strong>{currentDone.time}</strong><br/>
+            {currentDone.lateMinutes > 0
+              ? <span style={{color:"var(--ruby)"}}>Kechikish: {currentDone.lateMinutes} daqiqa</span>
               : <span style={{color:"var(--emerald)"}}>Vaqtida keldi ✓</span>}
           </div>
           <div>
-            <span className="selfie-done-detail">🕐 {myTodayCheckin.time}</span>
-            <span className="selfie-done-detail">📍 {myTodayCheckin.gpsDistance}m {myTodayCheckin.gpsOk?"✓":"⚠"}</span>
+            <span className="selfie-done-detail">🕐 {currentDone.time}</span>
+            <span className="selfie-done-detail">📍 {currentDone.gpsDistance}m {currentDone.gpsOk?"✓":"⚠"}</span>
+            <span className="selfie-done-detail">{currentSession === "morning" ? "🌅 Ertalabki" : "🌇 Tushlik"}</span>
           </div>
+          {!bothDone && (
+            <div style={{marginTop: 16, padding: "10px 16px", background: "var(--surface3)", borderRadius: "var(--r)", fontSize: 12, color: "var(--t3)"}}>
+              💡 {currentSession === "morning"
+                ? "Tushlikdan keyin (13:00 dan) yana selfie olishingiz kerak"
+                : "Ertalabki selfie allaqachon olingan"}
+            </div>
+          )}
         </div>
-      ) : (
+      ) : !currentDone && (
         <>
-          {/* GPS Status */}
+          {/* GPS */}
           <div className={"selfie-gps-bar " + (gpsStatus==="ok"?"gps-ok":gpsStatus==="far"?"gps-far":gpsStatus==="denied"?"gps-denied":"gps-wait")}>
             <span style={{fontSize:18}}>
               {gpsStatus==="checking"?"📡":gpsStatus==="ok"?"✅":gpsStatus==="far"?"⚠️":"🚫"}
@@ -3531,43 +3601,41 @@ function SelfieCheckin({user, attendanceData, showToast}) {
           </div>
 
           {/* Camera */}
-          {!myTodayCheckin && (
-            <div className="selfie-camera-box">
-              {!cameraActive && !capturedPhoto && (
-                <button className="selfie-start-btn" onClick={startCamera}>
-                  <span style={{fontSize:42}}>📸</span>
-                  <span>Kamerani yoqish</span>
-                  <span style={{fontSize:11,opacity:.5}}>Old kamera ishlatiladi</span>
+          <div className="selfie-camera-box">
+            {!cameraActive && !capturedPhoto && (
+              <button className="selfie-start-btn" onClick={startCamera}>
+                <span style={{fontSize:42}}>{sessionIcon}</span>
+                <span>Kamerani yoqish</span>
+                <span style={{fontSize:11,opacity:.5}}>{sessionLabel} · Old kamera</span>
+              </button>
+            )}
+            {cameraActive && (
+              <div style={{width:"100%",position:"relative"}}>
+                <video ref={videoRef} autoPlay playsInline muted className="selfie-video"/>
+                <div className="selfie-time-overlay">
+                  <span className="selfie-time-badge">
+                    {liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+                  </span>
+                </div>
+                <button className="selfie-capture-btn" onClick={capturePhoto}>
+                  <div className="selfie-capture-inner"/>
                 </button>
-              )}
-              {cameraActive && (
-                <div style={{width:"100%",position:"relative"}}>
-                  <video ref={videoRef} autoPlay playsInline muted className="selfie-video"/>
-                  <div className="selfie-time-overlay">
-                    <span className="selfie-time-badge">
-                      {liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
-                    </span>
-                  </div>
-                  <button className="selfie-capture-btn" onClick={capturePhoto}>
-                    <div className="selfie-capture-inner"/>
+              </div>
+            )}
+            {capturedPhoto && (
+              <div style={{width:"100%"}}>
+                <img src={capturedPhoto} className="selfie-preview-img" alt="Selfie"/>
+                <div className="selfie-preview-actions">
+                  <button className="selfie-retake-btn" onClick={() => { setCapturedPhoto(null); startCamera(); }}>
+                    🔄 Qayta olish
+                  </button>
+                  <button className="selfie-confirm-btn" onClick={confirmCheckin} disabled={submitting}>
+                    {submitting ? "⏳ Saqlanmoqda..." : "✅ Tasdiqlash"}
                   </button>
                 </div>
-              )}
-              {capturedPhoto && (
-                <div style={{width:"100%"}}>
-                  <img src={capturedPhoto} className="selfie-preview-img" alt="Selfie"/>
-                  <div className="selfie-preview-actions">
-                    <button className="selfie-retake-btn" onClick={() => { setCapturedPhoto(null); startCamera(); }}>
-                      🔄 Qayta olish
-                    </button>
-                    <button className="selfie-confirm-btn" onClick={confirmCheckin} disabled={submitting}>
-                      {submitting ? "⏳ Saqlanmoqda..." : "✅ Tasdiqlash"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </>
       )}
 
@@ -3577,7 +3645,7 @@ function SelfieCheckin({user, attendanceData, showToast}) {
           <div className="table-header">
             <div>
               <div className="table-title">Bugungi Selfie Yozuvlar</div>
-              <div className="table-meta">{todayCheckins.length} ta xodim qayd etdi</div>
+              <div className="table-meta">{todayCheckins.length} ta yozuv</div>
             </div>
           </div>
           {todayCheckins.map((c, i) => (
@@ -3586,15 +3654,17 @@ function SelfieCheckin({user, attendanceData, showToast}) {
               {c.photo && <img src={c.photo} className="selfie-history-photo" alt=""/>}
               <div style={{flex:1,minWidth:0}}>
                 <div className="selfie-history-emp">{c.name}</div>
-                <div style={{fontSize:11,color:"var(--t3)"}}>GPS: {c.gpsDistance}m {c.gpsOk?"✓":"⚠"}</div>
+                <div style={{fontSize:11,color:"var(--t3)"}}>
+                  {c.session === "morning" ? "🌅 Ertalabki" : "🌇 Tushlik"} · GPS: {c.gpsDistance}m {c.gpsOk?"✓":"⚠"}
+                </div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div className="selfie-history-time">{fmtTimeShort(c.time)}</div>
+                <div className="selfie-history-time">{c.time || "—"}</div>
                 <span className="selfie-history-badge" style={{
-                  color: c.morningLate > 0 ? "var(--ruby)" : "var(--emerald)",
-                  background: c.morningLate > 0 ? "var(--ruby-bg)" : "var(--emerald-bg)"
+                  color: c.lateMinutes > 0 ? "var(--ruby)" : "var(--emerald)",
+                  background: c.lateMinutes > 0 ? "var(--ruby-bg)" : "var(--emerald-bg)"
                 }}>
-                  {c.morningLate > 0 ? (c.morningLate + " d kech") : "Vaqtida"}
+                  {c.lateMinutes > 0 ? (c.lateMinutes + " d kech") : "Vaqtida"}
                 </span>
               </div>
             </div>
@@ -3602,7 +3672,7 @@ function SelfieCheckin({user, attendanceData, showToast}) {
         </div>
       )}
 
-      {canView && todayCheckins.length === 0 && myTodayCheckin && (
+      {canView && todayCheckins.length === 0 && (
         <div style={{textAlign:"center",color:"var(--t4)",padding:30,fontSize:13}}>
           Hali hech kim selfie davomat qildirmagan
         </div>
