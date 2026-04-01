@@ -2295,8 +2295,8 @@ function exportDailyExcel(dateKey,attendanceData,checkinsData){
       "№":i+1,
       "F.I.O":emp,
       "Holat":stLabel,
-      "09:00 kechikish (daq)":morning||"",
-      "14:00 kechikish (daq)":afternoon||"",
+      "09:10 kechikish (daq)":morning||"",
+      "14:10 kechikish (daq)":afternoon||"",
       "Jami kechikish (daq)":total||"",
       "Qo'shimcha ish (daq)":overtime||"",
       "Izoh":rec.note||""
@@ -2363,8 +2363,8 @@ function exportMonthlyExcel(yr,mon,monthDates,attendanceData,checkinsData){
         "Kun":dayName,
         "F.I.O":emp,
         "Holat":stLabel,
-        "09:00 (daq)":rec.morning||"",
-        "14:00 (daq)":rec.afternoon||"",
+        "09:10 (daq)":rec.morning||"",
+        "14:10 (daq)":rec.afternoon||"",
         "Jami kech. (daq)":(rec.morning||0)+(rec.afternoon||0)||"",
         "Qo'sh. ish (daq)":overtime||"",
         "Izoh":rec.note||""
@@ -2805,7 +2805,7 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
                     <div className={`drill-name ${canView?"emp-link":""}`} onClick={()=>canView&&updateRecord("__openModal__",r.emp)}>{r.emp}</div>
                     <div className="drill-sub">
                       {statusDrill==="late"
-                        ?`09:00: ${r.morning} d · 14:00: ${r.afternoon} d${r.note?` · ${r.note}`:""}`
+                        ?`09:10: ${r.morning} d · 14:10: ${r.afternoon} d${r.note?` · ${r.note}`:""}`
                         :(r.note||"Izoh kiritilmagan")}
                     </div>
                   </div>
@@ -2835,8 +2835,8 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
                 <th style={{width:44}}>№</th>
                 <th>F.I.O</th>
                 <th style={{width:170}}>Holat</th>
-                <th className="th-center" style={{width:110}}>09:00 kechikish</th>
-                <th className="th-center" style={{width:110}}>14:00 kechikish</th>
+                <th className="th-center" style={{width:110}}>09:10 kechikish</th>
+                <th className="th-center" style={{width:110}}>14:10 kechikish</th>
                 <th className="th-center" style={{width:120}}>18:00+ qo'sh. ish</th>
                 <th>Izoh</th>
               </tr>
@@ -3315,8 +3315,8 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
     if(st==="present"||st==="late"){
       const cur=dt.getHours()*60+dt.getMinutes();
       let penalty=0;
-      if(cur>=9*60) penalty+=Math.max(0,rec?.morning||0);
-      if(cur>=14*60) penalty+=Math.max(0,rec?.afternoon||0);
+      if(cur>=9*60+10) penalty+=Math.max(0,rec?.morning||0);
+      if(cur>=14*60+10) penalty+=Math.max(0,rec?.afternoon||0);
       return Math.max(0,progress-penalty);
     }
     return progress;
@@ -3641,7 +3641,7 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
         </div>
         <div className="scroll-x"><table><thead><tr>
           <th>Sana</th><th>Kun</th><th>Holat</th>
-          <th className="th-center">09:00</th><th className="th-center">14:00</th><th className="th-center">18:00+</th><th>Izoh</th>
+          <th className="th-center">09:10</th><th className="th-center">14:10</th><th className="th-center">18:00+</th><th>Izoh</th>
         </tr></thead>
         <tbody>{weekDates.map((date,i)=>{
           const dk=fmtDate(date);
@@ -3878,10 +3878,15 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var curTotalMins=curHour*60+curMinute;
   var isOvertimeWindow=curTotalMins>=18*60||curTotalMins<6*60;
   var isTooEarlyWindow=curTotalMins>=6*60&&curTotalMins<7*60;
+  var isLunchWaitWindow=curTotalMins>=13*60&&curTotalMins<13*60+30;
   var isMorningWindow=curTotalMins>=7*60&&curTotalMins<13*60;
-  var curSession=isOvertimeWindow?"overtime":isMorningWindow?"morning":isTooEarlyWindow?"waiting":"afternoon";
-  var sesLabel=curSession==="morning"?"Ertalabki (07:00 dan, 09:00 gacha vaqtida)":curSession==="afternoon"?"Tushlikdan keyin (14:00 dan keyin)":curSession==="overtime"?"Qo\u2018shimcha ish (18:00 - 06:00)":"Ertalabki selfie 07:00 dan boshlanadi";
-  var sesIcon=curSession==="morning"?"\u{1F305}":curSession==="afternoon"?"\u{1F307}":curSession==="overtime"?"\u{1F319}":"\u23F3";
+  var curSession=isOvertimeWindow?"overtime":isMorningWindow?"morning":(isTooEarlyWindow||isLunchWaitWindow)?"waiting":"afternoon";
+  var isMorningWaiting=curSession==="waiting"&&isTooEarlyWindow;
+  var isAfternoonWaiting=curSession==="waiting"&&isLunchWaitWindow;
+  var morningGraceTotal=9*60+10;
+  var afternoonGraceTotal=14*60+10;
+  var sesLabel=curSession==="morning"?"Ertalabki (07:00 dan, 09:10 gacha imtiyozli)":curSession==="afternoon"?"Tushlikdan keyin (13:30 dan, 14:10 gacha imtiyozli)":curSession==="overtime"?"Qo\u2018shimcha ish (18:00 - 06:00)":isAfternoonWaiting?"Tushlikdan keyingi selfie 13:30 dan boshlanadi":"Ertalabki selfie 07:00 dan boshlanadi";
+  var sesIcon=curSession==="morning"?"\u{1F305}":curSession==="afternoon"?"\u{1F307}":curSession==="overtime"?"\u{1F319}":isAfternoonWaiting?"\u{1F37D}":"\u23F3";
 
   var isSecure=location.protocol==="https:"||location.hostname==="localhost"||location.hostname==="127.0.0.1";
 
@@ -4143,8 +4148,14 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
       return;
     }
     var late=0;
-    if(curSession==="morning"){if(hr>9||(hr===9&&mn>0))late=(hr-9)*60+mn;}
-    else{if(hr>14||(hr===14&&mn>0))late=(hr-14)*60+mn;}
+    if(curSession==="morning"){
+      var currentTotal=hr*60+mn;
+      if(currentTotal>morningGraceTotal)late=currentTotal-morningGraceTotal;
+    }
+    else{
+      var currentAfternoonTotal=hr*60+mn;
+      if(currentAfternoonTotal>afternoonGraceTotal)late=currentAfternoonTotal-afternoonGraceTotal;
+    }
     var isMorningOnTime=curSession==="morning"&&late===0;
 
     var checkinObj={
@@ -4159,9 +4170,9 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     if(curSession==="morning"){
       u.morning=late;
       u.status=late>0?"late":"present";
-      u.note=(rec.note?rec.note+" | ":"")+(isMorningOnTime?"Ertalab selfie (09:00 gacha): ":"Selfie 09:00: ")+tStr;
+      u.note=(rec.note?rec.note+" | ":"")+(isMorningOnTime?"Ertalab selfie (09:10 gacha): ":"Selfie 09:10 dan keyin: ")+tStr;
     }
-    else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+"Selfie 14:00: "+tStr;}
+    else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+(late===0?"Tushlikdan keyingi selfie (14:10 gacha): ":"Selfie 14:10 dan keyin: ")+tStr;}
 
     db.ref("checkins/"+todayKey+"/"+empKey+"/"+curSession).set(checkinObj)
     .then(function(){return db.ref("attendance/"+todayKey+"/"+empKey).update(u);})
@@ -4219,7 +4230,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     React.createElement("div",{className:"page-header"},
       React.createElement("div",null,
         React.createElement("div",{className:"page-title"},"\u{1F4F8} Selfie Davomat"),
-        React.createElement("div",{className:"page-subtitle"},todayKey+" \u00B7 "+user.name+(curSession==="morning"?" \u00B7 07:00-09:00 oralig'idagi selfie ertalab kelgan deb olinadi":curSession==="overtime"?" \u00B7 18:00-06:00 oralig'i qo'shimcha ish hisoblanadi":""))
+        React.createElement("div",{className:"page-subtitle"},todayKey+" \u00B7 "+user.name+(curSession==="morning"?" \u00B7 07:00-09:10 oralig'idagi selfie ertalab kelgan deb olinadi":curSession==="afternoon"||isAfternoonWaiting?" \u00B7 13:30-14:10 oralig'idagi selfie tushlikdan keyingi kechikishsiz qayd hisoblanadi":curSession==="overtime"?" \u00B7 18:00-06:00 oralig'i qo'shimcha ish hisoblanadi":""))
       )
     ),
 
@@ -4271,7 +4282,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           isOT&&React.createElement("span",{className:"selfie-done-detail",style:{background:"var(--cobalt-bg)",color:"var(--cobalt)"}},"\u{1F4AA} Overtime")
         ),
         !isOT&&!bothDone&&React.createElement("div",{style:{marginTop:14,padding:"10px 14px",background:"var(--surface3)",borderRadius:"var(--r)",fontSize:12,color:"var(--t3)"}},
-          "\u{1F4A1} "+(curSession==="morning"?"Tushlikdan keyin (13:00 dan) yana selfie olishingiz kerak":"Ertalabki selfie olingan")
+          "\u{1F4A1} "+(curSession==="morning"?"Tushlikdan keyin (13:30 dan) yana selfie olishingiz kerak":"Ertalabki selfie olingan")
         )
       );
     })():
@@ -4318,8 +4329,8 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
 
         curSession==="waiting"&&gpsOk&&!cameraActive&&!capturedPhoto&&React.createElement("div",{style:{padding:"40px 30px",textAlign:"center"}},
           React.createElement("div",{style:{fontSize:34,marginBottom:12}},"\u23F3"),
-          React.createElement("div",{style:{color:"rgba(255,255,255,.86)",fontSize:15,fontWeight:700}},"Ertalabgi selfie hali ochilmagan"),
-          React.createElement("div",{style:{color:"rgba(255,255,255,.45)",fontSize:12,marginTop:8,lineHeight:1.7}},"07:00 dan keyin ertalabgi selfie olish mumkin.",React.createElement("br",null),"06:00 gacha bo'lgan selfie esa qo'shimcha ish vaqtiga kiradi.")
+          React.createElement("div",{style:{color:"rgba(255,255,255,.86)",fontSize:15,fontWeight:700}},isAfternoonWaiting?"Tushlikdan keyingi selfie hali ochilmagan":"Ertalabgi selfie hali ochilmagan"),
+          React.createElement("div",{style:{color:"rgba(255,255,255,.45)",fontSize:12,marginTop:8,lineHeight:1.7}},isAfternoonWaiting?"13:30 dan keyin tushlikdan keyingi selfie olish mumkin.":"07:00 dan keyin ertalabgi selfie olish mumkin.",React.createElement("br",null),isAfternoonWaiting?"14:10 gacha kelganlar kechikkan hisoblanmaydi.":"06:00 gacha bo'lgan selfie esa qo'shimcha ish vaqtiga kiradi.")
         ),
 
         // Camera start button
@@ -4327,7 +4338,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           React.createElement("span",{style:{fontSize:48}},sesIcon),
           React.createElement("span",{style:{fontSize:16,fontWeight:700}},"Kamerani yoqish"),
           React.createElement("span",{style:{fontSize:11,opacity:.5}},sesLabel),
-          React.createElement("span",{style:{fontSize:10,opacity:.45,maxWidth:240,lineHeight:1.5}},(curSession==="morning"?"07:00-09:00 oralig'idagi selfie ertalab kelgan deb olinadi. ":curSession==="overtime"?"18:00-06:00 oralig'i qo'shimcha ishga yoziladi. ":"")+"Galereya va fayl yuklash bloklangan. Faqat live kamera stream ishlaydi.")
+          React.createElement("span",{style:{fontSize:10,opacity:.45,maxWidth:240,lineHeight:1.5}},(curSession==="morning"?"07:00-09:10 oralig'idagi selfie ertalab kelgan deb olinadi. ":curSession==="afternoon"?"13:30-14:10 oralig'idagi selfie tushlikdan keyingi kechikishsiz qayd hisoblanadi. ":curSession==="overtime"?"18:00-06:00 oralig'i qo'shimcha ishga yoziladi. ":"")+"Galereya va fayl yuklash bloklangan. Faqat live kamera stream ishlaydi.")
         ),
 
         // Camera active — overlay controls
