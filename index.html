@@ -12,6 +12,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2194,8 +2195,156 @@ function getMonthOvertimeRows(checkinsData,yr,mon,empName){
     })
     .filter(Boolean);
 }
+function getCheckinEntriesForDate(checkinsData,dateKey){
+  const dayData=checkinsData?.[dateKey]||{};
+  const list=[];
+  Object.keys(dayData).forEach(empKey=>{
+    const sessions=dayData[empKey]||{};
+    ["morning","afternoon","overtime"].forEach(sessionKey=>{
+      const entry=sessions[sessionKey];
+      if(!entry) return;
+      list.push(Object.assign({
+        key:empKey+"_"+sessionKey,
+        empKey,
+        session:entry.session||sessionKey,
+        dateKey
+      },entry));
+    });
+  });
+  list.sort((a,b)=>(a.timestamp||"").localeCompare(b.timestamp||""));
+  return list;
+}
 
 /* ═══ RING SVG ═══ */
+
+/* ═══ EXCEL EXPORT ═══ */
+function exportDailyExcel(dateKey,attendanceData,checkinsData){
+  var dayLabel=dateKey;
+  var rows=EMPLOYEES.map(function(emp,i){
+    var rec=(attendanceData[dateKey]&&attendanceData[dateKey][safeKey(emp)])||{};
+    var st=rec.status||"present";
+    var stLabel=(STATUSES[st]||STATUSES.present).label;
+    var morning=rec.morning||0;
+    var afternoon=rec.afternoon||0;
+    var total=morning+afternoon;
+    var overtime=getOvertimeMinutes(checkinsData,dateKey,emp);
+    return{
+      "№":i+1,
+      "F.I.O":emp,
+      "Holat":stLabel,
+      "09:00 kechikish (daq)":morning||"",
+      "14:00 kechikish (daq)":afternoon||"",
+      "Jami kechikish (daq)":total||"",
+      "Qo'shimcha ish (daq)":overtime||"",
+      "Izoh":rec.note||""
+    };
+  });
+  var ws=XLSX.utils.json_to_sheet(rows);
+  // Column widths
+  ws["!cols"]=[{wch:4},{wch:28},{wch:14},{wch:18},{wch:18},{wch:18},{wch:18},{wch:30}];
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Kunlik "+dayLabel);
+  XLSX.writeFile(wb,"Davomat_"+dayLabel+".xlsx");
+}
+
+function exportMonthlyExcel(yr,mon,monthDates,attendanceData,checkinsData){
+  var monName=MONTHS[mon];
+  var totalDays=monthDates.length;
+  // Summary sheet
+  var rows=EMPLOYEES.map(function(emp,i){
+    var present=0,late=0,absent=0,sick=0,trip=0,vacation=0,lateMins=0;
+    monthDates.forEach(function(d){
+      var rec=(attendanceData[fmtDate(d)]&&attendanceData[fmtDate(d)][safeKey(emp)])||{};
+      var st=rec.status||"present";
+      if(st==="present")present++;
+      else if(st==="late"){late++;present++;}
+      else if(st==="absent")absent++;
+      else if(st==="sick")sick++;
+      else if(st==="trip")trip++;
+      else if(st==="vacation")vacation++;
+      lateMins+=(rec.morning||0)+(rec.afternoon||0);
+    });
+    var overtimeRows=getOvertimeRowsForDates(checkinsData,monthDates,emp);
+    var overtimeMins=overtimeRows.reduce(function(s,r){return s+r.minutes;},0);
+    var score=Math.max(0,100-Math.round(lateMins/Math.max(1,totalDays*480)*100*8)-absent*5-late*2);
+    return{
+      "№":i+1,
+      "F.I.O":emp,
+      "Ish kuni":totalDays,
+      "Davomat":present,
+      "Kechikish (soni)":late||"",
+      "Sababsiz":absent||"",
+      "Kasal":sick||"",
+      "Xizmat safari":trip||"",
+      "Ta'til":vacation||"",
+      "Kechikish (daq)":lateMins||"",
+      "Qo'shimcha ish (daq)":overtimeMins||"",
+      "Intizom bali":score
+    };
+  });
+  var ws1=XLSX.utils.json_to_sheet(rows);
+  ws1["!cols"]=[{wch:4},{wch:28},{wch:10},{wch:10},{wch:14},{wch:10},{wch:8},{wch:14},{wch:8},{wch:14},{wch:18},{wch:14}];
+
+  // Detail sheet — har bir kun alohida
+  var detailRows=[];
+  monthDates.forEach(function(d){
+    var dk=fmtDate(d);
+    var dayName=WDAYS[(d.getDay()||7)-1]||"";
+    EMPLOYEES.forEach(function(emp,i){
+      var rec=(attendanceData[dk]&&attendanceData[dk][safeKey(emp)])||{};
+      var st=rec.status||"present";
+      var stLabel=(STATUSES[st]||STATUSES.present).label;
+      var overtime=getOvertimeMinutes(checkinsData,dk,emp);
+      detailRows.push({
+        "Sana":dk,
+        "Kun":dayName,
+        "F.I.O":emp,
+        "Holat":stLabel,
+        "09:00 (daq)":rec.morning||"",
+        "14:00 (daq)":rec.afternoon||"",
+        "Jami kech. (daq)":(rec.morning||0)+(rec.afternoon||0)||"",
+        "Qo'sh. ish (daq)":overtime||"",
+        "Izoh":rec.note||""
+      });
+    });
+  });
+  var ws2=XLSX.utils.json_to_sheet(detailRows);
+  ws2["!cols"]=[{wch:12},{wch:12},{wch:28},{wch:14},{wch:10},{wch:10},{wch:14},{wch:14},{wch:30}];
+
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws1,"Umumiy — "+monName);
+  XLSX.utils.book_append_sheet(wb,ws2,"Batafsil — "+monName);
+  XLSX.writeFile(wb,"Oylik_Hisobot_"+monName+"_"+yr+".xlsx");
+}
+
+function exportStatsExcel(yr,mon,period,dates,empStats,sorted,totals){
+  var monName=MONTHS[mon];
+  var periodLabel=period==="weekly"?"Haftalik":period==="monthly"?"Oylik":period==="quarterly"?"Choraklik":"Yillik";
+  var rows=sorted.map(function(s,i){
+    return{
+      "№":i+1,
+      "F.I.O":s.emp,
+      "Davomat":s.present,
+      "Kechikish (soni)":s.late||"",
+      "Sababsiz":s.absent||"",
+      "Kasal":s.sick||"",
+      "Safari":s.trip||"",
+      "Malaka":s.training||"",
+      "Ta'til":s.vacation||"",
+      "Sababli":s.excused||"",
+      "Kechikish (daq)":s.lateMins||"",
+      "Qo'sh. ish (daq)":s.overtimeMins||"",
+      "Intizom bali":s.score
+    };
+  });
+  // Totals row
+  rows.push({"№":"","F.I.O":"JAMI","Davomat":totals.present,"Kechikish (soni)":totals.late,"Sababsiz":totals.absent,"Kasal":totals.sick,"Kechikish (daq)":totals.lateMins,"Qo'sh. ish (daq)":totals.overtimeMins});
+  var ws=XLSX.utils.json_to_sheet(rows);
+  ws["!cols"]=[{wch:4},{wch:28},{wch:10},{wch:14},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:14},{wch:14},{wch:14}];
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,periodLabel+" — "+monName+" "+yr);
+  XLSX.writeFile(wb,"Statistika_"+periodLabel+"_"+monName+"_"+yr+".xlsx");
+}
 function Ring({pct,size=44,stroke=5,color="var(--emerald)"}){
   const r=(size-stroke)/2;const circ=2*Math.PI*r;const offset=circ*(1-Math.min(1,pct/100));
   return(
@@ -2493,6 +2642,7 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
             <button className="date-nav-btn" onClick={()=>setSelectedDate(prev=>stepToWorkday(prev,1))}>›</button>
           </div>
           {canView&&<button className="action-btn" onClick={()=>window.print()}>🖨 Chop</button>}
+          {canView&&<button className="action-btn primary" onClick={()=>exportDailyExcel(dateKey,attendanceData,checkinsData)}>📊 Excel</button>}
         </div>
       </div>
 
@@ -2788,6 +2938,7 @@ function MonthlyView({attendanceData,checkinsData,onEmpClick}){
             <button className="date-nav-btn" onClick={nextMon}>›</button>
           </div>
           <button className="action-btn" onClick={()=>window.print()}>🖨 Chop</button>
+          <button className="action-btn primary" onClick={()=>exportMonthlyExcel(yr,mon,monthDates,attendanceData,checkinsData)}>📊 Excel</button>
         </div>
       </div>
       <div className="table-card">
@@ -2873,6 +3024,7 @@ function StatsView({attendanceData,checkinsData,onEmpClick}){
             <button className="date-nav-btn" onClick={nextMon}>›</button>
           </div>
           <button className="action-btn" onClick={()=>window.print()}>🖨 Chop</button>
+          <button className="action-btn primary" onClick={()=>exportStatsExcel(yr,mon,period,dates,empStats,sorted,totals)}>📊 Excel</button>
         </div>
       </div>
       <div className="period-tabs">
@@ -3481,6 +3633,148 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
   );
 }
 
+/* ═══ SELFIE HISTORY VIEW ═══ */
+function SelfieHistoryView({checkinsData}){
+  const today=new Date();
+  const [selectedDate,setSelectedDate]=useState(today);
+  const [search,setSearch]=useState("");
+  const [sessionFilter,setSessionFilter]=useState("all");
+  const dateKey=fmtDate(selectedDate);
+  const allEntries=useMemo(()=>getCheckinEntriesForDate(checkinsData,dateKey),[checkinsData,dateKey]);
+  const filteredEntries=useMemo(()=>allEntries.filter(entry=>{
+    const matchesSession=sessionFilter==="all"||entry.session===sessionFilter;
+    const matchesSearch=!search.trim()||(entry.name||"").toLowerCase().includes(search.trim().toLowerCase());
+    return matchesSession&&matchesSearch;
+  }),[allEntries,sessionFilter,search]);
+  const stats=useMemo(()=>{
+    const gpsKnown=allEntries.filter(entry=>Number.isFinite(Number(entry.gpsDistance)));
+    const gpsAvg=gpsKnown.length?Math.round(gpsKnown.reduce((sum,entry)=>sum+Number(entry.gpsDistance||0),0)/gpsKnown.length):0;
+    const employeeCount=new Set(allEntries.map(entry=>entry.name)).size;
+    return{
+      entries:allEntries.length,
+      employees:employeeCount,
+      overtime:allEntries.filter(entry=>entry.session==="overtime").length,
+      gpsAvg
+    };
+  },[allEntries]);
+
+  function changeDay(dir){
+    setSelectedDate(prev=>{
+      const next=new Date(prev);
+      next.setDate(next.getDate()+dir);
+      return next;
+    });
+  }
+
+  function getSessionMeta(session){
+    if(session==="morning") return {icon:"🌅",label:"Ertalab",color:"var(--gold)",bg:"var(--gold-pale)"};
+    if(session==="afternoon") return {icon:"🌆",label:"Tushlik",color:"var(--violet)",bg:"var(--violet-bg)"};
+    return {icon:"🌙",label:"Qo'shimcha ish",color:"var(--cobalt)",bg:"var(--cobalt-bg)"};
+  }
+
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Selfie Tarix</div>
+          <div className="page-subtitle">{dateKey} · barcha xodimlarning selfie qaydlari</div>
+        </div>
+        <div className="page-actions">
+          <div className="date-nav">
+            <button className="date-nav-btn" onClick={()=>changeDay(-1)}>‹</button>
+            <input type="date" className="date-input" value={dateKey} onChange={e=>setSelectedDate(new Date(e.target.value+"T12:00:00"))}/>
+            <button className="date-nav-btn" onClick={()=>changeDay(1)}>›</button>
+          </div>
+          <button className="action-btn" onClick={()=>window.print()}>🖨 Chop</button>
+        </div>
+      </div>
+
+      <div className="stats-grid">
+        <div className="stat-card c-cobalt"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">📸</div></div>
+          <div className="stat-num">{stats.entries}</div><div className="stat-label">Jami selfie</div></div></div>
+        <div className="stat-card c-green"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">👥</div></div>
+          <div className="stat-num">{stats.employees}</div><div className="stat-label">Qayd kiritgan xodim</div></div></div>
+        <div className="stat-card c-violet"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+          <div className="stat-num">{stats.overtime}</div><div className="stat-label">Qo'shimcha ish selfielari</div></div></div>
+        <div className="stat-card c-navy"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">📍</div></div>
+          <div className="stat-num">{stats.gpsAvg}<sup> m</sup></div><div className="stat-label">O'rtacha GPS masofa</div></div></div>
+      </div>
+
+      <div className="table-card" style={{marginBottom:16}}>
+        <div className="table-header">
+          <div>
+            <div className="table-title">Filtrlar</div>
+            <div className="table-meta">Sana, xodim va sessiya bo'yicha saralash</div>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+            <input className="search-input" placeholder="Xodim qidirish..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <select className="status-select" value={sessionFilter} onChange={e=>setSessionFilter(e.target.value)} style={{minWidth:190}}>
+              <option value="all">Barcha sessiyalar</option>
+              <option value="morning">🌅 Ertalab</option>
+              <option value="afternoon">🌆 Tushlik</option>
+              <option value="overtime">🌙 Qo'shimcha ish</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="selfie-history-card">
+        <div className="table-header">
+          <div>
+            <div className="table-title">Tanlangan Sana Bo'yicha Selfie Tarix</div>
+            <div className="table-meta">{filteredEntries.length} ta yozuv · {getWeekdayLabel(selectedDate)}</div>
+          </div>
+        </div>
+        {filteredEntries.length===0&&(
+          <div style={{textAlign:"center",color:"var(--t4)",padding:"34px 20px",fontSize:13}}>
+            Ushbu sana bo'yicha selfie qaydi topilmadi
+          </div>
+        )}
+        {filteredEntries.map((entry,i)=>{
+          const meta=getSessionMeta(entry.session);
+          const gpsDistance=Number(entry.gpsDistance||0);
+          return(
+            <div key={entry.key} className="selfie-history-item" style={{gap:14}}>
+              <span style={{fontSize:11,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",width:24,flexShrink:0}}>{i+1}</span>
+              {entry.photo
+                ? <img src={entry.photo} className="selfie-history-photo" alt={entry.name} style={{width:62,height:62,borderRadius:16}}/>
+                : <div style={{width:62,height:62,borderRadius:16,background:"var(--surface3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"var(--t4)",flexShrink:0}}>📷</div>}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <div className="selfie-history-emp" style={{fontSize:13.5}}>{entry.name}</div>
+                  <span className="badge" style={{color:meta.color,background:meta.bg}}>{meta.icon} {meta.label}</span>
+                  {entry.gpsOk===false&&<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>⚠ Tashqarida</span>}
+                </div>
+                <div style={{fontSize:11,color:"var(--t3)",marginTop:4,lineHeight:1.7}}>
+                  Vaqt: <strong style={{color:"var(--navy)"}}>{entry.time||"—"}</strong>
+                  {" · "}GPS: <strong style={{color:gpsDistance<=OFFICE_LOCATION.radius?"var(--emerald)":"var(--ruby)"}}>{gpsDistance}m</strong>
+                  {" · "}Aniqlik: ±{Number(entry.gpsAccuracy||0)}m
+                  {entry.session==="overtime"&&entry.overtimeMinutes>0&&` · Qo'shimcha: ${fmtMins(entry.overtimeMinutes)}`}
+                  {entry.session!=="overtime"&&entry.lateMinutes>0&&` · Kechikish: ${entry.lateMinutes} daqiqa`}
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div className="selfie-history-time">{entry.time||"—"}</div>
+                <span className="selfie-history-badge" style={{color:meta.color,background:meta.bg}}>
+                  {entry.session==="overtime"
+                    ? `+${entry.overtimeMinutes||0}d`
+                    : entry.lateMinutes>0
+                    ? `${entry.lateMinutes}d`
+                    : "✓"}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 
 /* ═══ SELFIE CHECKIN ═══ */
 function selfieCalcDist(lat1,lon1,lat2,lon2){
@@ -3497,10 +3791,22 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var[liveTime,setLiveTime]=useState(new Date());
   var[submitting,setSubmitting]=useState(false);
   var[cameraError,setCameraError]=useState(null);
+  var[livenessOk,setLivenessOk]=useState(false);
+  var[livenessPhase,setLivenessPhase]=useState(0);
+  var[livenessProgress,setLivenessProgress]=useState(0);
+  var[livenessHint,setLivenessHint]=useState("");
+  var[livenessChallenge,setLivenessChallenge]=useState("");
   var videoRef=useRef(null);
   var canvasRef=useRef(null);
   var streamRef=useRef(null);
   var gpsTimerRef=useRef(null);
+  var analysisTimerRef=useRef(null);
+  var analysisCanvasRef=useRef(null);
+  var prevFrameRef=useRef(null);
+  var motionHitsRef=useRef(0);
+  var phaseStartRef=useRef(0);
+  var challengeQueueRef=useRef([]);
+  var livenessPhaseRef=useRef(0);
 
   var todayKey=fmtDate(new Date());
   var empKey=safeKey(user.name);
@@ -3546,6 +3852,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   // Cleanup
   useEffect(function(){
     return function(){
+      if(analysisTimerRef.current)clearInterval(analysisTimerRef.current);
       if(streamRef.current)streamRef.current.getTracks().forEach(function(t){t.stop();});
     };
   },[]);
@@ -3557,10 +3864,105 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var bothDone=myM&&myA;
   var gpsOk=gpsStatus==="ok"||gpsStatus==="far";
 
+  function blockExternalImage(e){
+    if(e&&e.preventDefault)e.preventDefault();
+    if(e&&e.stopPropagation)e.stopPropagation();
+    setCameraError("Galereya, screenshot yoki fayl yuklash bloklangan. Faqat live kamera stream orqali selfie olinadi.");
+  }
+
+  function stopLivenessCheck(){
+    if(analysisTimerRef.current){clearInterval(analysisTimerRef.current);analysisTimerRef.current=null;}
+    prevFrameRef.current=null;
+  }
+
+  function resetLivenessCheck(){
+    stopLivenessCheck();
+    var pool=[
+      "Boshingizni sekin chapga buring",
+      "Boshingizni sekin o'ngga buring",
+      "Kameraga biroz yaqinlashing",
+      "Yuzingizni sal yuqoriga ko'taring"
+    ];
+    for(var i=pool.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var tmp=pool[i];pool[i]=pool[j];pool[j]=tmp;
+    }
+    challengeQueueRef.current=pool.slice(0,2);
+    livenessPhaseRef.current=0;
+    motionHitsRef.current=0;
+    phaseStartRef.current=Date.now();
+    prevFrameRef.current=null;
+    setLivenessOk(false);
+    setLivenessPhase(0);
+    setLivenessProgress(0);
+    setLivenessChallenge(challengeQueueRef.current[0]||"Boshingizni sekin qimirlatib turing");
+    setLivenessHint("Jonli kamera tekshiruvi boshlandi. Challenge ni bajaring.");
+  }
+
+  function sampleFrameMotion(){
+    var vid=videoRef.current;
+    if(!vid||vid.readyState<2||vid.videoWidth===0||livenessOk)return;
+    if(!analysisCanvasRef.current)analysisCanvasRef.current=document.createElement("canvas");
+    var cvs=analysisCanvasRef.current;
+    var w=48,h=36;
+    cvs.width=w;cvs.height=h;
+    var ctx=cvs.getContext("2d",{willReadFrequently:true});
+    ctx.drawImage(vid,0,0,w,h);
+    var img=ctx.getImageData(0,0,w,h).data;
+    var gray=new Uint8Array(w*h);
+    for(var i=0,p=0;i<img.length;i+=4,p++)gray[p]=Math.round(img[i]*0.299+img[i+1]*0.587+img[i+2]*0.114);
+    if(prevFrameRef.current){
+      var diff=0;
+      for(var k=0;k<gray.length;k++)diff+=Math.abs(gray[k]-prevFrameRef.current[k]);
+      var avgDiff=diff/gray.length;
+      if(avgDiff>9)motionHitsRef.current+=1;
+    }
+    prevFrameRef.current=gray;
+
+    var phaseDuration=1800;
+    var totalPhases=Math.max(1,challengeQueueRef.current.length);
+    var elapsed=Date.now()-phaseStartRef.current;
+    var phasePortion=Math.min(1,elapsed/phaseDuration);
+    setLivenessProgress(Math.round(((livenessPhaseRef.current+phasePortion)/totalPhases)*100));
+
+    if(elapsed<phaseDuration)return;
+
+    if(motionHitsRef.current<2){
+      phaseStartRef.current=Date.now();
+      motionHitsRef.current=0;
+      prevFrameRef.current=null;
+      setLivenessHint("Jonli harakat yetarli aniqlanmadi. Challenge ni aniqroq bajaring.");
+      return;
+    }
+
+    var nextPhase=livenessPhaseRef.current+1;
+    if(nextPhase<totalPhases){
+      livenessPhaseRef.current=nextPhase;
+      setLivenessPhase(nextPhase);
+      setLivenessChallenge(challengeQueueRef.current[nextPhase]);
+      setLivenessHint("Yaxshi. Keyingi challenge ni bajaring.");
+      phaseStartRef.current=Date.now();
+      motionHitsRef.current=0;
+      prevFrameRef.current=null;
+      return;
+    }
+
+    setLivenessOk(true);
+    setLivenessProgress(100);
+    setLivenessHint("Jonli kamera stream tasdiqlandi. Endi suratga olishingiz mumkin.");
+    stopLivenessCheck();
+  }
+
+  function beginLivenessCheck(){
+    resetLivenessCheck();
+    analysisTimerRef.current=setInterval(sampleFrameMotion,320);
+  }
+
   // Camera — stream attached directly in .then() to keep iOS Safari user gesture chain
   var startCamera=useCallback(function(){
     if(!gpsOk)return;
     setCameraError(null);
+    resetLivenessCheck();
     if(!isSecure){setCameraError("HTTPS kerak. Bu sayt http:// orqali ochilgan \u2014 kamera ishlamaydi.");return;}
     if(streamRef.current){streamRef.current.getTracks().forEach(function(t){t.stop();});streamRef.current=null;}
     if(videoRef.current)videoRef.current.srcObject=null;
@@ -3573,6 +3975,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
         if(p&&p.catch)p.catch(function(){});
       }
       setCameraActive(true);
+      setTimeout(beginLivenessCheck,500);
     }
 
     navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false})
@@ -3593,13 +3996,22 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   },[gpsOk,isSecure]);
 
   var stopCamera=useCallback(function(){
+    stopLivenessCheck();
     if(streamRef.current){streamRef.current.getTracks().forEach(function(t){t.stop();});streamRef.current=null;}
     if(videoRef.current)videoRef.current.srcObject=null;
     setCameraActive(false);
+    setLivenessOk(false);
+    setLivenessProgress(0);
+    setLivenessHint("");
+    setLivenessChallenge("");
   },[]);
 
   // Capture
   var capturePhoto=useCallback(function(){
+    if(!livenessOk){
+      setCameraError("Jonli kamera tekshiruvi yakunlanmagan. Challenge tugaguncha kuting.");
+      return;
+    }
     var vid=videoRef.current,cvs=canvasRef.current;
     if(!vid||!cvs)return;
     if(vid.readyState<2||vid.videoWidth===0)return;
@@ -3625,7 +4037,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     ctx.fillStyle="rgba(255,255,255,.5)";ctx.font="10px "+F;ctx.fillText(dTxt+" \u00B7 "+OFFICE_LOCATION.address,w/2,h-8);
     setCapturedPhoto(cvs.toDataURL("image/jpeg",0.6));
     stopCamera();
-  },[stopCamera,gpsData,gpsStatus,curSession]);
+  },[stopCamera,gpsData,gpsStatus,curSession,livenessOk]);
 
   // Confirm
   var confirmCheckin=useCallback(function(){
@@ -3694,6 +4106,13 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     });
     list.sort(function(a,b){return(a.timestamp||"").localeCompare(b.timestamp||"");});
     return list;
+  },[checkinsData,todayKey]);
+  var missingToday=useMemo(function(){
+    var tc=(checkinsData[todayKey])||{};
+    return EMPLOYEES.filter(function(emp){
+      var rec=tc[safeKey(emp)]||{};
+      return !(rec.morning||rec.afternoon||rec.overtime);
+    });
   },[checkinsData,todayKey]);
 
   var canView=user.role==="admin"||user.role==="boss";
@@ -3796,7 +4215,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
       cameraError&&React.createElement("div",{style:{padding:"14px",background:"var(--ruby-bg)",border:"1px solid rgba(192,57,43,.15)",borderRadius:"var(--r)",marginBottom:14,fontSize:12,color:"var(--ruby)",whiteSpace:"pre-line",lineHeight:1.6}},cameraError),
 
       // Camera box
-      React.createElement("div",{className:"selfie-camera-box",style:{background:cameraActive?"#000":"var(--ink)"}},
+      React.createElement("div",{className:"selfie-camera-box",style:{background:cameraActive?"#000":"var(--ink)"},onDrop:blockExternalImage,onDragOver:blockExternalImage,onPaste:blockExternalImage},
         // Video — ALWAYS in DOM, display toggled. iOS Safari requires this.
         React.createElement("video",{ref:videoRef,autoPlay:true,playsInline:true,muted:true,className:"selfie-video",style:{display:cameraActive&&!capturedPhoto?"block":"none"}}),
         // GPS not ready
@@ -3821,7 +4240,8 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
         gpsOk&&!cameraActive&&!capturedPhoto&&React.createElement("button",{className:"selfie-start-btn",onClick:startCamera},
           React.createElement("span",{style:{fontSize:48}},sesIcon),
           React.createElement("span",{style:{fontSize:16,fontWeight:700}},"Kamerani yoqish"),
-          React.createElement("span",{style:{fontSize:11,opacity:.5}},sesLabel)
+          React.createElement("span",{style:{fontSize:11,opacity:.5}},sesLabel),
+          React.createElement("span",{style:{fontSize:10,opacity:.45,maxWidth:220,lineHeight:1.5}},"Galereya va fayl yuklash bloklangan. Faqat live kamera stream ishlaydi.")
         ),
 
         // Camera active — overlay controls
@@ -3830,10 +4250,21 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           React.createElement("div",{style:{position:"absolute",top:10,left:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:curSession==="morning"?"#fbbf24":curSession==="afternoon"?"#a78bfa":"#60a5fa"}},curSession==="morning"?"\u2600 ERTALAB":curSession==="afternoon"?"\u{1F319} TUSHLIK":"\u{1F4AA} QO'SHIMCHA"),
           // GPS badge
           gpsData&&React.createElement("div",{style:{position:"absolute",top:10,right:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:gpsStatus==="ok"?"#6ee7b7":"#fca5a5"}},"\u{1F4CD}"+gpsData.distance+"m"),
+          React.createElement("div",{style:{position:"absolute",top:44,left:10,right:10,background:"rgba(0,0,0,.58)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:"10px 12px",pointerEvents:"none"}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
+              React.createElement("div",{style:{fontSize:10,fontWeight:800,letterSpacing:".6px",color:livenessOk?"#6ee7b7":"#fbbf24"}},"ANTI-FRAUD LIVE CHECK"),
+              React.createElement("div",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:11,fontWeight:700,color:"rgba(255,255,255,.8)"}},livenessProgress+"%")
+            ),
+            React.createElement("div",{style:{fontSize:12.5,fontWeight:700,color:"#fff",marginTop:6}},livenessChallenge||"Kamera tayyorlanmoqda"),
+            React.createElement("div",{style:{fontSize:10.5,color:"rgba(255,255,255,.72)",marginTop:4,lineHeight:1.5}},livenessHint||"Challenge bajarilgach capture ochiladi"),
+            React.createElement("div",{style:{height:5,background:"rgba(255,255,255,.12)",borderRadius:999,marginTop:8,overflow:"hidden"}},
+              React.createElement("div",{style:{height:"100%",width:livenessProgress+"%",background:livenessOk?"linear-gradient(90deg,#10b981,#34d399)":"linear-gradient(90deg,#f59e0b,#fbbf24)",transition:"width .3s ease"}})
+            )
+          ),
           // Time
           React.createElement("div",{className:"selfie-time-overlay"},React.createElement("span",{className:"selfie-time-badge"},liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"}))),
           // Capture
-          React.createElement("button",{className:"selfie-capture-btn",onClick:capturePhoto,style:{pointerEvents:"auto"}},React.createElement("div",{className:"selfie-capture-inner"})),
+          React.createElement("button",{className:"selfie-capture-btn",onClick:capturePhoto,disabled:!livenessOk,style:{pointerEvents:"auto",opacity:livenessOk?1:.45,cursor:livenessOk?"pointer":"not-allowed"}},React.createElement("div",{className:"selfie-capture-inner",style:{transform:livenessOk?"scale(1)":"scale(.9)",opacity:livenessOk?1:.8}})),
           // Close
           React.createElement("button",{onClick:stopCamera,style:{position:"absolute",bottom:14,left:14,padding:"6px 14px",background:"rgba(0,0,0,.5)",border:"none",borderRadius:8,color:"rgba(255,255,255,.6)",fontSize:11,cursor:"pointer",fontFamily:"Outfit,sans-serif",pointerEvents:"auto"}},"\u2715 Yopish")
         ),
@@ -3875,6 +4306,27 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           )
         );
       })
+    ),
+    canView&&React.createElement("div",{className:"table-card",style:{marginTop:16}},
+      React.createElement("div",{className:"table-header"},
+        React.createElement("div",null,
+          React.createElement("div",{className:"table-title"},"Bugun kelmagan"),
+          React.createElement("div",{className:"table-meta"},todayKey+" · selfie qaydi yo'q xodimlar")
+        )
+      ),
+      missingToday.length>0
+        ? React.createElement("div",{style:{padding:"14px 16px",display:"flex",flexWrap:"wrap",gap:8}},
+            missingToday.map(function(emp,i){
+              return React.createElement("div",{key:emp,style:{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",border:"1px solid rgba(192,57,43,.12)",background:"var(--ruby-bg)",borderRadius:10,minWidth:220,maxWidth:"100%"}},
+                React.createElement("span",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:10.5,color:"var(--ruby)",minWidth:24}},String(i+1).padStart(2,"0")),
+                React.createElement("div",{style:{minWidth:0}},
+                  React.createElement("div",{style:{fontSize:12.5,fontWeight:700,color:"var(--navy)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},emp),
+                  React.createElement("div",{style:{fontSize:10.5,color:"var(--ruby)",marginTop:2}},"Bugun selfie olinmagan")
+                )
+              );
+            })
+          )
+        : React.createElement("div",{style:{textAlign:"center",color:"var(--emerald)",padding:"24px 16px",fontSize:13,fontWeight:600}},"Barcha xodimlar bugun selfie qaydini kiritgan ✓")
     ),
     canView&&todayList.length===0&&React.createElement("div",{style:{textAlign:"center",color:"var(--t4)",padding:30,fontSize:13}},"Hali selfie qayd etilmagan")
   );
@@ -4044,6 +4496,7 @@ function App(){
     {k:"monthly",icon:"🗓",label:"Oylik"},
     {k:"stats",icon:"📊",label:"Statistika"},
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
+    ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
     {k:"selfie",icon:"📸",label:"Selfie Davomat"}
   ];
   const empNav=[
@@ -4052,7 +4505,7 @@ function App(){
     {k:"selfie",icon:"📸",label:"Selfie Davomat"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfie:"Selfie Davomat"};
+  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
 
   return(
@@ -4128,7 +4581,7 @@ function App(){
       {/* MOBILE BOTTOM NAV */}
       <div className="mobile-bottom-nav">
         {navItems.map(({k,icon,label})=>{
-          const shortLabels={daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfie:"Selfie",myStats:"Kabinet"};
+          const shortLabels={daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfieHistory:"Tarix",selfie:"Selfie",myStats:"Kabinet"};
           return(
             <button key={k} className={`mob-nav-btn ${view===k?"active":""}`} onClick={()=>setView(k)}>
               <span className="mob-nav-icon">{icon}</span>
@@ -4169,6 +4622,7 @@ function App(){
                 {view==="weekly"&&canManage&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="monthly"&&canManage&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="stats"&&canManage&&<StatsView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
+                {view==="selfieHistory"&&isAdmin&&<SelfieHistoryView checkinsData={checkinsData}/>}
                 {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>}
                 {view==="birthdays"&&<BirthdaysView/>}
                 {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
