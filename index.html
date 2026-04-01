@@ -3811,9 +3811,14 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var todayKey=fmtDate(new Date());
   var empKey=safeKey(user.name);
   var curHour=liveTime.getHours();
-  var curSession=curHour<13?"morning":curHour<18?"afternoon":"overtime";
-  var sesLabel=curSession==="morning"?"Ertalabki (09:00)":curSession==="afternoon"?"Tushlikdan keyin (14:00)":"Qo\u2018shimcha ish (18:00+)";
-  var sesIcon=curSession==="morning"?"\u{1F305}":curSession==="afternoon"?"\u{1F307}":"\u{1F319}";
+  var curMinute=liveTime.getMinutes();
+  var curTotalMins=curHour*60+curMinute;
+  var isOvertimeWindow=curTotalMins>=18*60||curTotalMins<6*60;
+  var isTooEarlyWindow=curTotalMins>=6*60&&curTotalMins<7*60;
+  var isMorningWindow=curTotalMins>=7*60&&curTotalMins<13*60;
+  var curSession=isOvertimeWindow?"overtime":isMorningWindow?"morning":isTooEarlyWindow?"waiting":"afternoon";
+  var sesLabel=curSession==="morning"?"Ertalabki (07:00 dan, 09:00 gacha vaqtida)":curSession==="afternoon"?"Tushlikdan keyin (14:00 dan keyin)":curSession==="overtime"?"Qo\u2018shimcha ish (18:00 - 06:00)":"Ertalabki selfie 07:00 dan boshlanadi";
+  var sesIcon=curSession==="morning"?"\u{1F305}":curSession==="afternoon"?"\u{1F307}":curSession==="overtime"?"\u{1F319}":"\u23F3";
 
   var isSecure=location.protocol==="https:"||location.hostname==="localhost"||location.hostname==="127.0.0.1";
 
@@ -3860,7 +3865,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var myM=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].morning:null;
   var myA=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].afternoon:null;
   var myO=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].overtime:null;
-  var curDone=curSession==="morning"?myM:curSession==="afternoon"?myA:myO;
+  var curDone=curSession==="morning"?myM:curSession==="afternoon"?myA:curSession==="overtime"?myO:null;
   var bothDone=myM&&myA;
   var gpsOk=gpsStatus==="ok"||gpsStatus==="far";
 
@@ -4049,7 +4054,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
 
     if(curSession==="overtime"){
       // Overtime — faqat checkins ga yoziladi, attendance ga TEGMAYDI
-      var overtimeMinutes=(hr-18)*60+mn;
+      var overtimeMinutes=hr>=18?(hr-18)*60+mn:(6*60)+(hr*60+mn);
       var checkinObj={
         name:user.name,session:"overtime",time:tStr,timestamp:now.toISOString(),
         overtimeMinutes:overtimeMinutes,lateMinutes:0,
@@ -4069,18 +4074,30 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     }
 
     // Morning / Afternoon — attendance ga ham yoziladi
+    if(curSession==="morning"&&hr<7){
+      showToast("\u26A0 Ertalabki selfie 07:00 dan keyin olinadi");
+      setSubmitting(false);
+      return;
+    }
     var late=0;
     if(curSession==="morning"){if(hr>9||(hr===9&&mn>0))late=(hr-9)*60+mn;}
     else{if(hr>14||(hr===14&&mn>0))late=(hr-14)*60+mn;}
+    var isMorningOnTime=curSession==="morning"&&late===0;
 
     var checkinObj={
       name:user.name,session:curSession,time:tStr,timestamp:now.toISOString(),lateMinutes:late,
+      arrivedBeforeDeadline:isMorningOnTime,
+      arrivalStatus:isMorningOnTime?"present":late>0?"late":"present",
       gpsDistance:gpsData?gpsData.distance:0,gpsAccuracy:gpsData?gpsData.accuracy:0,
       gpsLat:gpsData?gpsData.lat:0,gpsLng:gpsData?gpsData.lng:0,gpsOk:gpsStatus==="ok",photo:capturedPhoto
     };
     var rec=(attendanceData[todayKey]&&attendanceData[todayKey][empKey])||{status:"present",morning:0,afternoon:0,note:""};
     var u={};
-    if(curSession==="morning"){u.morning=late;if(late>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+"Selfie 09:00: "+tStr;}
+    if(curSession==="morning"){
+      u.morning=late;
+      u.status=late>0?"late":"present";
+      u.note=(rec.note?rec.note+" | ":"")+(isMorningOnTime?"Ertalab selfie (09:00 gacha): ":"Selfie 09:00: ")+tStr;
+    }
     else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+"Selfie 14:00: "+tStr;}
 
     db.ref("checkins/"+todayKey+"/"+empKey+"/"+curSession).set(checkinObj)
@@ -4139,7 +4156,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     React.createElement("div",{className:"page-header"},
       React.createElement("div",null,
         React.createElement("div",{className:"page-title"},"\u{1F4F8} Selfie Davomat"),
-        React.createElement("div",{className:"page-subtitle"},todayKey+" \u00B7 "+user.name)
+        React.createElement("div",{className:"page-subtitle"},todayKey+" \u00B7 "+user.name+(curSession==="morning"?" \u00B7 07:00-09:00 oralig'idagi selfie ertalab kelgan deb olinadi":curSession==="overtime"?" \u00B7 18:00-06:00 oralig'i qo'shimcha ish hisoblanadi":""))
       )
     ),
 
@@ -4152,7 +4169,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
         var bdr=!hasData?"var(--border)":isOT?"rgba(30,76,190,.12)":(s.d.lateMinutes>0?"rgba(192,57,43,.12)":"rgba(13,122,91,.12)");
         var icon=!hasData?s.i:isOT?"\u{1F4AA}":(s.d.lateMinutes>0?"\u23F0":"\u2705");
         var valColor=isOT?"var(--cobalt)":(s.d&&s.d.lateMinutes>0?"var(--ruby)":"var(--emerald)");
-        var valText=!hasData?"Kutilmoqda":isOT?(s.d.time+" \u00B7 +"+((s.d.overtimeMinutes||0)>=60?Math.floor((s.d.overtimeMinutes||0)/60)+"s "+((s.d.overtimeMinutes||0)%60)+"d":(s.d.overtimeMinutes||0)+"d")):(s.d.lateMinutes>0?s.d.lateMinutes+" daq kech":"Vaqtida \u2713");
+        var valText=!hasData?"Kutilmoqda":isOT?(s.d.time+" \u00B7 +"+((s.d.overtimeMinutes||0)>=60?Math.floor((s.d.overtimeMinutes||0)/60)+"s "+((s.d.overtimeMinutes||0)%60)+"d":(s.d.overtimeMinutes||0)+"d")):(s.d.lateMinutes>0?s.d.lateMinutes+" daq kech":(s.d.arrivedBeforeDeadline?"Kelgan ✓":"Vaqtida ✓"));
         return React.createElement("div",{key:s.l,style:{flex:1,padding:"12px 8px",borderRadius:"var(--rl)",background:bg,border:"1px solid "+bdr,textAlign:"center"}},
           React.createElement("div",{style:{fontSize:22,marginBottom:3}},icon),
           React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"var(--navy)",marginBottom:2}},s.l),
@@ -4165,7 +4182,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     ),
 
     // Session indicator
-    !curDone&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:curSession==="morning"?"var(--amber-bg)":curSession==="afternoon"?"var(--violet-bg)":"var(--cobalt-bg)",border:"1px solid "+(curSession==="morning"?"rgba(161,98,7,.12)":curSession==="afternoon"?"rgba(109,40,217,.12)":"rgba(30,76,190,.12)"),borderRadius:"var(--r)",marginBottom:12,fontSize:12,fontWeight:600,color:curSession==="morning"?"var(--amber)":curSession==="afternoon"?"var(--violet)":"var(--cobalt)"}},
+    !curDone&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:curSession==="morning"?"var(--amber-bg)":curSession==="afternoon"?"var(--violet-bg)":curSession==="overtime"?"var(--cobalt-bg)":"var(--surface3)",border:"1px solid "+(curSession==="morning"?"rgba(161,98,7,.12)":curSession==="afternoon"?"rgba(109,40,217,.12)":curSession==="overtime"?"rgba(30,76,190,.12)":"rgba(75,85,99,.12)"),borderRadius:"var(--r)",marginBottom:12,fontSize:12,fontWeight:600,color:curSession==="morning"?"var(--amber)":curSession==="afternoon"?"var(--violet)":curSession==="overtime"?"var(--cobalt)":"var(--ash)"}},
       React.createElement("span",{style:{fontSize:20}},sesIcon),
       React.createElement("span",null,sesLabel),
       React.createElement("span",{style:{marginLeft:"auto",fontFamily:"JetBrains Mono,monospace",fontSize:14,fontWeight:800}},liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"}))
@@ -4236,12 +4253,18 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           )
         ),
 
+        curSession==="waiting"&&gpsOk&&!cameraActive&&!capturedPhoto&&React.createElement("div",{style:{padding:"40px 30px",textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:34,marginBottom:12}},"\u23F3"),
+          React.createElement("div",{style:{color:"rgba(255,255,255,.86)",fontSize:15,fontWeight:700}},"Ertalabgi selfie hali ochilmagan"),
+          React.createElement("div",{style:{color:"rgba(255,255,255,.45)",fontSize:12,marginTop:8,lineHeight:1.7}},"07:00 dan keyin ertalabgi selfie olish mumkin.",React.createElement("br",null),"06:00 gacha bo'lgan selfie esa qo'shimcha ish vaqtiga kiradi.")
+        ),
+
         // Camera start button
-        gpsOk&&!cameraActive&&!capturedPhoto&&React.createElement("button",{className:"selfie-start-btn",onClick:startCamera},
+        gpsOk&&curSession!=="waiting"&&!cameraActive&&!capturedPhoto&&React.createElement("button",{className:"selfie-start-btn",onClick:startCamera},
           React.createElement("span",{style:{fontSize:48}},sesIcon),
           React.createElement("span",{style:{fontSize:16,fontWeight:700}},"Kamerani yoqish"),
           React.createElement("span",{style:{fontSize:11,opacity:.5}},sesLabel),
-          React.createElement("span",{style:{fontSize:10,opacity:.45,maxWidth:220,lineHeight:1.5}},"Galereya va fayl yuklash bloklangan. Faqat live kamera stream ishlaydi.")
+          React.createElement("span",{style:{fontSize:10,opacity:.45,maxWidth:240,lineHeight:1.5}},(curSession==="morning"?"07:00-09:00 oralig'idagi selfie ertalab kelgan deb olinadi. ":curSession==="overtime"?"18:00-06:00 oralig'i qo'shimcha ishga yoziladi. ":"")+"Galereya va fayl yuklash bloklangan. Faqat live kamera stream ishlaydi.")
         ),
 
         // Camera active — overlay controls
