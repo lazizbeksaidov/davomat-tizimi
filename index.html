@@ -2139,6 +2139,10 @@ function fmtDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart
 function isWorkday(d){const w=d.getDay();return w>=1&&w<=5}
 function safeKey(s){return s.replace(/[\u2018\u2019\u02BC\u0060'`]/g,"").replace(/\s+/g,"_").replace(/[.#$/[\]]/g,"_")}
 function stepToWorkday(date,dir){const d=new Date(date);do{d.setDate(d.getDate()+dir)}while(!isWorkday(d));return d}
+function parseDateKey(dateKey){
+  const p=String(dateKey||"").split("-").map(Number);
+  return new Date(p[0]||1970,(p[1]||1)-1,p[2]||1);
+}
 function getWeekDates(date){
   const d=new Date(date);const day=d.getDay();const diff=day===0?-6:1-day;
   const mon=new Date(d);mon.setDate(d.getDate()+diff);
@@ -2148,6 +2152,48 @@ function getMonthDates(yr,mo){
   while(d.getMonth()===mo){if(isWorkday(d))list.push(new Date(d));d.setDate(d.getDate()+1)}
   return list}
 function fmtMins(m){if(!m)return"—";if(m<60)return`${m}d`;return`${Math.floor(m/60)}s ${m%60}d`}
+function getWeekdayLabel(v){
+  const d=v instanceof Date?v:parseDateKey(v);
+  return d.toLocaleDateString("uz-UZ",{weekday:"long"});
+}
+function getOvertimeEntry(checkinsData,dateKey,empName){
+  return checkinsData?.[dateKey]?.[safeKey(empName)]?.overtime||null;
+}
+function getOvertimeMinutes(checkinsData,dateKey,empName){
+  const mins=Number(getOvertimeEntry(checkinsData,dateKey,empName)?.overtimeMinutes||0);
+  return Number.isFinite(mins)&&mins>0?mins:0;
+}
+function getOvertimeRowsForDates(checkinsData,dates,empName){
+  return dates
+    .map(d=>{
+      const dateKey=d instanceof Date?fmtDate(d):String(d);
+      const overtime=getOvertimeEntry(checkinsData,dateKey,empName);
+      const minutes=Number(overtime?.overtimeMinutes||0);
+      if(!Number.isFinite(minutes)||minutes<=0) return null;
+      return {
+        dateKey,
+        dateObj:d instanceof Date?new Date(d):parseDateKey(dateKey),
+        minutes,
+        time:overtime?.time||"—"
+      };
+    })
+    .filter(Boolean);
+}
+function getMonthOvertimeRows(checkinsData,yr,mon,empName){
+  return Object.keys(checkinsData||{})
+    .filter(dateKey=>{
+      const d=parseDateKey(dateKey);
+      return d.getFullYear()===yr&&d.getMonth()===mon;
+    })
+    .sort()
+    .map(dateKey=>{
+      const overtime=getOvertimeEntry(checkinsData,dateKey,empName);
+      const minutes=Number(overtime?.overtimeMinutes||0);
+      if(!Number.isFinite(minutes)||minutes<=0) return null;
+      return {dateKey,dateObj:parseDateKey(dateKey),minutes,time:overtime?.time||"—"};
+    })
+    .filter(Boolean);
+}
 
 /* ═══ RING SVG ═══ */
 function Ring({pct,size=44,stroke=5,color="var(--emerald)"}){
@@ -2355,7 +2401,7 @@ function BirthdaysView(){
 }
 
 /* ═══ DAILY VIEW ═══ */
-function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecord}){
+function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsData,updateRecord}){
   const isAdmin=user.role==="admin";
   const canView=user.role==="admin"||user.role==="boss";
   const dateKey=fmtDate(selectedDate);
@@ -2366,7 +2412,7 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
   useEffect(()=>{ setStatusDrill(null); },[dateKey]);
 
   const counts=useMemo(()=>{
-    const c={present:0,late:0,absent:0,other:0,lateMins:0};
+    const c={present:0,late:0,absent:0,other:0,lateMins:0,overtimeMins:0,overtimeCount:0};
     EMPLOYEES.forEach(emp=>{
       const rec=attendanceData[dateKey]?.[safeKey(emp)];
       const st=rec?.status||"present";
@@ -2375,9 +2421,12 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
       else if(st==="absent")c.absent++;
       else c.other++;
       c.lateMins+=(rec?.morning||0)+(rec?.afternoon||0);
+      const overtimeMins=getOvertimeMinutes(checkinsData,dateKey,emp);
+      c.overtimeMins+=overtimeMins;
+      if(overtimeMins>0) c.overtimeCount++;
     });
     return c;
-  },[dateKey,attendanceData]);
+  },[dateKey,attendanceData,checkinsData]);
 
   const toggleDrill=useCallback((key)=>{
     setStatusDrill(prev=>prev===key?null:key);
@@ -2509,6 +2558,15 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
             <div className="stat-label">Kechikish (daqiqa)</div>
           </div>
         </div>}
+        {canView&&<div className="stat-card c-cobalt">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+            <div className="stat-num">{counts.overtimeMins}<sup> d</sup></div>
+            <div className="stat-label">Qo'shimcha ish</div>
+            <div className="stat-hint">{counts.overtimeCount} ta xodimda qayd bor</div>
+          </div>
+        </div>}
       </div>
 
       {statusDrill&&(
@@ -2566,6 +2624,7 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
                 <th style={{width:170}}>Holat</th>
                 <th className="th-center" style={{width:110}}>09:00 kechikish</th>
                 <th className="th-center" style={{width:110}}>14:00 kechikish</th>
+                <th className="th-center" style={{width:120}}>18:00+ qo'sh. ish</th>
                 <th>Izoh</th>
               </tr>
             </thead>
@@ -2573,6 +2632,7 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
               {filtered.map((emp)=>{
                 const idx=EMPLOYEES.indexOf(emp);
                 const rec=attendanceData[dateKey]?.[safeKey(emp)]||{status:"present",morning:0,afternoon:0,note:""};
+                const overtimeMins=getOvertimeMinutes(checkinsData,dateKey,emp);
                 const active=["present","late"].includes(rec.status);
                 const stDef=STATUSES[rec.status]||STATUSES.present;
                 return(
@@ -2604,6 +2664,11 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,updateRecor
                       {active
                         ? <input type="number" min="0" max="240" disabled={!isAdmin} value={rec.afternoon} className="num-input"
                             onChange={e=>updateRecord(dateKey,emp,"afternoon",Math.max(0,parseInt(e.target.value)||0))}/>
+                        : <span className="zero-val">—</span>}
+                    </td>
+                    <td className="th-center">
+                      {overtimeMins>0
+                        ? <span className="late-val" style={{color:"var(--cobalt)"}}>{fmtMins(overtimeMins)}</span>
                         : <span className="zero-val">—</span>}
                     </td>
                     <td>
@@ -2696,7 +2761,7 @@ function WeeklyView({selectedDate,setSelectedDate,attendanceData,onEmpClick}){
 }
 
 /* ═══ MONTHLY VIEW ═══ */
-function MonthlyView({attendanceData,onEmpClick}){
+function MonthlyView({attendanceData,checkinsData,onEmpClick}){
   const today=new Date();const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
   const monthDates=useMemo(()=>getMonthDates(yr,mon),[yr,mon]);
   function prevMon(){if(mon===0){setMon(11);setYr(y=>y-1)}else setMon(m=>m-1)}
@@ -2707,8 +2772,10 @@ function MonthlyView({attendanceData,onEmpClick}){
       if(st==="present")present++;else if(st==="late"){late++;present++}else if(st==="absent")absent++;
       else if(st==="sick")sick++;else if(st==="trip")trip++;else if(st==="vacation")vacation++;
       lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
-    return{emp,present,late,absent,sick,trip,vacation,lateMins};
-  }),[monthDates,attendanceData]);
+    const overtimeRows=getOvertimeRowsForDates(checkinsData,monthDates,emp);
+    const overtimeMins=overtimeRows.reduce((sum,row)=>sum+row.minutes,0);
+    return{emp,present,late,absent,sick,trip,vacation,lateMins,overtimeMins,overtimeDays:overtimeRows.length};
+  }),[monthDates,attendanceData,checkinsData]);
   const totalDays=monthDates.length;
   return(
     <div style={{animation:"fadeUp .35s ease"}}>
@@ -2730,7 +2797,7 @@ function MonthlyView({attendanceData,onEmpClick}){
           <th className="th-center">Davomat</th><th className="th-center">Kech.</th>
           <th className="th-center">Yo'q</th><th className="th-center">Kasal</th>
           <th className="th-center">Safari</th><th className="th-center">Ta'til</th>
-          <th className="th-right">Kech. vaqti</th>
+          <th className="th-right">Kech. vaqti</th><th className="th-right">Qo'sh. ish</th>
         </tr></thead>
         <tbody>{empStats.map((s,i)=>{
           const pct=Math.round(s.present/totalDays*100);
@@ -2751,6 +2818,7 @@ function MonthlyView({attendanceData,onEmpClick}){
             <td className="th-center">{s.trip>0?<span className="badge" style={{color:"var(--cobalt)",background:"var(--cobalt-bg)"}}>{s.trip}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-center">{s.vacation>0?<span className="badge" style={{color:"var(--teal)",background:"var(--teal-bg)"}}>{s.vacation}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-right">{s.lateMins>0?<span className="late-val">{fmtMins(s.lateMins)}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-right">{s.overtimeMins>0?<span className="late-val" style={{color:"var(--cobalt)"}}>{s.overtimeDays} kun · {fmtMins(s.overtimeMins)}</span>:<span className="zero-val">—</span>}</td>
           </tr>);
         })}</tbody></table></div>
       </div>
@@ -2759,7 +2827,7 @@ function MonthlyView({attendanceData,onEmpClick}){
 }
 
 /* ═══ STATS VIEW ═══ */
-function StatsView({attendanceData,onEmpClick}){
+function StatsView({attendanceData,checkinsData,onEmpClick}){
   const today=new Date();
   const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
   const [period,setPeriod]=useState("monthly");const [sortBy,setSortBy]=useState("lateMins");
@@ -2779,12 +2847,15 @@ function StatsView({attendanceData,onEmpClick}){
       else if(st==="sick")sick++;else if(st==="trip")trip++;else if(st==="training")training++;
       else if(st==="vacation")vacation++;else if(st==="excused")excused++;
       lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
+    const overtimeRows=getOvertimeRowsForDates(checkinsData,dates,emp);
+    const overtimeMins=overtimeRows.reduce((sum,row)=>sum+row.minutes,0);
     const score=Math.max(0,100-Math.round(lateMins/Math.max(1,totalDays*480)*100*8)-absent*5-late*2);
-    return{emp,present,late,absent,sick,trip,training,vacation,excused,lateMins,score};
-  }),[dates,attendanceData]);
+    return{emp,present,late,absent,sick,trip,training,vacation,excused,lateMins,overtimeMins,overtimeDays:overtimeRows.length,score};
+  }),[dates,attendanceData,checkinsData,totalDays]);
   const sorted=useMemo(()=>[...empStats].sort((a,b)=>sortBy==="present"?b.present-a.present:sortBy==="score"?b.score-a.score:b[sortBy]-a[sortBy]),[empStats,sortBy]);
-  const totals=empStats.reduce((t,s)=>({present:t.present+s.present,late:t.late+s.late,absent:t.absent+s.absent,sick:t.sick+s.sick,lateMins:t.lateMins+s.lateMins}),{present:0,late:0,absent:0,sick:0,lateMins:0});
+  const totals=empStats.reduce((t,s)=>({present:t.present+s.present,late:t.late+s.late,absent:t.absent+s.absent,sick:t.sick+s.sick,lateMins:t.lateMins+s.lateMins,overtimeMins:t.overtimeMins+s.overtimeMins,overtimeDays:t.overtimeDays+s.overtimeDays}),{present:0,late:0,absent:0,sick:0,lateMins:0,overtimeMins:0,overtimeDays:0});
   const maxLate=Math.max(1,...sorted.map(s=>s.lateMins));
+  const maxOvertime=Math.max(1,...sorted.map(s=>s.overtimeMins));
   const avgScore=Math.round(empStats.reduce((s,e)=>s+e.score,0)/EMPLOYEES.length);
   const pie=[
     {l:"Ish joyida",v:totals.present,c:"var(--emerald)"},{l:"Kechikdi",v:totals.late,c:"var(--gold)"},
@@ -2818,6 +2889,10 @@ function StatsView({attendanceData,onEmpClick}){
         <div className="stat-card c-navy"><div className="stat-accent"/><div className="stat-card-inner">
           <div className="stat-top"><div className="stat-icon-wrap">⏱</div></div>
           <div className="stat-num">{totals.lateMins}<sup> d</sup></div><div className="stat-label">Kechikish (daqiqa)</div></div></div>
+        <div className="stat-card c-cobalt"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+          <div className="stat-num">{totals.overtimeMins}<sup> d</sup></div><div className="stat-label">Qo'shimcha ish</div>
+          <div className="stat-hint">{totals.overtimeDays} ta kun qayd etilgan</div></div></div>
         <div className="stat-card c-red"><div className="stat-accent"/><div className="stat-card-inner">
           <div className="stat-top"><div className="stat-icon-wrap">✗</div></div>
           <div className="stat-num">{totals.absent}</div><div className="stat-label">Sababsiz yo'qlik</div></div></div>
@@ -2845,6 +2920,29 @@ function StatsView({attendanceData,onEmpClick}){
                   }}/>
                 </div>
                 <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,fontWeight:700,color:s.lateMins>60?"var(--ruby)":"var(--amber)",width:52,textAlign:"right",flexShrink:0}}>{fmtMins(s.lateMins)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">🌙 Qo'shimcha Ish Reytingi</div><div className="table-meta">18:00 dan keyingi ishlangan vaqt</div></div>
+          </div>
+          <div style={{padding:"14px 18px",maxHeight:380,overflowY:"auto"}}>
+            {sorted.filter(s=>s.overtimeMins>0).length===0&&
+              <div style={{textAlign:"center",color:"var(--t4)",padding:28,fontSize:12}}>Bu davrda qo'shimcha ish qayd etilmagan</div>}
+            {sorted.filter(s=>s.overtimeMins>0).slice(0,15).map((s,i)=>(
+              <div key={s.emp+"_ot"} className="bar-item" onClick={()=>onEmpClick(s.emp)}>
+                <span style={{width:20,fontSize:10,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",textAlign:"right",flexShrink:0}}>{i+1}</span>
+                <span style={{width:105,fontSize:12,fontWeight:600,color:"var(--navy)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}}>{s.emp.split(" ")[0]}</span>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{
+                    width:`${Math.max(4,s.overtimeMins/maxOvertime*100)}%`,
+                    background:"linear-gradient(90deg,var(--cobalt),#3463e8)"
+                  }}/>
+                </div>
+                <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,fontWeight:700,color:"var(--cobalt)",width:72,textAlign:"right",flexShrink:0}}>{fmtMins(s.overtimeMins)}</span>
               </div>
             ))}
           </div>
@@ -2885,7 +2983,7 @@ function StatsView({attendanceData,onEmpClick}){
         <div className="table-header">
           <div><div className="table-title">Batafsil Ko'rsatkichlar</div><div className="table-meta">{totalDays} kun · {EMPLOYEES.length} xodim</div></div>
           <div style={{display:"flex",gap:3}}>
-            {[["lateMins","Kechikish"],["late","Soni"],["absent","Yo'qlik"],["score","Intizom"]].map(([k,v])=>
+            {[["lateMins","Kechikish"],["overtimeMins","Qo'sh. ish"],["late","Soni"],["absent","Yo'qlik"],["score","Intizom"]].map(([k,v])=>
               <button key={k} className={`sort-btn ${sortBy===k?"active":""}`} onClick={()=>setSortBy(k)}>{v}</button>)}
           </div>
         </div>
@@ -2893,7 +2991,7 @@ function StatsView({attendanceData,onEmpClick}){
           <th style={{width:44}}>№</th><th style={{minWidth:165}}>F.I.O</th>
           <th className="th-center">Davomat</th><th className="th-center">Kech.</th>
           <th className="th-center">Yo'q</th><th className="th-center">Kasal</th>
-          <th className="th-center">Safari</th><th className="th-right">Vaqt</th>
+          <th className="th-center">Safari</th><th className="th-right">Kech. vaqt</th><th className="th-right">Qo'sh. ish</th>
           <th className="th-center" style={{width:100}}>Intizom</th>
         </tr></thead>
         <tbody>{sorted.map((s,i)=>{
@@ -2910,6 +3008,7 @@ function StatsView({attendanceData,onEmpClick}){
             <td className="th-center">{s.sick>0?<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>{s.sick}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-center">{s.trip>0?<span className="badge" style={{color:"var(--cobalt)",background:"var(--cobalt-bg)"}}>{s.trip}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-right">{s.lateMins>0?<span className="late-val">{fmtMins(s.lateMins)}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-right">{s.overtimeMins>0?<span className="late-val" style={{color:"var(--cobalt)"}}>{s.overtimeDays} kun · {fmtMins(s.overtimeMins)}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-center">
               <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"center"}}>
                 <div style={{width:38,height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}}>
@@ -2953,7 +3052,7 @@ function BirthdayStatCard({empName}){
 }
 
 /* ═══ EMPLOYEE STATS ═══ */
-function EmployeeStats({empName,attendanceData,inModal=false}){
+function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
   const today=new Date();
   const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
   const [weekBase,setWeekBase]=useState(new Date());
@@ -2969,6 +3068,7 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
 
   const todayKey=fmtDate(liveNow);
   const todayRec=attendanceData[todayKey]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
+  const todayOvertimeMins=getOvertimeMinutes(checkinsData,todayKey,empName);
   const todayState=STATUSES[todayRec.status]||STATUSES.present;
   const workStatuses=["present","late","trip","training"];
 
@@ -3014,6 +3114,7 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
 
   const todayWorkedMins=useMemo(()=>getRealtimeWorkedMins(todayRec,liveNow),[todayRec,liveNow]);
   const todayWorkedPct=Math.min(100,Math.round(todayWorkedMins/480*100));
+  const monthOvertimeRows=useMemo(()=>getMonthOvertimeRows(checkinsData,yr,mon,empName),[checkinsData,yr,mon,empName]);
 
   const stats=useMemo(()=>{
     let presentOnly=0,late=0,lateMins=0,absent=0,sick=0,other=0,workedDays=0;
@@ -3023,10 +3124,11 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
       else if(st==="sick")sick++;else other++;
       if(workStatuses.includes(st)) workedDays++;
       lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
+    const overtimeMins=monthOvertimeRows.reduce((sum,row)=>sum+row.minutes,0);
     const total=monthDates.length;
     const score=Math.max(0,100-Math.round(lateMins/Math.max(1,total*480)*100*8)-absent*5-late*2);
-    return{presentOnly,late,totalPresent:presentOnly+late,lateMins,absent,sick,other,workedDays,total,score};
-  },[empName,monthDates,attendanceData]);
+    return{presentOnly,late,totalPresent:presentOnly+late,lateMins,overtimeMins,overtimeDays:monthOvertimeRows.length,absent,sick,other,workedDays,total,score};
+  },[monthDates,attendanceData,monthOvertimeRows]);
 
   // YANGLIK: Bu oy ishlashi reja qilingan jami soat
   const plannedMonthHours = monthDates.length * 8;
@@ -3205,6 +3307,23 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
             <span className="emp-live-pill" style={{color:"var(--amber)",background:"var(--amber-bg)"}}>Ulushi: {lateRate}%</span>
           </div>
         </div>
+
+        <div className="stat-card c-violet">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+            <div className="stat-num">{stats.overtimeMins}<sup> d</sup></div>
+            <div className="stat-label">Qo'shimcha ishlangan vaqt</div>
+            <div className="emp-live-note">
+              {stats.overtimeDays>0
+                ? `${stats.overtimeDays} kun qayd etilgan`
+                : "Bu oycha qo'shimcha vaqt kiritilmagan"}
+            </div>
+            <span className="emp-live-pill" style={{color:"var(--violet)",background:"var(--violet-bg)"}}>
+              Bugun: {todayOvertimeMins>0?fmtMins(todayOvertimeMins):"—"}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="table-card vacation-card">
@@ -3289,6 +3408,9 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
         <div className="stat-card c-red"><div className="stat-accent"/>
           <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">⏱</div></div>
           <div className="stat-num">{stats.lateMins}<sup> d</sup></div><div className="stat-label">Kechikish vaqti</div></div></div>
+        <div className="stat-card c-cobalt"><div className="stat-accent"/>
+          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+          <div className="stat-num">{stats.overtimeMins}<sup> d</sup></div><div className="stat-label">Qo'shimcha ish vaqti</div></div></div>
         <div className="stat-card c-violet"><div className="stat-accent"/>
           <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={stats.score} size={42} stroke={4} color={scColor}/></div>
           <div className="stat-num" style={{color:scColor}}>{stats.score}</div><div className="stat-label">Intizom bali</div></div></div>
@@ -3304,11 +3426,13 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
         </div>
         <div className="scroll-x"><table><thead><tr>
           <th>Sana</th><th>Kun</th><th>Holat</th>
-          <th className="th-center">09:00</th><th className="th-center">14:00</th><th>Izoh</th>
+          <th className="th-center">09:00</th><th className="th-center">14:00</th><th className="th-center">18:00+</th><th>Izoh</th>
         </tr></thead>
         <tbody>{weekDates.map((date,i)=>{
           const dk=fmtDate(date);
           const rec=attendanceData[dk]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
+          const overtime=getOvertimeEntry(checkinsData,dk,empName);
+          const overtimeMins=Number(overtime?.overtimeMinutes||0);
           const st=STATUSES[rec.status];const isToday=dk===fmtDate(today);
           return(
             <tr key={dk} style={isToday?{background:"rgba(200,150,42,.04)"}:{}}>
@@ -3320,10 +3444,38 @@ function EmployeeStats({empName,attendanceData,inModal=false}){
               <td><span className="badge" style={{color:st.color,background:st.bg}}>{st.icon} {st.label}</span></td>
               <td className="th-center">{rec.morning>0?<span className="late-val">{rec.morning} d</span>:<span className="zero-val">—</span>}</td>
               <td className="th-center">{rec.afternoon>0?<span className="late-val">{rec.afternoon} d</span>:<span className="zero-val">—</span>}</td>
+              <td className="th-center">{overtimeMins>0?<span className="late-val" style={{color:"var(--cobalt)"}}>{fmtMins(overtimeMins)}</span>:<span className="zero-val">—</span>}</td>
               <td style={{color:"var(--t3)",fontSize:12}}>{rec.note||<span className="zero-val">—</span>}</td>
             </tr>
           );
         })}</tbody></table></div>
+      </div>
+
+      <div className="table-card" style={{marginTop:16}}>
+        <div className="table-header">
+          <div>
+            <div className="table-title">Qo'shimcha Ishlangan Vaqt</div>
+            <div className="table-meta">{MONTHS[mon]} {yr} · {stats.overtimeDays} kun · jami {fmtMins(stats.overtimeMins)}</div>
+          </div>
+        </div>
+        <div className="scroll-x"><table><thead><tr>
+          <th>Sana</th><th>Kun</th><th className="th-center">Chiqish</th><th className="th-right">Qo'shimcha vaqt</th>
+        </tr></thead>
+        <tbody>
+          {monthOvertimeRows.length===0&&(
+            <tr>
+              <td colSpan="4" style={{textAlign:"center",padding:"22px 14px",color:"var(--t4)"}}>Bu oy uchun qo'shimcha ishlangan vaqt qayd etilmagan</td>
+            </tr>
+          )}
+          {monthOvertimeRows.map(row=>(
+            <tr key={row.dateKey}>
+              <td><span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12.5,fontWeight:600,color:"var(--navy)"}}>{row.dateKey}</span></td>
+              <td style={{color:"var(--t3)",fontSize:12,textTransform:"capitalize"}}>{getWeekdayLabel(row.dateObj)}</td>
+              <td className="th-center">{row.time}</td>
+              <td className="th-right"><span className="late-val" style={{color:"var(--cobalt)"}}>{fmtMins(row.minutes)}</span></td>
+            </tr>
+          ))}
+        </tbody></table></div>
       </div>
     </div>
   );
@@ -3336,14 +3488,13 @@ function selfieCalcDist(lat1,lon1,lat2,lon2){
   var a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
-function SelfieCheckin({user,attendanceData,showToast}){
+function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var{useState,useEffect,useRef,useCallback,useMemo}=React;
   var[gpsStatus,setGpsStatus]=useState("checking");
   var[gpsData,setGpsData]=useState(null);
   var[cameraActive,setCameraActive]=useState(false);
   var[capturedPhoto,setCapturedPhoto]=useState(null);
   var[liveTime,setLiveTime]=useState(new Date());
-  var[checkins,setCheckins]=useState({});
   var[submitting,setSubmitting]=useState(false);
   var[cameraError,setCameraError]=useState(null);
   var videoRef=useRef(null);
@@ -3354,18 +3505,11 @@ function SelfieCheckin({user,attendanceData,showToast}){
   var todayKey=fmtDate(new Date());
   var empKey=safeKey(user.name);
   var curHour=liveTime.getHours();
-  var curSession=curHour<13?"morning":"afternoon";
-  var sesLabel=curSession==="morning"?"Ertalabki (09:00)":"Tushlikdan keyin (14:00)";
-  var sesIcon=curSession==="morning"?"\u{1F305}":"\u{1F307}";
+  var curSession=curHour<13?"morning":curHour<18?"afternoon":"overtime";
+  var sesLabel=curSession==="morning"?"Ertalabki (09:00)":curSession==="afternoon"?"Tushlikdan keyin (14:00)":"Qo\u2018shimcha ish (18:00+)";
+  var sesIcon=curSession==="morning"?"\u{1F305}":curSession==="afternoon"?"\u{1F307}":"\u{1F319}";
 
   var isSecure=location.protocol==="https:"||location.hostname==="localhost"||location.hostname==="127.0.0.1";
-
-  // Firebase
-  useEffect(function(){
-    var ref=db.ref("checkins");
-    ref.on("value",function(snap){setCheckins(snap.val()||{});});
-    return function(){ref.off();};
-  },[]);
 
   // Clock
   useEffect(function(){
@@ -3406,50 +3550,42 @@ function SelfieCheckin({user,attendanceData,showToast}){
     };
   },[]);
 
-  var myM=checkins[todayKey]&&checkins[todayKey][empKey]?checkins[todayKey][empKey].morning:null;
-  var myA=checkins[todayKey]&&checkins[todayKey][empKey]?checkins[todayKey][empKey].afternoon:null;
-  var curDone=curSession==="morning"?myM:myA;
+  var myM=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].morning:null;
+  var myA=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].afternoon:null;
+  var myO=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].overtime:null;
+  var curDone=curSession==="morning"?myM:curSession==="afternoon"?myA:myO;
   var bothDone=myM&&myA;
   var gpsOk=gpsStatus==="ok"||gpsStatus==="far";
 
-  // Attach stream to video when camera activates
-  useEffect(function(){
-    if(cameraActive&&streamRef.current&&videoRef.current){
-      try{
-        videoRef.current.srcObject=streamRef.current;
-        var p=videoRef.current.play();
-        if(p&&p.catch)p.catch(function(){});
-      }catch(e){}
-    }
-  },[cameraActive]);
-
-  // Camera
+  // Camera — stream attached directly in .then() to keep iOS Safari user gesture chain
   var startCamera=useCallback(function(){
     if(!gpsOk)return;
     setCameraError(null);
-    if(!isSecure){setCameraError("HTTPS kerak. Bu sayt http:// orqali ochilgan — kamera ishlamaydi.");return;}
-    // Stop old
+    if(!isSecure){setCameraError("HTTPS kerak. Bu sayt http:// orqali ochilgan \u2014 kamera ishlamaydi.");return;}
     if(streamRef.current){streamRef.current.getTracks().forEach(function(t){t.stop();});streamRef.current=null;}
     if(videoRef.current)videoRef.current.srcObject=null;
 
-    navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false})
-    .then(function(stream){
+    function attachStream(stream){
       streamRef.current=stream;
+      if(videoRef.current){
+        videoRef.current.srcObject=stream;
+        var p=videoRef.current.play();
+        if(p&&p.catch)p.catch(function(){});
+      }
       setCameraActive(true);
-    })
-    .catch(function(err){
-      // Safari sometimes rejects facingMode, try without it
+    }
+
+    navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false})
+    .then(attachStream)
+    .catch(function(){
       navigator.mediaDevices.getUserMedia({video:true,audio:false})
-      .then(function(stream){
-        streamRef.current=stream;
-        setCameraActive(true);
-      })
+      .then(attachStream)
       .catch(function(err2){
         var msg="Kamera ishga tushmadi.";
-        if(err2.name==="NotAllowedError")msg="Kamera ruxsati berilmadi.\n\nSafari: Sozlamalar → Safari → Kamera → Ruxsat bering\nChrome: Manzil satridagi 🔒 → Kamera → Ruxsat bering";
+        if(err2.name==="NotAllowedError")msg="Kamera ruxsati berilmadi.\n\nSafari: Sozlamalar \u2192 Safari \u2192 Kamera \u2192 Ruxsat bering\nChrome: Manzil satridagi \uD83D\uDD12 \u2192 Kamera \u2192 Ruxsat bering";
         else if(err2.name==="NotFoundError")msg="Kamera topilmadi. Qurilmangizda old kamera borligini tekshiring.";
         else if(err2.name==="NotReadableError")msg="Kamera band. Boshqa ilova (Telegram, WhatsApp) kamerani ishlatyaptimi? Ularni yoping.";
-        else if(err2.name==="OverconstrainedError")msg="Kamera mos kelmadi. Sahifani yangilab qayta urinib ko'ring.";
+        else if(err2.name==="OverconstrainedError")msg="Kamera mos kelmadi. Sahifani yangilab qayta urinib ko\u2018ring.";
         else msg="Kamera xatosi: "+err2.message;
         setCameraError(msg);
       });
@@ -3480,8 +3616,8 @@ function SelfieCheckin({user,attendanceData,showToast}){
     // Top
     ctx.fillStyle="rgba(0,0,0,.6)";ctx.fillRect(0,0,w,36);
     ctx.font="bold 13px "+F;ctx.textAlign="left";
-    ctx.fillStyle=curSession==="morning"?"#fbbf24":"#a78bfa";
-    ctx.fillText(curSession==="morning"?"ERTALABKI":"TUSHLIK",10,24);
+    ctx.fillStyle=curSession==="morning"?"#fbbf24":curSession==="afternoon"?"#a78bfa":"#34d399";
+    ctx.fillText(curSession==="morning"?"ERTALABKI":curSession==="afternoon"?"TUSHLIK":"QO'SHIMCHA ISH",10,24);
     if(gpsData){ctx.textAlign="right";ctx.fillStyle=gpsStatus==="ok"?"#6ee7b7":"#fca5a5";ctx.font="bold 11px "+F;ctx.fillText("GPS:"+gpsData.distance+"m "+(gpsStatus==="ok"?"\u2713":"\u26A0"),w-10,24);}
     // Bottom
     ctx.fillStyle="rgba(0,0,0,.65)";ctx.fillRect(0,h-50,w,50);
@@ -3498,6 +3634,29 @@ function SelfieCheckin({user,attendanceData,showToast}){
     var now=new Date();
     var tStr=now.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
     var hr=now.getHours(),mn=now.getMinutes();
+
+    if(curSession==="overtime"){
+      // Overtime — faqat checkins ga yoziladi, attendance ga TEGMAYDI
+      var overtimeMinutes=(hr-18)*60+mn;
+      var checkinObj={
+        name:user.name,session:"overtime",time:tStr,timestamp:now.toISOString(),
+        overtimeMinutes:overtimeMinutes,lateMinutes:0,
+        gpsDistance:gpsData?gpsData.distance:0,gpsAccuracy:gpsData?gpsData.accuracy:0,
+        gpsLat:gpsData?gpsData.lat:0,gpsLng:gpsData?gpsData.lng:0,gpsOk:gpsStatus==="ok",photo:capturedPhoto
+      };
+      db.ref("checkins/"+todayKey+"/"+empKey+"/overtime").set(checkinObj)
+      .then(function(){
+        showToast("\u2713 Qo\u2018shimcha ish vaqti qayd etildi! ("+tStr+")");
+        setCapturedPhoto(null);setSubmitting(false);
+      })
+      .catch(function(e){
+        showToast("\u26A0 Xatolik: "+(e.message||"Firebase muammo"));
+        setSubmitting(false);
+      });
+      return;
+    }
+
+    // Morning / Afternoon — attendance ga ham yoziladi
     var late=0;
     if(curSession==="morning"){if(hr>9||(hr===9&&mn>0))late=(hr-9)*60+mn;}
     else{if(hr>14||(hr===14&&mn>0))late=(hr-14)*60+mn;}
@@ -3524,17 +3683,18 @@ function SelfieCheckin({user,attendanceData,showToast}){
     });
   },[capturedPhoto,submitting,user,todayKey,empKey,gpsData,gpsStatus,attendanceData,curSession]);
 
-  // Admin list
+  // Admin list — includes overtime
   var todayList=useMemo(function(){
-    var tc=(checkins[todayKey])||{};var list=[];
+    var tc=(checkinsData[todayKey])||{};var list=[];
     Object.keys(tc).forEach(function(k){
       var v=tc[k];
       if(v&&v.morning)list.push(Object.assign({key:k+"_m"},v.morning));
       if(v&&v.afternoon)list.push(Object.assign({key:k+"_a"},v.afternoon));
+      if(v&&v.overtime)list.push(Object.assign({key:k+"_o"},v.overtime));
     });
     list.sort(function(a,b){return(a.timestamp||"").localeCompare(b.timestamp||"");});
     return list;
-  },[checkins,todayKey]);
+  },[checkinsData,todayKey]);
 
   var canView=user.role==="admin"||user.role==="boss";
 
@@ -3565,43 +3725,57 @@ function SelfieCheckin({user,attendanceData,showToast}){
     ),
 
     // Session cards
-    React.createElement("div",{style:{display:"flex",gap:10,marginBottom:16}},
-      [{d:myM,l:"Ertalabki",i:"\u{1F305}"},{d:myA,l:"Tushlik",i:"\u{1F307}"}].map(function(s){
-        return React.createElement("div",{key:s.l,style:{flex:1,padding:"14px 12px",borderRadius:"var(--rl)",background:s.d?(s.d.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)"):"var(--surface3)",border:"1px solid "+(s.d?(s.d.lateMinutes>0?"rgba(192,57,43,.12)":"rgba(13,122,91,.12)"):"var(--border)"),textAlign:"center"}},
-          React.createElement("div",{style:{fontSize:24,marginBottom:4}},s.d?(s.d.lateMinutes>0?"\u23F0":"\u2705"):s.i),
-          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"var(--navy)",marginBottom:3}},s.l),
-          s.d?React.createElement(React.Fragment,null,
-            React.createElement("div",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:16,fontWeight:800,color:s.d.lateMinutes>0?"var(--ruby)":"var(--emerald)"}},s.d.time),
-            React.createElement("div",{style:{fontSize:10,marginTop:3,color:s.d.lateMinutes>0?"var(--ruby)":"var(--emerald)",fontWeight:600}},s.d.lateMinutes>0?s.d.lateMinutes+" daq kech":"Vaqtida \u2713")
-          ):React.createElement("div",{style:{fontSize:10,color:"var(--t4)",marginTop:2}},"Kutilmoqda")
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:16}},
+      [{d:myM,l:"Ertalab",i:"\u{1F305}",type:"attend"},{d:myA,l:"Tushlik",i:"\u{1F307}",type:"attend"},{d:myO,l:"Qo\u2018shimcha",i:"\u{1F319}",type:"overtime"}].map(function(s){
+        var isOT=s.type==="overtime";
+        var hasData=!!s.d;
+        var bg=!hasData?"var(--surface3)":isOT?"var(--cobalt-bg)":(s.d.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)");
+        var bdr=!hasData?"var(--border)":isOT?"rgba(30,76,190,.12)":(s.d.lateMinutes>0?"rgba(192,57,43,.12)":"rgba(13,122,91,.12)");
+        var icon=!hasData?s.i:isOT?"\u{1F4AA}":(s.d.lateMinutes>0?"\u23F0":"\u2705");
+        var valColor=isOT?"var(--cobalt)":(s.d&&s.d.lateMinutes>0?"var(--ruby)":"var(--emerald)");
+        var valText=!hasData?"Kutilmoqda":isOT?(s.d.time+" \u00B7 +"+((s.d.overtimeMinutes||0)>=60?Math.floor((s.d.overtimeMinutes||0)/60)+"s "+((s.d.overtimeMinutes||0)%60)+"d":(s.d.overtimeMinutes||0)+"d")):(s.d.lateMinutes>0?s.d.lateMinutes+" daq kech":"Vaqtida \u2713");
+        return React.createElement("div",{key:s.l,style:{flex:1,padding:"12px 8px",borderRadius:"var(--rl)",background:bg,border:"1px solid "+bdr,textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:22,marginBottom:3}},icon),
+          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"var(--navy)",marginBottom:2}},s.l),
+          hasData?React.createElement(React.Fragment,null,
+            React.createElement("div",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:14,fontWeight:800,color:valColor}},s.d.time),
+            React.createElement("div",{style:{fontSize:9,marginTop:2,color:valColor,fontWeight:600}},valText)
+          ):React.createElement("div",{style:{fontSize:9,color:"var(--t4)",marginTop:2}},isOT?"18:00 dan keyin":"Kutilmoqda")
         );
       })
     ),
 
     // Session indicator
-    !curDone&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:curSession==="morning"?"var(--amber-bg)":"var(--violet-bg)",border:"1px solid "+(curSession==="morning"?"rgba(161,98,7,.12)":"rgba(109,40,217,.12)"),borderRadius:"var(--r)",marginBottom:12,fontSize:12,fontWeight:600,color:curSession==="morning"?"var(--amber)":"var(--violet)"}},
+    !curDone&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:curSession==="morning"?"var(--amber-bg)":curSession==="afternoon"?"var(--violet-bg)":"var(--cobalt-bg)",border:"1px solid "+(curSession==="morning"?"rgba(161,98,7,.12)":curSession==="afternoon"?"rgba(109,40,217,.12)":"rgba(30,76,190,.12)"),borderRadius:"var(--r)",marginBottom:12,fontSize:12,fontWeight:600,color:curSession==="morning"?"var(--amber)":curSession==="afternoon"?"var(--violet)":"var(--cobalt)"}},
       React.createElement("span",{style:{fontSize:20}},sesIcon),
       React.createElement("span",null,sesLabel),
       React.createElement("span",{style:{marginLeft:"auto",fontFamily:"JetBrains Mono,monospace",fontSize:14,fontWeight:800}},liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"}))
     ),
 
     // Done card
-    curDone&&!canView?React.createElement("div",{className:"selfie-done-card"},
-      React.createElement("div",{className:"selfie-done-icon"},"\u2705"),
-      curDone.photo&&React.createElement("img",{src:curDone.photo,className:"selfie-done-photo",alt:""}),
-      React.createElement("div",{className:"selfie-done-title"},(curSession==="morning"?"Ertalabki":"Tushlik")+" qayd etilgan!"),
-      React.createElement("div",{className:"selfie-done-sub"},
-        "Vaqt: ",React.createElement("strong",null,curDone.time),React.createElement("br",null),
-        curDone.lateMinutes>0?React.createElement("span",{style:{color:"var(--ruby)"}},"Kechikish: "+curDone.lateMinutes+" daqiqa"):React.createElement("span",{style:{color:"var(--emerald)"}},"Vaqtida \u2713")
-      ),
-      React.createElement("div",null,
-        React.createElement("span",{className:"selfie-done-detail"},"\u{1F550} "+curDone.time),
-        React.createElement("span",{className:"selfie-done-detail"},"\u{1F4CD} "+curDone.gpsDistance+"m")
-      ),
-      !bothDone&&React.createElement("div",{style:{marginTop:14,padding:"10px 14px",background:"var(--surface3)",borderRadius:"var(--r)",fontSize:12,color:"var(--t3)"}},
-        "\u{1F4A1} "+(curSession==="morning"?"Tushlikdan keyin (13:00 dan) yana selfie olishingiz kerak":"Ertalabki selfie olingan")
-      )
-    ):
+    curDone&&!canView?(function(){
+      var isOT=curSession==="overtime";
+      var sesName=curSession==="morning"?"Ertalabki":curSession==="afternoon"?"Tushlik":"Qo\u2018shimcha ish";
+      return React.createElement("div",{className:"selfie-done-card"},
+        React.createElement("div",{className:"selfie-done-icon"},isOT?"\u{1F4AA}":"\u2705"),
+        curDone.photo&&React.createElement("img",{src:curDone.photo,className:"selfie-done-photo",alt:""}),
+        React.createElement("div",{className:"selfie-done-title",style:isOT?{color:"var(--cobalt)"}:{}},sesName+" qayd etilgan!"),
+        React.createElement("div",{className:"selfie-done-sub"},
+          "Vaqt: ",React.createElement("strong",null,curDone.time),React.createElement("br",null),
+          isOT?React.createElement("span",{style:{color:"var(--cobalt)"}},"Qo\u2018shimcha: +"+(curDone.overtimeMinutes>=60?Math.floor(curDone.overtimeMinutes/60)+" soat "+(curDone.overtimeMinutes%60)+" daqiqa":curDone.overtimeMinutes+" daqiqa"))
+          :curDone.lateMinutes>0?React.createElement("span",{style:{color:"var(--ruby)"}},"Kechikish: "+curDone.lateMinutes+" daqiqa")
+          :React.createElement("span",{style:{color:"var(--emerald)"}},"Vaqtida \u2713")
+        ),
+        React.createElement("div",null,
+          React.createElement("span",{className:"selfie-done-detail"},"\u{1F550} "+curDone.time),
+          React.createElement("span",{className:"selfie-done-detail"},"\u{1F4CD} "+curDone.gpsDistance+"m"),
+          isOT&&React.createElement("span",{className:"selfie-done-detail",style:{background:"var(--cobalt-bg)",color:"var(--cobalt)"}},"\u{1F4AA} Overtime")
+        ),
+        !isOT&&!bothDone&&React.createElement("div",{style:{marginTop:14,padding:"10px 14px",background:"var(--surface3)",borderRadius:"var(--r)",fontSize:12,color:"var(--t3)"}},
+          "\u{1F4A1} "+(curSession==="morning"?"Tushlikdan keyin (13:00 dan) yana selfie olishingiz kerak":"Ertalabki selfie olingan")
+        )
+      );
+    })():
     !curDone?React.createElement(React.Fragment,null,
       // GPS
       React.createElement("div",{style:{borderRadius:"var(--rl)",overflow:"hidden",border:"1px solid "+(gpsStatus==="ok"?"rgba(13,122,91,.15)":gpsStatus==="far"?"rgba(192,57,43,.15)":"rgba(30,76,190,.15)"),background:gpsBg,marginBottom:14}},
@@ -3623,6 +3797,8 @@ function SelfieCheckin({user,attendanceData,showToast}){
 
       // Camera box
       React.createElement("div",{className:"selfie-camera-box",style:{background:cameraActive?"#000":"var(--ink)"}},
+        // Video — ALWAYS in DOM, display toggled. iOS Safari requires this.
+        React.createElement("video",{ref:videoRef,autoPlay:true,playsInline:true,muted:true,className:"selfie-video",style:{display:cameraActive&&!capturedPhoto?"block":"none"}}),
         // GPS not ready
         !gpsOk&&!cameraActive&&!capturedPhoto&&React.createElement("div",{style:{padding:"40px 30px",textAlign:"center"}},
           React.createElement("div",{style:{fontSize:32,marginBottom:12}},gpsStatus==="checking"?"\u{1F4E1}":"\u{1F6AB}"),
@@ -3648,12 +3824,10 @@ function SelfieCheckin({user,attendanceData,showToast}){
           React.createElement("span",{style:{fontSize:11,opacity:.5}},sesLabel)
         ),
 
-        // Camera active — video + overlays
-        cameraActive&&React.createElement(React.Fragment,null,
-          React.createElement("video",{ref:videoRef,autoPlay:true,playsInline:true,muted:true,className:"selfie-video",style:{width:"100%",display:"block"},"webkit-playsinline":"true"}),
-          React.createElement("div",{style:{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"flex-end",pointerEvents:"none"}},
+        // Camera active — overlay controls
+        cameraActive&&React.createElement("div",{style:{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"flex-end",pointerEvents:"none"}},
           // Session badge
-          React.createElement("div",{style:{position:"absolute",top:10,left:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:curSession==="morning"?"#fbbf24":"#a78bfa"}},curSession==="morning"?"\u2600 ERTALAB":"\u{1F319} TUSHLIK"),
+          React.createElement("div",{style:{position:"absolute",top:10,left:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:curSession==="morning"?"#fbbf24":curSession==="afternoon"?"#a78bfa":"#60a5fa"}},curSession==="morning"?"\u2600 ERTALAB":curSession==="afternoon"?"\u{1F319} TUSHLIK":"\u{1F4AA} QO'SHIMCHA"),
           // GPS badge
           gpsData&&React.createElement("div",{style:{position:"absolute",top:10,right:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:gpsStatus==="ok"?"#6ee7b7":"#fca5a5"}},"\u{1F4CD}"+gpsData.distance+"m"),
           // Time
@@ -3662,7 +3836,6 @@ function SelfieCheckin({user,attendanceData,showToast}){
           React.createElement("button",{className:"selfie-capture-btn",onClick:capturePhoto,style:{pointerEvents:"auto"}},React.createElement("div",{className:"selfie-capture-inner"})),
           // Close
           React.createElement("button",{onClick:stopCamera,style:{position:"absolute",bottom:14,left:14,padding:"6px 14px",background:"rgba(0,0,0,.5)",border:"none",borderRadius:8,color:"rgba(255,255,255,.6)",fontSize:11,cursor:"pointer",fontFamily:"Outfit,sans-serif",pointerEvents:"auto"}},"\u2715 Yopish")
-        )
         ),
 
         // Preview
@@ -3684,16 +3857,21 @@ function SelfieCheckin({user,attendanceData,showToast}){
         React.createElement("div",{className:"table-meta"},todayList.length+" ta yozuv")
       )),
       todayList.map(function(c,i){
+        var isOT=c.session==="overtime";
+        var sesIcn=c.session==="morning"?"\u{1F305}":c.session==="afternoon"?"\u{1F307}":"\u{1F4AA}";
+        var badgeColor=isOT?"var(--cobalt)":(c.lateMinutes>0?"var(--ruby)":"var(--emerald)");
+        var badgeBg=isOT?"var(--cobalt-bg)":(c.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)");
+        var badgeText=isOT?"+"+(c.overtimeMinutes||0)+"d":(c.lateMinutes>0?c.lateMinutes+"d":"\u2713");
         return React.createElement("div",{key:c.key,className:"selfie-history-item"},
           React.createElement("span",{style:{fontSize:11,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",width:22}},i+1),
           c.photo&&React.createElement("img",{src:c.photo,className:"selfie-history-photo",alt:""}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"selfie-history-emp"},c.name),
-            React.createElement("div",{style:{fontSize:10,color:"var(--t3)"}},(c.session==="morning"?"\u{1F305}":"\u{1F307}")+" \u00B7 "+c.gpsDistance+"m "+(c.gpsOk?"\u2713":"\u26A0"))
+            React.createElement("div",{style:{fontSize:10,color:"var(--t3)"}},sesIcn+" \u00B7 "+c.gpsDistance+"m "+(c.gpsOk?"\u2713":"\u26A0")+(isOT?" \u00B7 Qo\u2018shimcha":""))
           ),
           React.createElement("div",{style:{textAlign:"right"}},
             React.createElement("div",{className:"selfie-history-time"},c.time||"\u2014"),
-            React.createElement("span",{className:"selfie-history-badge",style:{color:c.lateMinutes>0?"var(--ruby)":"var(--emerald)",background:c.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)"}},c.lateMinutes>0?c.lateMinutes+"d":"\u2713")
+            React.createElement("span",{className:"selfie-history-badge",style:{color:badgeColor,background:badgeBg}},badgeText)
           )
         );
       })
@@ -3711,6 +3889,7 @@ function App(){
   const [view,setView]=useState("daily");
   const [selDate,setSelDate]=useState(new Date());
   const [data,setData]=useState({});
+  const [checkinsData,setCheckinsData]=useState({});
   const [loading,setLoading]=useState(true);
   const [authLoading,setAuthLoading]=useState(false);
   const [toast,setToast]=useState(null);
@@ -3727,7 +3906,11 @@ function App(){
         const info=USERS_INFO[email]||{role:"employee",name:email};
         setUser({email,...info});
         setView(info.role==="employee"?"myStats":"daily");
-      }else setUser(null);
+      }else{
+        setUser(null);
+        setData({});
+        setCheckinsData({});
+      }
       setLoading(false);
     });
     return()=>unsub();
@@ -3737,6 +3920,13 @@ function App(){
     if(!user)return;
     const ref=db.ref("attendance");
     ref.on("value",(snap)=>setData(snap.val()||{}),(err)=>console.error(err));
+    return()=>ref.off();
+  },[user]);
+
+  useEffect(()=>{
+    if(!user)return;
+    const ref=db.ref("checkins");
+    ref.on("value",(snap)=>setCheckinsData(snap.val()||{}),(err)=>console.error(err));
     return()=>ref.off();
   },[user]);
 
@@ -3975,13 +4165,13 @@ function App(){
           {loading
             ? <div className="empty-state"><div className="empty-icon">⏳</div><div className="empty-title">Yuklanmoqda...</div><div className="empty-sub">Firebase bilan ulanish o'rnatilmoqda</div></div>
             : <>
-                {view==="daily"&&canManage&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} updateRecord={dispatch}/>}
+                {view==="daily"&&canManage&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} checkinsData={checkinsData} updateRecord={dispatch}/>}
                 {view==="weekly"&&canManage&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
-                {view==="monthly"&&canManage&&<MonthlyView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
-                {view==="stats"&&canManage&&<StatsView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
-                {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data}/>}
+                {view==="monthly"&&canManage&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
+                {view==="stats"&&canManage&&<StatsView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
+                {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>}
                 {view==="birthdays"&&<BirthdaysView/>}
-                {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} showToast={showToast}/>}
+                {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
               </>
           }
         </main>
@@ -4004,7 +4194,7 @@ function App(){
         <div className="modal-overlay" onClick={()=>setModalEmp(null)}>
           <div className="modal-box" onClick={e=>e.stopPropagation()}>
             <button className="modal-close" onClick={()=>setModalEmp(null)}>✕</button>
-            <EmployeeStats empName={modalEmp} attendanceData={data} inModal={true}/>
+            <EmployeeStats empName={modalEmp} attendanceData={data} checkinsData={checkinsData} inModal={true}/>
           </div>
         </div>
       )}
