@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f1e3d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Xodimlar" />
   <title>Xodimlar Monitoring Tizimi — Navoiy viloyati</title>
+  <link id="dynamic-manifest" rel="manifest" />
+  <link id="dynamic-apple-icon" rel="apple-touch-icon" />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
 
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -701,6 +707,55 @@
       background: var(--cloud); border: 1px solid var(--border);
       border-radius: 20px; padding: 4px 13px;
       font-size: 10.5px; color: var(--t3); font-weight: 500;
+    }
+    .pwa-banner {
+      margin: 14px 28px 0;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, var(--navy), var(--navy-lt));
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      color: white;
+      box-shadow: var(--s2);
+    }
+    .pwa-banner-main { min-width: 0; }
+    .pwa-banner-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    .pwa-banner-sub {
+      margin-top: 4px;
+      font-size: 11.5px;
+      color: rgba(255,255,255,.74);
+      line-height: 1.5;
+    }
+    .pwa-banner-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .pwa-install-btn, .pwa-dismiss-btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+      cursor: pointer;
+    }
+    .pwa-install-btn {
+      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+      color: var(--ink);
+      box-shadow: 0 6px 18px rgba(200,150,42,.22);
+    }
+    .pwa-dismiss-btn {
+      background: rgba(255,255,255,.12);
+      color: rgba(255,255,255,.82);
+      border: 1px solid rgba(255,255,255,.14);
     }
 
     /* ─── MODAL ─────────────────────────────────── */
@@ -1624,6 +1679,14 @@
       .selfie-done-detail { font-size: 12px !important; padding: 6px 14px !important; }
       .selfie-history-card { border-radius: 12px !important; }
       .selfie-history-item { padding: 12px 14px !important; }
+      .pwa-banner {
+        margin: 12px 14px 0 !important;
+        padding: 14px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+      }
+      .pwa-banner-actions { width: 100% !important; }
+      .pwa-install-btn, .pwa-dismiss-btn { flex: 1 !important; }
 
       /* ─── LOGIN ─── */
       .login-right {
@@ -4355,6 +4418,41 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   );
 }
 
+function setupPWAAssets(){
+  if(typeof window==="undefined") return;
+  var iconSvg=
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'>"+
+    "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='#0f1e3d'/><stop offset='1' stop-color='#1d3468'/></linearGradient></defs>"+
+    "<rect width='512' height='512' rx='120' fill='url(#g)'/>"+
+    "<rect x='128' y='124' width='256' height='264' rx='56' fill='#c8962a' opacity='.16'/>"+
+    "<path d='M256 74l126 48v99c0 94-55 170-126 217-71-47-126-123-126-217V122l126-48z' fill='#e8b84b'/>"+
+    "<path d='M256 122l82 31v67c0 61-34 112-82 146-48-34-82-85-82-146v-67l82-31z' fill='#0f1e3d'/>"+
+    "<circle cx='256' cy='246' r='42' fill='#e8b84b'/>"+
+    "<path d='M256 286c34 0 62 24 68 56H188c6-32 34-56 68-56z' fill='#e8b84b'/>"+
+    "</svg>";
+  var iconUrl="data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(iconSvg);
+  var manifest={
+    name:"Xodimlar Monitoring Tizimi",
+    short_name:"Xodimlar",
+    description:"Davomat, selfie nazorat va statistika tizimi",
+    start_url:window.location.pathname+window.location.search,
+    scope:"./",
+    display:"standalone",
+    background_color:"#f3f6fb",
+    theme_color:"#0f1e3d",
+    icons:[
+      {src:iconUrl,sizes:"192x192",type:"image/svg+xml",purpose:"any maskable"},
+      {src:iconUrl,sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}
+    ]
+  };
+  var manifestBlob=new Blob([JSON.stringify(manifest)],{type:"application/manifest+json"});
+  var manifestUrl=URL.createObjectURL(manifestBlob);
+  var manifestLink=document.getElementById("dynamic-manifest");
+  if(manifestLink)manifestLink.href=manifestUrl;
+  var appleIcon=document.getElementById("dynamic-apple-icon");
+  if(appleIcon)appleIcon.href=iconUrl;
+}
+
 /* ═══ MAIN APP ═══ */
 function App(){
   const [user,setUser]=useState(null);
@@ -4370,9 +4468,58 @@ function App(){
   const [toast,setToast]=useState(null);
   const [modalEmp,setModalEmp]=useState(null);
   const [clock,setClock]=useState(new Date());
+  const [deferredPrompt,setDeferredPrompt]=useState(null);
+  const [showInstallBanner,setShowInstallBanner]=useState(false);
+  const [isStandalone,setIsStandalone]=useState(false);
+  const [iosInstallHint,setIosInstallHint]=useState(false);
+  const [hideInstallBanner,setHideInstallBanner]=useState(false);
   const toastRef=useRef(null);
 
   useEffect(()=>{const t=setInterval(()=>setClock(new Date()),30000);return()=>clearInterval(t)},[]);
+
+  useEffect(()=>{
+    setupPWAAssets();
+    if(typeof window==="undefined") return;
+    const secure=location.protocol==="https:"||location.hostname==="localhost"||location.hostname==="127.0.0.1";
+    const standaloneNow=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+    setIsStandalone(standaloneNow);
+    try{
+      setHideInstallBanner(localStorage.getItem("xodimlar-pwa-dismissed")==="1");
+    }catch(_e){}
+    const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isSafari=/safari/i.test(navigator.userAgent)&&!/chrome|android|crios|fxios/i.test(navigator.userAgent);
+    setIosInstallHint(isIos&&isSafari&&!standaloneNow);
+
+    function onBeforeInstallPrompt(e){
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    }
+    function onAppInstalled(){
+      setDeferredPrompt(null);
+      setShowInstallBanner(false);
+      setIsStandalone(true);
+    }
+    function onDisplayChange(){
+      const active=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+      setIsStandalone(active);
+      if(active)setShowInstallBanner(false);
+    }
+
+    window.addEventListener("beforeinstallprompt",onBeforeInstallPrompt);
+    window.addEventListener("appinstalled",onAppInstalled);
+    window.matchMedia("(display-mode: standalone)").addEventListener?.("change",onDisplayChange);
+
+    if("serviceWorker" in navigator&&secure){
+      navigator.serviceWorker.register("./sw.js").catch(function(err){console.error("SW register xato",err);});
+    }
+
+    return()=>{
+      window.removeEventListener("beforeinstallprompt",onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled",onAppInstalled);
+      window.matchMedia("(display-mode: standalone)").removeEventListener?.("change",onDisplayChange);
+    };
+  },[]);
 
   useEffect(()=>{
     const unsub=auth.onAuthStateChanged((fUser)=>{
@@ -4409,6 +4556,22 @@ function App(){
     setToast(msg);
     if(toastRef.current)clearTimeout(toastRef.current);
     toastRef.current=setTimeout(()=>setToast(null),3000);
+  }
+
+  async function handleInstallApp(){
+    if(!deferredPrompt)return;
+    deferredPrompt.prompt();
+    const result=await deferredPrompt.userChoice.catch(function(){return null;});
+    if(result&&result.outcome==="accepted"){
+      setShowInstallBanner(false);
+    }
+    setDeferredPrompt(null);
+  }
+
+  function dismissInstallBanner(){
+    setHideInstallBanner(true);
+    setShowInstallBanner(false);
+    try{localStorage.setItem("xodimlar-pwa-dismissed","1");}catch(_e){}
   }
 
   function handleLogin(){
@@ -4635,6 +4798,23 @@ function App(){
             </div>
           </div>
         </div>
+
+        {!isStandalone&&!hideInstallBanner&&(showInstallBanner||iosInstallHint)&&(
+          <div className="pwa-banner">
+            <div className="pwa-banner-main">
+              <div className="pwa-banner-title">Ilova sifatida o'rnatish</div>
+              <div className="pwa-banner-sub">
+                {showInstallBanner
+                  ? "Home screen'ga o'rnating va tizimni brauzersiz, xuddi native ilovadek oching."
+                  : "iPhone'da Share menyusi orqali Add to Home Screen ni tanlang."}
+              </div>
+            </div>
+            <div className="pwa-banner-actions">
+              {showInstallBanner&&<button className="pwa-install-btn" onClick={handleInstallApp}>O'rnatish</button>}
+              <button className="pwa-dismiss-btn" onClick={dismissInstallBanner}>Yopish</button>
+            </div>
+          </div>
+        )}
 
         {/* MAIN */}
         <main className="main">
