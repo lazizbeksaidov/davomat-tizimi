@@ -10,7 +10,14 @@ const fetch = require("node-fetch");
 admin.initializeApp();
 const db = admin.database();
 
-const BOT_TOKEN = "8602585370:AAHcoFGShZBZQRGke2D7o8RTTZsI_yYdKWc";
+// Bot token Firebase DB'dan olinadi — kodda saqlanmaydi
+let _botToken = null;
+async function getBotToken() {
+  if (_botToken) return _botToken;
+  const snap = await db.ref("config/bot_token").once("value");
+  _botToken = snap.val();
+  return _botToken;
+}
 
 const EMPLOYEES = [
   "Umrzoqov Bunyod","Ermamatov Xurshid",
@@ -67,7 +74,9 @@ async function getChatId() {
 }
 
 async function sendMessage(chatId, text) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+  const token = await getBotToken();
+  if (!token) { console.error("Bot token not configured"); return; }
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
   return fetch(url, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
@@ -561,13 +570,23 @@ exports.weeklyReport = functions.pubsub
   });
 
 // ═══ AI TAHLIL (GEMINI) ═══
-const GEMINI_KEY = "AIzaSyB1zEK93rvpanajzXa8AlwRmNbOGgzYK90";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+// API kalit Firebase DB'dan olinadi — kodda saqlanmaydi
+const ALLOWED_ORIGINS = [
+  "https://lazizbeksaidov.github.io",
+  "http://localhost:5000",
+  "http://localhost:3000"
+];
 
 exports.aiAnalysis = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
+  // CORS — faqat ruxsat berilgan saytlardan
+  const origin = req.headers.origin || "";
+  if (ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.set("X-Content-Type-Options", "nosniff");
+  res.set("X-Frame-Options", "DENY");
   if (req.method === "OPTIONS") { res.status(204).send(""); return; }
   if (req.method !== "POST") { res.status(405).json({error:"POST only"}); return; }
 
@@ -700,13 +719,22 @@ Savol: ${question}
 O'zbek tilida, professional va aniq javob ber. Raqamlar bilan asosla.`;
     }
 
-    // Gemini API call
-    const geminiRes = await fetch(GEMINI_URL, {
+    // Gemini API call — kalit Firebase DB'dan xavfsiz olinadi
+    const keySnap = await db.ref("config/gemini_key").once("value");
+    const geminiKey = keySnap.val();
+    if (!geminiKey) { res.status(500).json({error:"AI kalit sozlanmagan"}); return; }
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const geminiRes = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" }
+        ]
       })
     });
 
@@ -722,3 +750,4 @@ O'zbek tilida, professional va aniq javob ber. Raqamlar bilan asosla.`;
     res.status(500).json({ error: "AI tahlilda xatolik: " + err.message });
   }
 });
+
