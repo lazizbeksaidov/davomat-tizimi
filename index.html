@@ -1361,6 +1361,118 @@
     .mobile-bottom-nav { display: none !important; }
     .mobile-header { display: none !important; }
 
+    /* ─── GLOBAL SEARCH ──────────────────────────── */
+    .gsearch-wrap {
+      position: relative;
+    }
+    .gsearch-trigger {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 14px;
+      background: var(--cloud);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px; font-weight: 500; font-family: 'Outfit', sans-serif;
+      color: var(--t3); cursor: pointer;
+      transition: all .18s;
+    }
+    .gsearch-trigger:hover { border-color: var(--gold); color: var(--t1); background: var(--white); }
+    .gsearch-trigger kbd {
+      font-size: 10px; background: var(--border); color: var(--t4);
+      padding: 1px 5px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+      border: 1px solid var(--border2);
+    }
+    .gsearch-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(6,8,16,.55);
+      backdrop-filter: blur(4px);
+      z-index: 1100;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding-top: 80px;
+      animation: fadeIn .15s ease;
+    }
+    .gsearch-modal {
+      width: 100%; max-width: 520px;
+      background: var(--white);
+      border-radius: var(--rl);
+      box-shadow: var(--s4);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      animation: slideUp .18s cubic-bezier(.4,0,.2,1);
+    }
+    .gsearch-input-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .gsearch-icon { color: var(--t4); flex-shrink: 0; }
+    .gsearch-input {
+      flex: 1;
+      border: none; outline: none;
+      font-size: 15px; font-family: 'Outfit', sans-serif;
+      color: var(--t1); background: transparent;
+    }
+    .gsearch-input::placeholder { color: var(--t5); }
+    .gsearch-esc {
+      font-size: 10px; background: var(--cloud); color: var(--t4);
+      padding: 3px 8px; border-radius: 5px; cursor: pointer;
+      border: 1px solid var(--border2); font-family: 'JetBrains Mono', monospace;
+      flex-shrink: 0; white-space: nowrap;
+    }
+    .gsearch-results {
+      max-height: 360px; overflow-y: auto;
+      padding: 6px 0;
+    }
+    .gsearch-empty {
+      padding: 32px 20px; text-align: center;
+      color: var(--t4); font-size: 13px;
+    }
+    .gsearch-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: .5; }
+    .gsearch-hint {
+      padding: 10px 16px 14px;
+      text-align: center; color: var(--t5);
+      font-size: 11px; border-top: 1px solid var(--border);
+    }
+    .gsearch-result-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 16px; cursor: pointer;
+      transition: background .1s;
+    }
+    .gsearch-result-item:hover, .gsearch-result-item.selected {
+      background: var(--cloud);
+    }
+    .gsearch-avatar {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--navy), var(--navy-lt));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: #fff;
+    }
+    .gsearch-result-name {
+      font-size: 13.5px; font-weight: 600; color: var(--navy);
+    }
+    .gsearch-result-sub {
+      font-size: 11px; color: var(--t4); margin-top: 2px;
+    }
+    .gsearch-result-arrow {
+      margin-left: auto; color: var(--t5); flex-shrink: 0;
+    }
+    .gsearch-section-label {
+      font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--t4);
+      padding: 8px 16px 4px;
+    }
+    /* Mobile search button */
+    .mobile-search-btn {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: rgba(255,255,255,.7);
+      transition: all .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mobile-search-btn:active { background: rgba(255,255,255,.16); }
+
     /* ─── RESPONSIVE ──────────────────────────── */
     @media(max-width:900px) {
       .login-wrap { grid-template-columns: 1fr; }
@@ -1971,6 +2083,14 @@
     [data-theme="dark"] .bar-track { background: var(--surface2); }
     [data-theme="dark"] .kpi-track { background: var(--border); }
     [data-theme="dark"] .weekday-track { background: var(--border); }
+    [data-theme="dark"] .gsearch-modal { background: var(--surface); border-color: var(--border); }
+    [data-theme="dark"] .gsearch-input-row { border-color: var(--border); }
+    [data-theme="dark"] .gsearch-input { color: var(--t1); }
+    [data-theme="dark"] .gsearch-result-item:hover, [data-theme="dark"] .gsearch-result-item.selected { background: var(--surface2); }
+    [data-theme="dark"] .gsearch-esc { background: var(--surface2); border-color: var(--border); color: var(--t3); }
+    [data-theme="dark"] .gsearch-hint { border-color: var(--border); color: var(--t4); }
+    [data-theme="dark"] .gsearch-trigger { background: var(--surface); border-color: var(--border); color: var(--t3); }
+    [data-theme="dark"] .gsearch-trigger kbd { background: var(--surface2); border-color: var(--border); }
 
     /* ─── ANNOUNCEMENTS ───────────────────────── */
     .ann-list { display:flex; flex-direction:column; gap:12px; }
@@ -4712,6 +4832,252 @@ function WeatherWidget(){
   );
 }
 
+/* ═══ GLOBAL SEARCH ═══ */
+function GlobalSearch({attendanceData, onSelectEmployee}){
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(0);
+  const inputRef = useRef(null);
+
+  const results = useMemo(()=>{
+    const q = normalizeUz(query.trim().toLowerCase());
+    if(!q) return [];
+    return EMPLOYEES.filter(emp=>{
+      return normalizeUz(emp.toLowerCase()).includes(q);
+    }).slice(0,8);
+  },[query]);
+
+  // Keyboard shortcut: Ctrl+K or /
+  useEffect(()=>{
+    function onKey(e){
+      if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();setOpen(true);}
+    }
+    window.addEventListener("keydown",onKey);
+    return()=>window.removeEventListener("keydown",onKey);
+  },[]);
+
+  useEffect(()=>{
+    if(open){
+      setQuery(""); setSelected(0);
+      setTimeout(()=>inputRef.current?.focus(),50);
+    }
+  },[open]);
+
+  function handleKey(e){
+    if(e.key==="ArrowDown"){setSelected(s=>Math.min(s+1,results.length-1));}
+    else if(e.key==="ArrowUp"){setSelected(s=>Math.max(s-1,0));}
+    else if(e.key==="Enter"&&results[selected]){pick(results[selected]);}
+    else if(e.key==="Escape"){setOpen(false);}
+  }
+
+  function pick(emp){
+    setOpen(false);
+    onSelectEmployee(emp);
+  }
+
+  // Stats summary for employee
+  function empSummary(emp){
+    const allDates = Object.keys(attendanceData||{});
+    if(!allDates.length) return "Davomat ma'lumoti yo'q";
+    const key = emp.replace(/[\s''\u2018\u2019]/g,m=>m===" "?"_":"");
+    const safeK = emp.toLowerCase().replace(/\s+/g,"_").replace(/['''\u2018\u2019]/g,"");
+    let present=0,absent=0,late=0;
+    allDates.forEach(d=>{
+      const dayData = attendanceData[d];
+      if(!dayData) return;
+      const rec = Object.entries(dayData).find(([k])=>k.toLowerCase()===safeK.toLowerCase())?.[1];
+      if(!rec) return;
+      if(rec.status==="present") present++;
+      else if(rec.status==="absent") absent++;
+      else if(rec.status==="late") late++;
+    });
+    const total = present+absent+late;
+    if(!total) return "Ma'lumot yo'q";
+    const pct = Math.round((present+late)/total*100);
+    return `${total} kun · ${pct}% davomat`;
+  }
+
+  return(
+    <>
+      {/* Desktop trigger button in topbar */}
+      <button className="gsearch-trigger" onClick={()=>setOpen(true)} title="Ctrl+K">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        Xodim qidirish
+        <kbd>Ctrl+K</kbd>
+      </button>
+
+      {open&&(
+        <div className="gsearch-modal-overlay" onClick={()=>setOpen(false)}>
+          <div className="gsearch-modal" onClick={e=>e.stopPropagation()}>
+            <div className="gsearch-input-row">
+              <svg className="gsearch-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input
+                ref={inputRef}
+                className="gsearch-input"
+                placeholder="Xodim ismini yozing..."
+                value={query}
+                onChange={e=>{setQuery(e.target.value);setSelected(0);}}
+                onKeyDown={handleKey}
+              />
+              <span className="gsearch-esc" onClick={()=>setOpen(false)}>ESC</span>
+            </div>
+
+            <div className="gsearch-results">
+              {query.trim()====""&&(
+                <div className="gsearch-empty">
+                  <div className="gsearch-empty-icon">🔍</div>
+                  <div>Xodim ismini kiriting...</div>
+                </div>
+              )}
+              {query.trim()!==""&&results.length===0&&(
+                <div className="gsearch-empty">
+                  <div className="gsearch-empty-icon">😔</div>
+                  <div>"{query}" — xodim topilmadi</div>
+                </div>
+              )}
+              {results.length>0&&(
+                <>
+                  <div className="gsearch-section-label">Xodimlar — {results.length} ta natija</div>
+                  {results.map((emp,i)=>(
+                    <div
+                      key={emp}
+                      className={`gsearch-result-item${i===selected?" selected":""}`}
+                      onClick={()=>pick(emp)}
+                      onMouseEnter={()=>setSelected(i)}
+                    >
+                      <div className="gsearch-avatar">{emp.charAt(0)}</div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div className="gsearch-result-name">{emp}</div>
+                        <div className="gsearch-result-sub">{empSummary(emp)}</div>
+                      </div>
+                      <svg className="gsearch-result-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9 18l6-6-6-6"/>
+                      </svg>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+            <div className="gsearch-hint">↑↓ navigatsiya · Enter tanlash · Esc yopish</div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ═══ MOBILE SEARCH BUTTON ═══ */
+function MobileSearchBtn({attendanceData, onSelectEmployee}){
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(0);
+  const inputRef = useRef(null);
+
+  const results = useMemo(()=>{
+    const q = normalizeUz(query.trim().toLowerCase());
+    if(!q) return [];
+    return EMPLOYEES.filter(emp=>{
+      return normalizeUz(emp.toLowerCase()).includes(q);
+    }).slice(0,8);
+  },[query]);
+
+  useEffect(()=>{
+    if(open){
+      setQuery(""); setSelected(0);
+      setTimeout(()=>inputRef.current?.focus(),80);
+    }
+  },[open]);
+
+  function pick(emp){
+    setOpen(false);
+    onSelectEmployee(emp);
+  }
+
+  function empSummary(emp){
+    const allDates = Object.keys(attendanceData||{});
+    if(!allDates.length) return "Ma'lumot yo'q";
+    const safeK = emp.toLowerCase().replace(/\s+/g,"_").replace(/['''\u2018\u2019]/g,"");
+    let present=0,absent=0,late=0;
+    allDates.forEach(d=>{
+      const dayData = attendanceData[d];
+      if(!dayData) return;
+      const rec = Object.entries(dayData).find(([k])=>k.toLowerCase()===safeK.toLowerCase())?.[1];
+      if(!rec) return;
+      if(rec.status==="present") present++;
+      else if(rec.status==="absent") absent++;
+      else if(rec.status==="late") late++;
+    });
+    const total = present+absent+late;
+    if(!total) return "Ma'lumot yo'q";
+    const pct = Math.round((present+late)/total*100);
+    return `${total} kun · ${pct}%`;
+  }
+
+  return(
+    <>
+      <button className="mobile-search-btn" onClick={()=>setOpen(true)} title="Qidirish">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </button>
+
+      {open&&(
+        <div className="gsearch-modal-overlay" onClick={()=>setOpen(false)} style={{paddingTop:20}}>
+          <div className="gsearch-modal" style={{maxWidth:"100%",margin:"0 12px",borderRadius:16}} onClick={e=>e.stopPropagation()}>
+            <div className="gsearch-input-row">
+              <svg className="gsearch-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input
+                ref={inputRef}
+                className="gsearch-input"
+                placeholder="Xodim ismini yozing..."
+                value={query}
+                onChange={e=>{setQuery(e.target.value);setSelected(0);}}
+              />
+              <span className="gsearch-esc" onClick={()=>setOpen(false)}>✕</span>
+            </div>
+            <div className="gsearch-results">
+              {query.trim()====""&&(
+                <div className="gsearch-empty">
+                  <div className="gsearch-empty-icon">🔍</div>
+                  <div>Xodim ismini kiriting...</div>
+                </div>
+              )}
+              {query.trim()!==""&&results.length===0&&(
+                <div className="gsearch-empty">
+                  <div className="gsearch-empty-icon">😔</div>
+                  <div>"{query}" — topilmadi</div>
+                </div>
+              )}
+              {results.map((emp,i)=>(
+                <div
+                  key={emp}
+                  className={`gsearch-result-item${i===selected?" selected":""}`}
+                  onClick={()=>pick(emp)}
+                >
+                  <div className="gsearch-avatar">{emp.charAt(0)}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div className="gsearch-result-name">{emp}</div>
+                    <div className="gsearch-result-sub">{empSummary(emp)}</div>
+                  </div>
+                  <svg className="gsearch-result-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 /* ═══ MAIN APP ═══ */
 function App(){
   const [user,setUser]=useState(null);
@@ -4735,6 +5101,8 @@ function App(){
   const toastRef=useRef(null);
   const [darkMode,setDarkMode]=useState(()=>{try{return localStorage.getItem("xodimlar-dark")==="true"}catch(e){return false}});
   useEffect(()=>{document.documentElement.setAttribute("data-theme",darkMode?"dark":"light");try{localStorage.setItem("xodimlar-dark",darkMode)}catch(e){}},[darkMode]);
+
+  function handleSearchSelect(empName){setModalEmp(empName);}
 
   useEffect(()=>{const t=setInterval(()=>setClock(new Date()),30000);return()=>clearInterval(t)},[]);
 
@@ -5023,6 +5391,7 @@ function App(){
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {canManage&&<MobileSearchBtn attendanceData={data} onSelectEmployee={handleSearchSelect}/>}
           <button className="mobile-dark-toggle" onClick={()=>setDarkMode(p=>!p)} title={darkMode?"Kunduzgi rejim":"Tungi rejim"}>
             {darkMode?"☀️":"🌙"}
           </button>
@@ -5062,6 +5431,7 @@ function App(){
             </div>
           </div>
           <div className="topbar-right">
+            {canManage&&<GlobalSearch attendanceData={data} onSelectEmployee={handleSearchSelect}/>}
             <div className="topbar-status">
               <div className="topbar-dot"/>
               <span>Tizim faol</span>
