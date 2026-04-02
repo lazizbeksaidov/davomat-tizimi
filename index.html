@@ -3790,41 +3790,96 @@ function SelfieHistoryView({checkinsData}){
   const [sessionFilter,setSessionFilter]=useState("all");
   const dateKey=fmtDate(selectedDate);
   const allEntries=useMemo(()=>getCheckinEntriesForDate(checkinsData,dateKey),[checkinsData,dateKey]);
-  const filteredEntries=useMemo(()=>allEntries.filter(entry=>{
-    const matchesSession=sessionFilter==="all"||entry.session===sessionFilter;
-    const matchesSearch=!search.trim()||(entry.name||"").toLowerCase().includes(search.trim().toLowerCase());
-    return matchesSession&&matchesSearch;
-  }),[allEntries,sessionFilter,search]);
+
+  // Ertalabki va tushlik alohida
+  const morningEntries=useMemo(()=>allEntries.filter(e=>e.session==="morning").sort((a,b)=>(a.timestamp||"").localeCompare(b.timestamp||"")),[allEntries]);
+  const afternoonEntries=useMemo(()=>allEntries.filter(e=>e.session==="afternoon").sort((a,b)=>(a.timestamp||"").localeCompare(b.timestamp||"")),[allEntries]);
+
+  // Selfie qilmaganlar
+  const morningDoneKeys=useMemo(()=>new Set(morningEntries.map(e=>e.empKey)),[morningEntries]);
+  const afternoonDoneKeys=useMemo(()=>new Set(afternoonEntries.map(e=>e.empKey)),[afternoonEntries]);
+  const morningMissing=useMemo(()=>EMPLOYEES.filter(emp=>!morningDoneKeys.has(safeKey(emp))),[morningDoneKeys]);
+  const afternoonMissing=useMemo(()=>EMPLOYEES.filter(emp=>!afternoonDoneKeys.has(safeKey(emp))),[afternoonDoneKeys]);
+
+  // Hozirgi vaqt
+  const [liveNow,setLiveNow]=useState(new Date());
+  useEffect(()=>{const t=setInterval(()=>setLiveNow(new Date()),60000);return()=>clearInterval(t);},[]);
+  const curMins=liveNow.getHours()*60+liveNow.getMinutes();
+  const isToday=dateKey===fmtDate(liveNow);
+  const showMorningMissing=!isToday||curMins>=9*60+11; // 9:11 dan keyin
+  const showAfternoonMissing=!isToday||curMins>=14*60+11; // 14:11 dan keyin
+  const showAfternoonSection=!isToday||curMins>=13*60+30; // 13:30 dan keyin
+
+  // Filtr
+  const searchLC=search.trim().toLowerCase();
+  function matchSearch(name){return !searchLC||(name||"").toLowerCase().includes(searchLC);}
+
+  const filteredMorning=morningEntries.filter(e=>matchSearch(e.name));
+  const filteredAfternoon=afternoonEntries.filter(e=>matchSearch(e.name));
+  const filteredMorningMissing=morningMissing.filter(e=>matchSearch(e));
+  const filteredAfternoonMissing=afternoonMissing.filter(e=>matchSearch(e));
+
   const stats=useMemo(()=>{
-    const gpsKnown=allEntries.filter(entry=>Number.isFinite(Number(entry.gpsDistance)));
-    const gpsAvg=gpsKnown.length?Math.round(gpsKnown.reduce((sum,entry)=>sum+Number(entry.gpsDistance||0),0)/gpsKnown.length):0;
-    const employeeCount=new Set(allEntries.map(entry=>entry.name)).size;
-    return{
-      entries:allEntries.length,
-      employees:employeeCount,
-      gpsAvg
-    };
-  },[allEntries]);
+    const gpsKnown=allEntries.filter(e=>Number.isFinite(Number(e.gpsDistance)));
+    const gpsAvg=gpsKnown.length?Math.round(gpsKnown.reduce((s,e)=>s+Number(e.gpsDistance||0),0)/gpsKnown.length):0;
+    return{morningDone:morningEntries.length,afternoonDone:afternoonEntries.length,morningMissing:morningMissing.length,afternoonMissing:afternoonMissing.length,gpsAvg};
+  },[allEntries,morningEntries,afternoonEntries,morningMissing,afternoonMissing]);
 
-  function changeDay(dir){
-    setSelectedDate(prev=>{
-      const next=new Date(prev);
-      next.setDate(next.getDate()+dir);
-      return next;
-    });
+  function changeDay(dir){setSelectedDate(prev=>{const n=new Date(prev);n.setDate(n.getDate()+dir);return n;});}
+
+  function renderEntry(entry,i){
+    const gpsD=Number(entry.gpsDistance||0);
+    return(
+      <div key={entry.key} className="selfie-history-item" style={{gap:14}}>
+        <span style={{fontSize:11,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",width:24,flexShrink:0}}>{i+1}</span>
+        {entry.photo
+          ? <img src={entry.photo} className="selfie-history-photo" alt={entry.name} style={{width:62,height:62,borderRadius:16}}/>
+          : <div style={{width:62,height:62,borderRadius:16,background:"var(--surface3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"var(--t4)",flexShrink:0}}>📷</div>}
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            <div className="selfie-history-emp" style={{fontSize:13.5}}>{entry.name}</div>
+            {entry.gpsOk===false&&<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>⚠ Tashqarida</span>}
+          </div>
+          <div style={{fontSize:11,color:"var(--t3)",marginTop:4,lineHeight:1.7}}>
+            Vaqt: <strong style={{color:"var(--navy)"}}>{entry.time||"—"}</strong>
+            {" · "}GPS: <strong style={{color:gpsD<=OFFICE_LOCATION.radius?"var(--emerald)":"var(--ruby)"}}>{gpsD}m</strong>
+            {" · "}Aniqlik: ±{Number(entry.gpsAccuracy||0)}m
+            {entry.lateMinutes>0&&<span style={{color:"var(--ruby)"}}> · Kechikish: {entry.lateMinutes} daq</span>}
+          </div>
+        </div>
+        <div style={{textAlign:"right",flexShrink:0}}>
+          <div className="selfie-history-time">{entry.time||"—"}</div>
+          <span className="selfie-history-badge" style={{color:entry.lateMinutes>0?"var(--ruby)":"var(--emerald)",background:entry.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)"}}>
+            {entry.lateMinutes>0?`+${entry.lateMinutes}d`:"✓"}
+          </span>
+        </div>
+      </div>
+    );
   }
 
-  function getSessionMeta(session){
-    if(session==="morning") return {icon:"🌅",label:"Ertalab",color:"var(--gold)",bg:"var(--gold-pale)"};
-    return {icon:"🌆",label:"Tushlik",color:"var(--violet)",bg:"var(--violet-bg)"};
+  function renderMissing(list){
+    if(list.length===0)return null;
+    return(
+      <div style={{padding:"12px 18px",background:"var(--ruby-bg)",borderRadius:"var(--r)",margin:"8px 16px 12px"}}>
+        <div style={{fontSize:12,fontWeight:700,color:"var(--ruby)",marginBottom:8}}>❌ Selfie qilmaganlar ({list.length})</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {list.map(emp=>(
+            <span key={emp} style={{fontSize:11.5,padding:"4px 10px",background:"var(--white)",border:"1px solid rgba(192,57,43,.15)",borderRadius:20,color:"var(--ruby)",fontWeight:600}}>{emp}</span>
+          ))}
+        </div>
+      </div>
+    );
   }
+
+  const showMorning=sessionFilter==="all"||sessionFilter==="morning";
+  const showAfternoon=sessionFilter==="all"||sessionFilter==="afternoon";
 
   return(
     <div style={{animation:"fadeUp .35s ease"}}>
       <div className="page-header">
         <div>
           <div className="page-title">Selfie Tarix</div>
-          <div className="page-subtitle">{dateKey} · barcha xodimlarning selfie qaydlari</div>
+          <div className="page-subtitle">{dateKey} · {getWeekdayLabel(selectedDate)} · barcha xodimlarning selfie qaydlari</div>
         </div>
         <div className="page-actions">
           <div className="date-nav">
@@ -3838,11 +3893,14 @@ function SelfieHistoryView({checkinsData}){
 
       <div className="stats-grid">
         <div className="stat-card c-cobalt"><div className="stat-accent"/><div className="stat-card-inner">
-          <div className="stat-top"><div className="stat-icon-wrap">📸</div></div>
-          <div className="stat-num">{stats.entries}</div><div className="stat-label">Jami selfie</div></div></div>
-        <div className="stat-card c-green"><div className="stat-accent"/><div className="stat-card-inner">
-          <div className="stat-top"><div className="stat-icon-wrap">👥</div></div>
-          <div className="stat-num">{stats.employees}</div><div className="stat-label">Qayd kiritgan xodim</div></div></div>
+          <div className="stat-top"><div className="stat-icon-wrap">🌅</div></div>
+          <div className="stat-num">{stats.morningDone}<sup>/{EMPLOYEES.length}</sup></div><div className="stat-label">Ertalabki selfie</div></div></div>
+        <div className="stat-card c-violet"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">🌆</div></div>
+          <div className="stat-num">{stats.afternoonDone}<sup>/{EMPLOYEES.length}</sup></div><div className="stat-label">Tushlik selfie</div></div></div>
+        <div className="stat-card c-red"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">❌</div></div>
+          <div className="stat-num">{stats.morningMissing+stats.afternoonMissing}</div><div className="stat-label">Qilmaganlar jami</div></div></div>
         <div className="stat-card c-navy"><div className="stat-accent"/><div className="stat-card-inner">
           <div className="stat-top"><div className="stat-icon-wrap">📍</div></div>
           <div className="stat-num">{stats.gpsAvg}<sup> m</sup></div><div className="stat-label">O'rtacha GPS masofa</div></div></div>
@@ -3850,67 +3908,68 @@ function SelfieHistoryView({checkinsData}){
 
       <div className="table-card" style={{marginBottom:16}}>
         <div className="table-header">
-          <div>
-            <div className="table-title">Filtrlar</div>
-            <div className="table-meta">Sana, xodim va sessiya bo'yicha saralash</div>
-          </div>
+          <div><div className="table-title">Filtrlar</div></div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
             <input className="search-input" placeholder="Xodim qidirish..." value={search} onChange={e=>setSearch(e.target.value)}/>
             <select className="status-select" value={sessionFilter} onChange={e=>setSessionFilter(e.target.value)} style={{minWidth:190}}>
               <option value="all">Barcha sessiyalar</option>
-              <option value="morning">🌅 Ertalab</option>
-              <option value="afternoon">🌆 Tushlik</option>
+              <option value="morning">🌅 Faqat ertalab</option>
+              <option value="afternoon">🌆 Faqat tushlik</option>
             </select>
           </div>
         </div>
       </div>
 
-      <div className="selfie-history-card">
-        <div className="table-header">
-          <div>
-            <div className="table-title">Tanlangan Sana Bo'yicha Selfie Tarix</div>
-            <div className="table-meta">{filteredEntries.length} ta yozuv · {getWeekdayLabel(selectedDate)}</div>
-          </div>
-        </div>
-        {filteredEntries.length===0&&(
-          <div style={{textAlign:"center",color:"var(--t4)",padding:"34px 20px",fontSize:13}}>
-            Ushbu sana bo'yicha selfie qaydi topilmadi
-          </div>
-        )}
-        {filteredEntries.map((entry,i)=>{
-          const meta=getSessionMeta(entry.session);
-          const gpsDistance=Number(entry.gpsDistance||0);
-          return(
-            <div key={entry.key} className="selfie-history-item" style={{gap:14}}>
-              <span style={{fontSize:11,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",width:24,flexShrink:0}}>{i+1}</span>
-              {entry.photo
-                ? <img src={entry.photo} className="selfie-history-photo" alt={entry.name} style={{width:62,height:62,borderRadius:16}}/>
-                : <div style={{width:62,height:62,borderRadius:16,background:"var(--surface3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"var(--t4)",flexShrink:0}}>📷</div>}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                  <div className="selfie-history-emp" style={{fontSize:13.5}}>{entry.name}</div>
-                  <span className="badge" style={{color:meta.color,background:meta.bg}}>{meta.icon} {meta.label}</span>
-                  {entry.gpsOk===false&&<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>⚠ Tashqarida</span>}
-                </div>
-                <div style={{fontSize:11,color:"var(--t3)",marginTop:4,lineHeight:1.7}}>
-                  Vaqt: <strong style={{color:"var(--navy)"}}>{entry.time||"—"}</strong>
-                  {" · "}GPS: <strong style={{color:gpsDistance<=OFFICE_LOCATION.radius?"var(--emerald)":"var(--ruby)"}}>{gpsDistance}m</strong>
-                  {" · "}Aniqlik: ±{Number(entry.gpsAccuracy||0)}m
-                  {entry.lateMinutes>0&&` · Kechikish: ${entry.lateMinutes} daqiqa`}
-                </div>
-              </div>
-              <div style={{textAlign:"right",flexShrink:0}}>
-                <div className="selfie-history-time">{entry.time||"—"}</div>
-                <span className="selfie-history-badge" style={{color:meta.color,background:meta.bg}}>
-                  {entry.lateMinutes>0
-                    ? `${entry.lateMinutes}d`
-                    : "✓"}
-                </span>
+      {/* ── ERTALABKI BO'LIM ── */}
+      {showMorning&&(
+        <div className="selfie-history-card" style={{marginBottom:18}}>
+          <div className="table-header" style={{background:"var(--gold-pale)",borderBottom:"2px solid rgba(200,150,42,.15)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20}}>🌅</span>
+              <div>
+                <div className="table-title" style={{color:"var(--amber)"}}>Ertalabki selfie</div>
+                <div className="table-meta">{filteredMorning.length} ta qayd · 09:10 gacha imtiyozli</div>
               </div>
             </div>
-          );
-        })}
-      </div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:"var(--emerald)",fontFamily:"JetBrains Mono,monospace"}}>{morningEntries.length}/{EMPLOYEES.length}</span>
+            </div>
+          </div>
+          {filteredMorning.length===0&&<div style={{textAlign:"center",color:"var(--t4)",padding:"20px",fontSize:13}}>Ertalabki selfie qaydi yo'q</div>}
+          {filteredMorning.map((e,i)=>renderEntry(e,i))}
+          {showMorningMissing&&renderMissing(filteredMorningMissing)}
+        </div>
+      )}
+
+      {/* ── TUSHLIK BO'LIM ── */}
+      {showAfternoon&&showAfternoonSection&&(
+        <div className="selfie-history-card">
+          <div className="table-header" style={{background:"var(--violet-bg)",borderBottom:"2px solid rgba(109,40,217,.1)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20}}>🌆</span>
+              <div>
+                <div className="table-title" style={{color:"var(--violet)"}}>Tushlikdan keyingi selfie</div>
+                <div className="table-meta">{filteredAfternoon.length} ta qayd · 14:10 gacha imtiyozli</div>
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:"var(--emerald)",fontFamily:"JetBrains Mono,monospace"}}>{afternoonEntries.length}/{EMPLOYEES.length}</span>
+            </div>
+          </div>
+          {filteredAfternoon.length===0&&<div style={{textAlign:"center",color:"var(--t4)",padding:"20px",fontSize:13}}>Tushlik selfie qaydi yo'q</div>}
+          {filteredAfternoon.map((e,i)=>renderEntry(e,i))}
+          {showAfternoonMissing&&renderMissing(filteredAfternoonMissing)}
+        </div>
+      )}
+
+      {showAfternoon&&!showAfternoonSection&&isToday&&(
+        <div className="selfie-history-card">
+          <div style={{textAlign:"center",padding:"30px 20px",color:"var(--t4)"}}>
+            <div style={{fontSize:28,marginBottom:8}}>🕐</div>
+            <div style={{fontSize:13,fontWeight:600}}>Tushlik selfie 13:30 da boshlanadi</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
