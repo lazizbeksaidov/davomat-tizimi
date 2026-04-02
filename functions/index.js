@@ -562,7 +562,7 @@ exports.weeklyReport = functions.pubsub
 
 // ═══ AI TAHLIL (GEMINI) ═══
 const GEMINI_KEY = "AIzaSyB1zEK93rvpanajzXa8AlwRmNbOGgzYK90";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
 
 exports.aiAnalysis = functions.https.onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
@@ -716,7 +716,7 @@ O'zbek tilida, professional va aniq javob ber. Raqamlar bilan asosla.`;
     }
 
     const answer = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "Javob olinmadi";
-    res.json({ answer, model: "gemini-1.5-flash" });
+    res.json({ answer, model: "gemini-2.5-flash" });
   } catch (err) {
     console.error("AI Analysis error:", err);
     res.status(500).json({ error: "AI tahlilda xatolik: " + err.message });
