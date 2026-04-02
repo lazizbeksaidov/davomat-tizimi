@@ -5089,107 +5089,261 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
 
   const profile=EMPLOYEE_PROFILES[empName]||null;
 
+  // Notifications
+  var notifications=useMemo(function(){
+    var notifs=[];
+    var todayCheck=checkinsData?.[todayKey]?.[safeKey(empName)];
+    var h=liveNow.getHours(),mi=liveNow.getMinutes(),totalMin=h*60+mi,dow=liveNow.getDay();
+    if(dow>=1&&dow<=5){
+      if(!todayCheck?.morning&&totalMin>=540&&totalMin<780) notifs.push({type:"warning",icon:"📸",text:"Ertalabki selfie hali olinmagan!",sub:"09:10 gacha kechikishsiz hisoblanadi"});
+      if(todayCheck?.morning&&!todayCheck?.afternoon&&totalMin>=840&&totalMin<1080) notifs.push({type:"warning",icon:"📸",text:"Tushlik selfie hali olinmagan!",sub:"14:10 gacha kechikishsiz hisoblanadi"});
+      if(todayCheck?.morning&&todayCheck?.afternoon) notifs.push({type:"success",icon:"✅",text:"Bugungi selfie davomat to'liq!",sub:"Ertalab: "+(todayCheck.morning.time||"✓")+" · Tushlik: "+(todayCheck.afternoon.time||"✓")});
+      var todayLate=(todayRec.morning||0)+(todayRec.afternoon||0);
+      if(todayLate>0) notifs.push({type:"alert",icon:"⏰",text:"Bugun "+todayLate+" daqiqa kechikdingiz",sub:"Kechikishni kamaytirish intizom balingizga ijobiy ta'sir qiladi"});
+    }
+    if(stats.score>=85) notifs.push({type:"success",icon:"🏆",text:"Intizom balingiz a'lo: "+stats.score+"/100",sub:"Shu intizomni davom ettiring!"});
+    else if(stats.score<65) notifs.push({type:"alert",icon:"⚠️",text:"Intizom balingiz past: "+stats.score+"/100",sub:"Kechikishlarni kamaytiring va davomat ko'rsatkichini yaxshilang"});
+    return notifs;
+  },[todayKey,checkinsData,empName,liveNow,todayRec,stats.score]);
+
+  // Calendar data
+  var calendarData=useMemo(function(){
+    var firstDay=new Date(yr,mon,1);
+    var lastDay=new Date(yr,mon+1,0);
+    var startPad=firstDay.getDay()===0?6:firstDay.getDay()-1;
+    var days=[];
+    for(var p=0;p<startPad;p++) days.push(null);
+    for(var dd=1;dd<=lastDay.getDate();dd++){
+      var dt=new Date(yr,mon,dd);
+      var dk=fmtDate(dt);
+      var isWd=dt.getDay()>=1&&dt.getDay()<=5;
+      var rec=attendanceData[dk]?.[safeKey(empName)];
+      var st=rec?.status||"present";
+      var isFuture=dt>liveNow;
+      var color="var(--t4)";var bg="transparent";
+      if(!isWd){color="var(--t4)";bg="transparent";}
+      else if(isFuture){color="var(--t4)";bg="transparent";}
+      else if(["sick","vacation","trip","excused"].includes(st)){color="var(--cobalt)";bg="rgba(52,99,232,.1)";}
+      else if(st==="absent"||(!rec&&isWd&&!isFuture)){color="var(--ruby)";bg="rgba(239,68,68,.1)";}
+      else if(st==="late"||(rec?.morning||0)+(rec?.afternoon||0)>0){color="var(--amber)";bg="rgba(245,158,11,.1)";}
+      else{color="var(--emerald)";bg="rgba(16,185,129,.1)";}
+      days.push({day:dd,date:dt,dk:dk,isWd:isWd,isFuture:isFuture,color:color,bg:bg,st:st,rec:rec,isToday:dk===todayKey});
+    }
+    return days;
+  },[yr,mon,attendanceData,empName,liveNow,todayKey]);
+
+  // Weekly trend for graph
+  var weeklyTrend=useMemo(function(){
+    var weeks=[];
+    var curWeek=[];
+    monthDates.forEach(function(d,i){
+      curWeek.push(d);
+      if(d.getDay()===5||i===monthDates.length-1){
+        var present=0,total=curWeek.length;
+        curWeek.forEach(function(wd){
+          var rec=attendanceData[fmtDate(wd)]?.[safeKey(empName)];
+          var st=rec?.status||"present";
+          if(st==="present"||st==="late"||st==="trip"||st==="training") present++;
+        });
+        weeks.push({label:(weeks.length+1)+"-hafta",pct:total?Math.round(present/total*100):0,present:present,total:total});
+        curWeek=[];
+      }
+    });
+    return weeks;
+  },[monthDates,attendanceData,empName]);
+
   return(
     <div style={{animation:"fadeUp .35s ease"}}>
-      <div className="page-header" style={inModal?{borderBottom:"1px solid var(--border)",paddingBottom:16,marginBottom:20}:{}}>
-        <div>
-          <div className="page-title">{inModal?empName:"Shaxsiy Kabinetim"}</div>
-          <div className="page-subtitle">{inModal?"Shaxsiy davomat statistikasi":empName+" \u00b7 Davomat statistikasi"} \u00b7 {MONTHS[mon]} {yr}</div>
+      <style>{"\
+.emp-hero{background:linear-gradient(135deg,#0a1628 0%,var(--navy) 40%,var(--navy-mid) 80%);border-radius:20px;padding:24px;margin-bottom:20px;position:relative;overflow:hidden;color:#fff}\
+.emp-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(200,150,42,.15),transparent 70%)}\
+.emp-hero-top{display:flex;align-items:center;gap:16px;position:relative;z-index:1}\
+.emp-hero-avatar{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--gold),var(--gold-lt));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;box-shadow:0 8px 24px rgba(200,150,42,.4);flex-shrink:0}\
+.emp-hero-info h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.3px}\
+.emp-hero-info p{font-size:11px;color:rgba(255,255,255,.5);margin:4px 0 0}\
+.emp-hero-score{margin-left:auto;text-align:center;position:relative;z-index:1}\
+.emp-hero-score-num{font-size:28px;font-weight:900;line-height:1}\
+.emp-hero-score-label{font-size:9px;color:rgba(255,255,255,.45);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}\
+.emp-hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px;position:relative;z-index:1}\
+.emp-hero-stat{background:rgba(255,255,255,.07);border-radius:12px;padding:10px 8px;text-align:center;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.06)}\
+.emp-hero-stat-num{font-size:16px;font-weight:800;line-height:1}\
+.emp-hero-stat-label{font-size:9px;color:rgba(255,255,255,.4);margin-top:3px}\
+.emp-notif-list{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}\
+.emp-notif{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:14px;border:1px solid var(--border);background:var(--surface);box-shadow:var(--s1)}\
+.emp-notif.warning{border-left:3px solid var(--amber);background:linear-gradient(90deg,rgba(245,158,11,.04),var(--surface))}\
+.emp-notif.alert{border-left:3px solid var(--ruby);background:linear-gradient(90deg,rgba(239,68,68,.04),var(--surface))}\
+.emp-notif.success{border-left:3px solid var(--emerald);background:linear-gradient(90deg,rgba(16,185,129,.04),var(--surface))}\
+.emp-notif-icon{font-size:20px;flex-shrink:0}\
+.emp-notif-text{font-size:13px;font-weight:600;color:var(--t1)}\
+.emp-notif-sub{font-size:11px;color:var(--t3);margin-top:2px}\
+.emp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}\
+.emp-cal-head{font-size:10px;color:var(--t4);text-align:center;padding:4px 0;font-weight:600}\
+.emp-cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:12px;font-weight:600;cursor:default;transition:all .15s;position:relative}\
+.emp-cal-day.is-today{box-shadow:0 0 0 2px var(--gold);font-weight:800}\
+.emp-cal-day:not(.empty):hover{transform:scale(1.1);box-shadow:0 2px 8px rgba(0,0,0,.1)}\
+.emp-trend-bar{height:6px;border-radius:3px;background:var(--surface3);overflow:hidden}\
+.emp-trend-fill{height:100%;border-radius:3px;transition:width .5s ease}\
+.emp-section{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:var(--s1)}\
+.emp-section-title{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:4px;display:flex;align-items:center;gap:8px}\
+.emp-section-sub{font-size:11px;color:var(--t3);margin-bottom:16px}\
+@media(max-width:600px){.emp-hero-stats{grid-template-columns:repeat(2,1fr)}.emp-hero-top{flex-wrap:wrap}.emp-hero-score{margin-left:0;margin-top:8px}}\
+      "}</style>
+
+      {/* HERO */}
+      <div className="emp-hero">
+        <div className="emp-hero-top">
+          <div className="emp-hero-avatar">{empName.charAt(0)}</div>
+          <div className="emp-hero-info">
+            <h2>{inModal?empName:"Shaxsiy Kabinetim"}</h2>
+            <p>{empName} · {MONTHS[mon]} {yr} · {monthDates.length} ish kuni</p>
+          </div>
+          <div className="emp-hero-score">
+            <div className="emp-hero-score-num" style={{color:scColor}}>{stats.score}</div>
+            <div className="emp-hero-score-label">Intizom bali</div>
+          </div>
         </div>
-        <div className="date-nav">
-          <button className="date-nav-btn" onClick={prevMon}>‹</button>
-          <span className="date-display">{MONTHS[mon].slice(0,3)} {yr}</span>
-          <button className="date-nav-btn" onClick={nextMon}>›</button>
+        <div className="emp-hero-stats">
+          <div className="emp-hero-stat">
+            <div className="emp-hero-stat-num" style={{color:"#4ade80"}}>{stats.totalPresent}</div>
+            <div className="emp-hero-stat-label">Kelgan</div>
+          </div>
+          <div className="emp-hero-stat">
+            <div className="emp-hero-stat-num" style={{color:"#fbbf24"}}>{stats.late}</div>
+            <div className="emp-hero-stat-label">Kechikish</div>
+          </div>
+          <div className="emp-hero-stat">
+            <div className="emp-hero-stat-num" style={{color:"#f87171"}}>{stats.absent}</div>
+            <div className="emp-hero-stat-label">Kelmagan</div>
+          </div>
+          <div className="emp-hero-stat">
+            <div className="emp-hero-stat-num" style={{color:"#60a5fa"}}>{stats.sick+stats.other}</div>
+            <div className="emp-hero-stat-label">Boshqa</div>
+          </div>
         </div>
       </div>
 
-      {profile&&(
-        <div className="emp-profile-card">
-          <div className="emp-profile-banner"/>
-          <div className="emp-profile-body">
-            <div className="emp-profile-photo-wrap">
-              <img className="emp-profile-photo" src={profile.photo} alt={profile.fullName}/>
-            </div>
-            <div className="emp-profile-info">
-              <div className="emp-profile-name">{profile.fullName}</div>
-              <div className="emp-profile-role"><em>{profile.position}</em> \u00b7 {profile.department}</div>
-              <div className="emp-profile-details">
-                <div className="emp-profile-detail">
-                  <div className="emp-profile-detail-icon">🎂</div>
-                  <div><div className="emp-profile-detail-label">Tug\u2018ilgan sana</div><div className="emp-profile-detail-value">{profile.birthDate}</div></div>
-                </div>
-                <div className="emp-profile-detail">
-                  <div className="emp-profile-detail-icon">📍</div>
-                  <div><div className="emp-profile-detail-label">Tug\u2018ilgan joy</div><div className="emp-profile-detail-value">{profile.birthPlace}</div></div>
-                </div>
-                <div className="emp-profile-detail">
-                  <div className="emp-profile-detail-icon">🎓</div>
-                  <div><div className="emp-profile-detail-label">Ma\u2018lumoti</div><div className="emp-profile-detail-value">{profile.education}</div></div>
-                </div>
-                <div className="emp-profile-detail">
-                  <div className="emp-profile-detail-icon">💼</div>
-                  <div><div className="emp-profile-detail-label">Mutaxassisligi</div><div className="emp-profile-detail-value">{profile.specialty}</div></div>
-                </div>
-                <div className="emp-profile-detail">
-                  <div className="emp-profile-detail-icon">🌐</div>
-                  <div><div className="emp-profile-detail-label">Tillar</div><div className="emp-profile-detail-value">{profile.languages}</div></div>
-                </div>
-                <div className="emp-profile-detail">
-                  <div className="emp-profile-detail-icon">📅</div>
-                  <div><div className="emp-profile-detail-label">Ishga kirgan sana</div><div className="emp-profile-detail-value">{profile.startDate}</div></div>
-                </div>
-              </div>
-            </div>
+      {/* NOTIFICATIONS */}
+      {notifications.length>0&&<div className="emp-notif-list">
+        {notifications.map(function(n,i){
+          return React.createElement("div",{key:i,className:"emp-notif "+n.type},
+            React.createElement("div",{className:"emp-notif-icon"},n.icon),
+            React.createElement("div",null,
+              React.createElement("div",{className:"emp-notif-text"},n.text),
+              React.createElement("div",{className:"emp-notif-sub"},n.sub)
+            )
+          );
+        })}
+      </div>}
+
+      {/* TODAY STATUS */}
+      <div className="emp-section">
+        <div className="emp-section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Bugungi holat
+        </div>
+        <div className="emp-section-sub">{liveNow.toLocaleDateString("uz-UZ",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12}}>
+          <div style={{background:"var(--surface2)",borderRadius:14,padding:"14px 16px"}}>
+            <div style={{fontSize:11,color:"var(--t3)",marginBottom:6}}>Holat</div>
+            <span className="badge" style={{color:todayState.color,background:todayState.bg,fontSize:12,padding:"4px 12px"}}>{todayState.icon} {todayState.label}</span>
+          </div>
+          <div style={{background:"var(--surface2)",borderRadius:14,padding:"14px 16px"}}>
+            <div style={{fontSize:11,color:"var(--t3)",marginBottom:6}}>Ishlangan vaqt</div>
+            <div style={{fontSize:18,fontWeight:800,color:"var(--cobalt)"}}>{fmtWorked(todayWorkedMins)}</div>
+            <div className="emp-trend-bar" style={{marginTop:8}}><div className="emp-trend-fill" style={{width:todayWorkedPct+"%",background:"linear-gradient(90deg,var(--cobalt),#3463e8)"}}/></div>
+          </div>
+          <div style={{background:"var(--surface2)",borderRadius:14,padding:"14px 16px"}}>
+            <div style={{fontSize:11,color:"var(--t3)",marginBottom:6}}>Kechikish</div>
+            <div style={{fontSize:18,fontWeight:800,color:(todayRec.morning||0)+(todayRec.afternoon||0)>0?"var(--amber)":"var(--emerald)"}}>{(todayRec.morning||0)+(todayRec.afternoon||0)} daq</div>
           </div>
         </div>
-      )}
-
-      <div className="emp-live-grid">
-        <div className="stat-card c-cobalt">
-          <div className="stat-accent"/>
-          <div className="stat-card-inner">
-            <div className="stat-top">
-              <div className="stat-icon-wrap">🕒</div>
-              <span className="badge" style={{color:todayState.color,background:todayState.bg,fontSize:10}}>{todayState.icon} {todayState.label}</span>
-            </div>
-            <div className="stat-num">{Math.floor(todayWorkedMins/60)}<sup> soat</sup></div>
-            <div className="stat-label">Bugungi ish vaqti (real vaqt)</div>
-            <div className="emp-live-note">
-              {isWorkday(liveNow)
-                ? `${fmtWorked(todayWorkedMins)} · ${liveNow.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"})}`
-                : "Bugun dam olish kuni"}
-            </div>
-            <div className="emp-live-track"><div className="emp-live-fill" style={{width:`${todayWorkedPct}%`,background:"linear-gradient(90deg,var(--cobalt),#3463e8)"}}/></div>
-          </div>
-        </div>
-
-        <div className="stat-card c-green">
-          <div className="stat-accent"/>
-          <div className="stat-card-inner">
-            <div className="stat-top">
-              <div className="stat-icon-wrap">⏱</div>
-              <Ring pct={monthWorkedPct} size={42} stroke={4}/>
-            </div>
-            <div className="stat-num">{plannedMonthHours}<sup> soat</sup></div>
-            <div className="stat-label">Bu oy ishlashi reja qilingan soat</div>
-            <div className="emp-live-note">Jami {monthDates.length} ta rasmiy ish kuni mavjud</div>
-            <div className="emp-live-track"><div className="emp-live-fill" style={{width:`${monthWorkedPct}%`,background:"linear-gradient(90deg,var(--emerald),#22c55e)"}}/></div>
-          </div>
-        </div>
-
-        <div className="stat-card c-amber">
-          <div className="stat-accent"/>
-          <div className="stat-card-inner">
-            <div className="stat-top"><div className="stat-icon-wrap">⏰</div></div>
-            <div className="stat-num">{stats.late}<sup> marta</sup></div>
-            <div className="stat-label">Qancha kechikish bo'lgan</div>
-            <div className="emp-live-note">Jami {stats.lateMins} daqiqa kechikish</div>
-            <span className="emp-live-pill" style={{color:"var(--amber)",background:"var(--amber-bg)"}}>Ulushi: {lateRate}%</span>
-          </div>
-        </div>
-
       </div>
 
+      {/* MINI CALENDAR */}
+      <div className="emp-section">
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+          <div>
+            <div className="emp-section-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Oylik Kalendar
+            </div>
+            <div className="emp-section-sub" style={{marginBottom:0}}>{MONTHS[mon]} {yr}</div>
+          </div>
+          <div className="date-nav">
+            <button className="date-nav-btn" onClick={prevMon}>‹</button>
+            <button className="date-nav-btn" onClick={nextMon}>›</button>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:12,marginBottom:14,flexWrap:"wrap"}}>
+          {[["var(--emerald)","Kelgan"],["var(--amber)","Kechikkan"],["var(--ruby)","Kelmagan"],["var(--cobalt)","Boshqa"]].map(function(a){
+            return React.createElement("div",{key:a[1],style:{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"var(--t3)"}},
+              React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:a[0]}}),a[1]
+            );
+          })}
+        </div>
+        <div className="emp-cal-grid">
+          {["Du","Se","Cho","Pa","Ju","Sha","Ya"].map(function(d){return React.createElement("div",{key:d,className:"emp-cal-head"},d)})}
+          {calendarData.map(function(d,i){
+            if(!d) return React.createElement("div",{key:"e"+i,className:"emp-cal-day empty"});
+            return React.createElement("div",{key:d.day,className:"emp-cal-day"+(d.isToday?" is-today":""),style:{color:d.color,background:d.bg},title:d.dk+" — "+(d.rec?d.st:"")},d.day);
+          })}
+        </div>
+      </div>
+
+      {/* WEEKLY TREND GRAPH */}
+      <div className="emp-section">
+        <div className="emp-section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Haftalik Davomat Trendi
+        </div>
+        <div className="emp-section-sub">{MONTHS[mon]} {yr} · haftalik foiz</div>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {weeklyTrend.map(function(w){
+            var col=w.pct>=90?"var(--emerald)":w.pct>=70?"var(--amber)":"var(--ruby)";
+            return React.createElement("div",{key:w.label},
+              React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}},
+                React.createElement("span",{style:{fontWeight:600,color:"var(--t2)"}},w.label),
+                React.createElement("span",{style:{fontWeight:700,color:col}},w.pct+"% ("+w.present+"/"+w.total+")")
+              ),
+              React.createElement("div",{className:"emp-trend-bar",style:{height:10}},
+                React.createElement("div",{className:"emp-trend-fill",style:{width:w.pct+"%",background:"linear-gradient(90deg,"+col+","+col+"aa)"}})
+              )
+            );
+          })}
+        </div>
+      </div>
+
+      {/* INTIZOM TAHLILI */}
+      <div className="emp-section">
+        <div className="emp-section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          Shaxsiy Intizom Tahlili
+        </div>
+        <div className="emp-section-sub">Asosiy ko'rsatkichlar va xulosalar</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12}}>
+          <div style={{background:"var(--surface2)",borderRadius:14,padding:16}}>
+            <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>Qaysi kun ko'proq kechikiladi</div>
+            <div style={{fontSize:15,fontWeight:700,color:"var(--t1)"}}>{peakLateDay?peakLateDay.name:"Kechikish yo'q"}</div>
+            <div style={{fontSize:11,color:"var(--t3)",marginTop:4}}>{peakLateDay?peakLateDay.count+" marta · "+peakLateDay.lateMins+" daqiqa":"Joriy oyda kechikish qayd etilmagan"}</div>
+          </div>
+          <div style={{background:"var(--surface2)",borderRadius:14,padding:16}}>
+            <div style={{fontSize:11,color:"var(--t3)",marginBottom:8}}>Eng samarali hafta</div>
+            <div style={{fontSize:15,fontWeight:700,color:"var(--t1)"}}>{weekProductivity.best?weekProductivity.best.idx+"-hafta":"Ma'lumot yo'q"}</div>
+            <div style={{fontSize:11,color:"var(--t3)",marginTop:4}}>{weekProductivity.best?"Davomat: "+weekProductivity.best.score+"% · Kechikish: "+weekProductivity.best.lateMins+" daq":"Haftalik kesim yo'q"}</div>
+          </div>
+          <div style={{background:"linear-gradient(135deg,var(--navy),var(--navy-mid))",borderRadius:14,padding:16,color:"#fff",gridColumn:"1/-1"}}>
+            <div style={{fontSize:11,color:"rgba(255,255,255,.5)",marginBottom:8}}>AI Xulosa</div>
+            <div style={{fontSize:13,fontWeight:600,lineHeight:1.6}}>{selfInsight}</div>
+            <div style={{display:"flex",gap:12,marginTop:12,flexWrap:"wrap"}}>
+              <span style={{background:"rgba(255,255,255,.1)",padding:"4px 12px",borderRadius:8,fontSize:11}}>Intizom: {stats.score}/100</span>
+              <span style={{background:"rgba(255,255,255,.1)",padding:"4px 12px",borderRadius:8,fontSize:11}}>Davomat: {attendPct}%</span>
+              <span style={{background:"rgba(255,255,255,.1)",padding:"4px 12px",borderRadius:8,fontSize:11}}>Kechikish: {stats.lateMins} daq</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* VACATION */}
       <div className="table-card vacation-card">
         <div className="table-header">
           <div>
@@ -5202,112 +5356,82 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
             <div className="vacation-main-title">Rejalashtirilgan oy</div>
             <div className="vacation-main-month">{vacationMonthName}</div>
             <div>
-              <span className={`vacation-status ${vacationStatus.kind}`} style={vacationStatus.kind==="done"?{background:"rgba(255,255,255,0.2)", color:"white"} : vacationStatus.kind==="now"?{background:"var(--gold)", color:"var(--navy)"}:{background:"rgba(255,255,255,0.1)", color:"white"}}>
+              <span className={"vacation-status "+vacationStatus.kind} style={vacationStatus.kind==="done"?{background:"rgba(255,255,255,0.2)",color:"white"}:vacationStatus.kind==="now"?{background:"var(--gold)",color:"var(--navy)"}:{background:"rgba(255,255,255,0.1)",color:"white"}}>
                 {vacationStatus.kind==="done"?"✓":vacationStatus.kind==="now"?"⏳":"📅"} {vacationStatus.label}
               </span>
             </div>
             <div className="vacation-main-sub">{vacationNote}</div>
           </div>
           <div className="vacation-strip">
-            {MONTHS.map((m,idx)=>{
-              const isPlan=!!vacationPlan&&idx===vacationPlan.month;
-              const isCurrent=idx===currentMonth;
-              const isUsed=isPlan&&!!vacationPlan?.used;
-              return(
-                <div key={m} className={`vac-chip ${isPlan?"is-plan":""} ${isCurrent?"is-current":""} ${isUsed?"is-used":""}`}>
-                  <div className="m">{m.slice(0,3)}</div>
-                  <div className="d">{isUsed?"done":isPlan?"plan":isCurrent?"now":"-"}</div>
-                </div>
+            {MONTHS.map(function(m,idx){
+              var isPlan=!!vacationPlan&&idx===vacationPlan.month;
+              var isCurrent=idx===currentMonth;
+              var isUsed=isPlan&&!!vacationPlan?.used;
+              return React.createElement("div",{key:m,className:"vac-chip"+(isPlan?" is-plan":"")+(isCurrent?" is-current":"")+(isUsed?" is-used":"")},
+                React.createElement("div",{className:"m"},m.slice(0,3)),
+                React.createElement("div",{className:"d"},isUsed?"done":isPlan?"plan":isCurrent?"now":"-")
               );
             })}
           </div>
         </div>
       </div>
 
-      <div className="table-card self-analysis-card">
-        <div className="table-header">
-          <div>
-            <div className="table-title">Shaxsiy Intizom Tahlili</div>
-            <div className="table-meta">Asosiy ko'rsatkichlar va xulosalar</div>
-          </div>
-        </div>
-        <div className="self-analysis-grid">
-          <div className="self-item">
-            <div className="self-item-top">📌 Qaysi kun ko'proq kechikiladi</div>
-            <div className="self-item-main">{peakLateDay?peakLateDay.name:"Kechikish qayd etilmagan"}</div>
-            <div className="self-item-sub">
-              {peakLateDay
-                ? `${peakLateDay.count} marta · ${peakLateDay.lateMins} daqiqa`
-                : "Joriy oy bo'yicha kechikish yo'q"}
-            </div>
-          </div>
-          <div className="self-item">
-            <div className="self-item-top">🚀 Qaysi haftada samaradorlik yuqori</div>
-            <div className="self-item-main">
-              {weekProductivity.best
-                ? `${weekProductivity.best.idx}-hafta (${fmtShort(weekProductivity.best.start)} - ${fmtShort(weekProductivity.best.end)})`
-                : "Ma'lumot yetarli emas"}
-            </div>
-            <div className="self-item-sub">
-              {weekProductivity.best
-                ? `Davomat darajasi: ${weekProductivity.best.score}% · Kechikish: ${weekProductivity.best.lateMins} daqiqa`
-                : "Haftalik kesim shakllanmagan"}
-            </div>
-          </div>
-          <div className="self-item" style={{background: "var(--cloud)", borderColor: "var(--border2)"}}>
-            <div className="self-item-top">🧠 Xulosa</div>
-            <div className="self-item-main" style={{color: "var(--navy)", fontWeight: "600", fontSize: "12.5px"}}>{selfInsight}</div>
-            <span className="self-badge">Intizom bali: {stats.score} / 100</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="stats-grid">
-        <div className="stat-card c-green"><div className="stat-accent"/>
-          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">✓</div><Ring pct={attendPct} size={42} stroke={4}/></div>
-          <div className="stat-num">{stats.totalPresent}<sup>/{stats.total}</sup></div><div className="stat-label">Davomat</div></div></div>
-        <div className="stat-card c-amber"><div className="stat-accent"/>
-          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">⏰</div></div>
-          <div className="stat-num">{stats.late}</div><div className="stat-label">Kechikish soni</div></div></div>
-        <div className="stat-card c-red"><div className="stat-accent"/>
-          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">⏱</div></div>
-          <div className="stat-num">{stats.lateMins}<sup> d</sup></div><div className="stat-label">Kechikish vaqti</div></div></div>
-        <div className="stat-card c-violet"><div className="stat-accent"/>
-          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={stats.score} size={42} stroke={4} color={scColor}/></div>
-          <div className="stat-num" style={{color:scColor}}>{stats.score}</div><div className="stat-label">Intizom bali</div></div></div>
-        <BirthdayStatCard empName={empName}/>
-      </div>
+      {/* WEEKLY TABLE */}
       <div className="table-card">
         <div className="table-header">
           <div><div className="table-title">Haftalik Ko'rinish</div><div className="table-meta">{fmtDate(weekDates[0])} — {fmtDate(weekDates[4])}</div></div>
           <div className="date-nav">
-            <button className="date-nav-btn" onClick={()=>setWeekBase(p=>{const d=new Date(p);d.setDate(d.getDate()-7);return d})}>‹</button>
-            <button className="date-nav-btn" onClick={()=>setWeekBase(p=>{const d=new Date(p);d.setDate(d.getDate()+7);return d})}>›</button>
+            <button className="date-nav-btn" onClick={function(){setWeekBase(function(p){var d=new Date(p);d.setDate(d.getDate()-7);return d})}}>‹</button>
+            <button className="date-nav-btn" onClick={function(){setWeekBase(function(p){var d=new Date(p);d.setDate(d.getDate()+7);return d})}}>›</button>
           </div>
         </div>
         <div className="scroll-x"><table><thead><tr>
           <th>Sana</th><th>Kun</th><th>Holat</th>
           <th className="th-center">09:10</th><th className="th-center">14:10</th><th>Izoh</th>
         </tr></thead>
-        <tbody>{weekDates.map((date,i)=>{
-          const dk=fmtDate(date);
-          const rec=attendanceData[dk]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
-          const st=STATUSES[rec.status]||STATUSES.present;const isToday=dk===fmtDate(today);
-          return(
-            <tr key={dk} style={isToday?{background:"rgba(200,150,42,.04)"}:{}}>
-              <td>
-                <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12.5,fontWeight:isToday?700:500,color:isToday?"var(--gold)":"inherit"}}>{dk}</span>
-                {isToday&&<span className="badge" style={{color:"var(--gold)",background:"var(--gold-pale)",marginLeft:6,fontSize:9}}>Bugun</span>}
-              </td>
-              <td style={{color:"var(--t3)",fontSize:12}}>{WDAYS[i]}</td>
-              <td><span className="badge" style={{color:st.color,background:st.bg}}>{st.icon} {st.label}</span></td>
-              <td className="th-center">{rec.morning>0?<span className="late-val">{rec.morning} d</span>:<span className="zero-val">—</span>}</td>
-              <td className="th-center">{rec.afternoon>0?<span className="late-val">{rec.afternoon} d</span>:<span className="zero-val">—</span>}</td>
-              <td style={{color:"var(--t3)",fontSize:12}}>{rec.note||<span className="zero-val">—</span>}</td>
-            </tr>
+        <tbody>{weekDates.map(function(date,i){
+          var dk=fmtDate(date);
+          var rec=attendanceData[dk]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
+          var st=STATUSES[rec.status]||STATUSES.present;var isToday=dk===fmtDate(today);
+          return React.createElement("tr",{key:dk,style:isToday?{background:"rgba(200,150,42,.04)"}:{}},
+            React.createElement("td",null,
+              React.createElement("span",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:12.5,fontWeight:isToday?700:500,color:isToday?"var(--gold)":"inherit"}},dk),
+              isToday&&React.createElement("span",{className:"badge",style:{color:"var(--gold)",background:"var(--gold-pale)",marginLeft:6,fontSize:9}},"Bugun")
+            ),
+            React.createElement("td",{style:{color:"var(--t3)",fontSize:12}},WDAYS[i]),
+            React.createElement("td",null,React.createElement("span",{className:"badge",style:{color:st.color,background:st.bg}},st.icon+" "+st.label)),
+            React.createElement("td",{className:"th-center"},rec.morning>0?React.createElement("span",{className:"late-val"},rec.morning+" d"):React.createElement("span",{className:"zero-val"},"—")),
+            React.createElement("td",{className:"th-center"},rec.afternoon>0?React.createElement("span",{className:"late-val"},rec.afternoon+" d"):React.createElement("span",{className:"zero-val"},"—")),
+            React.createElement("td",{style:{color:"var(--t3)",fontSize:12}},rec.note||React.createElement("span",{className:"zero-val"},"—"))
           );
         })}</tbody></table></div>
       </div>
+
+      {profile&&<div className="emp-section">
+        <div className="emp-section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Shaxsiy Ma'lumotlar
+        </div>
+        <div className="emp-section-sub">{profile.fullName} · {profile.position}</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
+          {[
+            ["🎂","Tug'ilgan sana",profile.birthDate],
+            ["📍","Tug'ilgan joy",profile.birthPlace],
+            ["🎓","Ma'lumoti",profile.education],
+            ["💼","Mutaxassisligi",profile.specialty],
+            ["🌐","Tillar",profile.languages],
+            ["📅","Ishga kirgan",profile.startDate]
+          ].map(function(arr){
+            return React.createElement("div",{key:arr[1],style:{background:"var(--surface2)",borderRadius:12,padding:"10px 14px",display:"flex",alignItems:"center",gap:10}},
+              React.createElement("div",{style:{fontSize:18}},arr[0]),
+              React.createElement("div",null,
+                React.createElement("div",{style:{fontSize:10,color:"var(--t4)"}},arr[1]),
+                React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"var(--t1)"}},arr[2])
+              )
+            );
+          })}
+        </div>
+      </div>}
     </div>
   );
 }
