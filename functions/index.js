@@ -25,6 +25,20 @@ const EMPLOYEES = [
   "Ne\u2018matov Shahzodbek","Muhammadov Jaloliddin"
 ];
 
+const BIRTHDAYS = {
+  "Umrzoqov Bunyod":"23.07.1988","Ermamatov Xurshid":"29.03.1986",
+  "Akbarova Moxlaroyim":"11.04.1998","Faxriddinov Oxunjon":"29.04.1992",
+  "Hamdamov Shuxrat":"05.03.1989","Nazarov Muzaffar":"22.02.1984",
+  "Nurmamatov Oxunjon":"22.12.1992","Xolmurodov Dostonjon":"22.07.1997",
+  "Qurbonov Shavkat":"23.11.1987","Narzullayev Rustam":"12.09.1996",
+  "Islomov G\u2018ulomjon":"02.03.1986","Ibrohimov Shuhrat":"25.04.1982",
+  "Barnoqulov Shahzod":"11.10.2001","Axadov Izzatullo":"05.07.1993",
+  "Jo\u2018raqulov Jahongirbek":"04.03.2001","Jaynakov Temur":"21.08.1988",
+  "Saidov Lazizbek":"31.10.2002","Pirbayev Berdiyor":"23.12.1989",
+  "Husainova Klara":"30.11.1987","Ne\u2018matov Shahzodbek":"22.07.1999",
+  "Muhammadov Jaloliddin":"22.01.1994"
+};
+
 function safeKey(name) {
   return name.replace(/[.#$/\[\]]/g, "_");
 }
@@ -297,5 +311,209 @@ exports.onAttendanceChange = functions.database
       await sendMessage(cfg.botToken, cfg.chatId, text);
     }
 
+    return null;
+  });
+
+// ═══ 1. TUG'ILGAN KUN — har kuni 08:00 ═══
+exports.birthdayNotify = functions.pubsub
+  .schedule("0 8 * * *")
+  .timeZone("Asia/Tashkent")
+  .onRun(async () => {
+    const cfg = await getTelegramConfig();
+    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
+
+    const now = new Date();
+    const day = now.getDate();
+    const month = now.getMonth() + 1;
+    const birthdayList = [];
+
+    Object.entries(BIRTHDAYS).forEach(([name, dateStr]) => {
+      const parts = dateStr.split(".");
+      const bd = parseInt(parts[0], 10);
+      const bm = parseInt(parts[1], 10);
+      const by = parseInt(parts[2], 10);
+      if (bd === day && bm === month) {
+        const age = now.getFullYear() - by;
+        birthdayList.push({ name, age });
+      }
+    });
+
+    if (birthdayList.length === 0) return null;
+
+    let text = "🎂🎉 <b>Bugun tug'ilgan kun!</b>\n\n";
+    birthdayList.forEach(b => {
+      text += `🎈 <b>${b.name}</b> — ${b.age} yoshga to'ldi!\n`;
+    });
+    text += "\n🥳 Tabriklaymiz! Sog'lik, baxt va omad tilaymiz!\n";
+    text += "📍 Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi";
+
+    await sendMessage(cfg.botToken, cfg.chatId, text);
+    return null;
+  });
+
+// ═══ 2. ERTALABKI SELFIE TEKSHIRUV — har kuni 09:20 ═══
+exports.morningSelfieCheck = functions.pubsub
+  .schedule("20 9 * * 1-5")
+  .timeZone("Asia/Tashkent")
+  .onRun(async () => {
+    const cfg = await getTelegramConfig();
+    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
+
+    const todayKey = fmtDate(new Date());
+    const snap = await db.ref(`checkins/${todayKey}`).once("value");
+    const checkins = snap.val() || {};
+
+    const notDone = [];
+    EMPLOYEES.forEach(emp => {
+      const empKey = safeKey(emp);
+      const rec = checkins[empKey];
+      if (!rec || !rec.morning) {
+        notDone.push(emp);
+      }
+    });
+
+    if (notDone.length === 0) {
+      const text = "✅ <b>Ertalabki selfie — 09:20</b>\n\nBarcha xodimlar selfie qilgan! 👏";
+      await sendMessage(cfg.botToken, cfg.chatId, text);
+      return null;
+    }
+
+    let text = `📸 <b>Ertalabki selfie — 09:20</b>\n`;
+    text += `━━━━━━━━━━━━━━━━━━\n`;
+    text += `⚠️ <b>${notDone.length} xodim selfie qilmagan:</b>\n\n`;
+    notDone.forEach((emp, i) => {
+      text += `${i + 1}. ${emp}\n`;
+    });
+    text += `\n✅ Selfie qilgan: <b>${EMPLOYEES.length - notDone.length}</b>/${EMPLOYEES.length}`;
+    text += `\n🕘 Tekshiruv vaqti: 09:20`;
+
+    await sendMessage(cfg.botToken, cfg.chatId, text);
+    return null;
+  });
+
+// ═══ 3. TUSHLIK SELFIE TEKSHIRUV — har kuni 14:20 ═══
+exports.afternoonSelfieCheck = functions.pubsub
+  .schedule("20 14 * * 1-5")
+  .timeZone("Asia/Tashkent")
+  .onRun(async () => {
+    const cfg = await getTelegramConfig();
+    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
+
+    const todayKey = fmtDate(new Date());
+    const snap = await db.ref(`checkins/${todayKey}`).once("value");
+    const checkins = snap.val() || {};
+
+    const notDone = [];
+    EMPLOYEES.forEach(emp => {
+      const empKey = safeKey(emp);
+      const rec = checkins[empKey];
+      if (!rec || !rec.afternoon) {
+        notDone.push(emp);
+      }
+    });
+
+    if (notDone.length === 0) {
+      const text = "✅ <b>Tushlik selfie — 14:20</b>\n\nBarcha xodimlar selfie qilgan! 👏";
+      await sendMessage(cfg.botToken, cfg.chatId, text);
+      return null;
+    }
+
+    let text = `📸 <b>Tushlik selfie — 14:20</b>\n`;
+    text += `━━━━━━━━━━━━━━━━━━\n`;
+    text += `⚠️ <b>${notDone.length} xodim selfie qilmagan:</b>\n\n`;
+    notDone.forEach((emp, i) => {
+      text += `${i + 1}. ${emp}\n`;
+    });
+    text += `\n✅ Selfie qilgan: <b>${EMPLOYEES.length - notDone.length}</b>/${EMPLOYEES.length}`;
+    text += `\n🕑 Tekshiruv vaqti: 14:20`;
+
+    await sendMessage(cfg.botToken, cfg.chatId, text);
+    return null;
+  });
+
+// ═══ 4. HAFTALIK HISOBOT — har juma 17:00 ═══
+exports.weeklyReport = functions.pubsub
+  .schedule("0 17 * * 5")
+  .timeZone("Asia/Tashkent")
+  .onRun(async () => {
+    const cfg = await getTelegramConfig();
+    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
+
+    const now = new Date();
+    const day = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day - 1));
+
+    const weekDates = [];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      weekDates.push(fmtDate(d));
+    }
+
+    const snap = await db.ref("attendance").once("value");
+    const allData = snap.val() || {};
+
+    let totalPresent = 0, totalLate = 0, totalAbsent = 0, totalSick = 0, totalLateMins = 0;
+    const empResults = [];
+
+    EMPLOYEES.forEach(emp => {
+      let present = 0, late = 0, absent = 0, lateMins = 0;
+      weekDates.forEach(dk => {
+        const rec = allData[dk]?.[safeKey(emp)];
+        const st = rec?.status || "present";
+        if (st === "present") present++;
+        else if (st === "late") { late++; present++; }
+        else if (st === "absent") absent++;
+        else if (st === "sick") totalSick++;
+        lateMins += (rec?.morning || 0) + (rec?.afternoon || 0);
+      });
+      totalPresent += present;
+      totalLate += late;
+      totalAbsent += absent;
+      totalLateMins += lateMins;
+      const score = Math.max(0, 100 - Math.round(lateMins / Math.max(1, 5 * 480) * 100 * 8) - absent * 5 - late * 2);
+      empResults.push({ name: emp, present, late, absent, lateMins, score });
+    });
+
+    empResults.sort((a, b) => b.score - a.score);
+    const avgScore = Math.round(empResults.reduce((s, e) => s + e.score, 0) / Math.max(1, EMPLOYEES.length));
+    const attendPct = Math.round(totalPresent / Math.max(1, 5 * EMPLOYEES.length) * 100);
+
+    const monDate = weekDates[0].split("-");
+    const friDate = weekDates[4].split("-");
+
+    let text = `📋 <b>Haftalik hisobot</b>\n`;
+    text += `📅 ${monDate[2]}.${monDate[1]} — ${friDate[2]}.${friDate[1]}.${friDate[0]}\n`;
+    text += `━━━━━━━━━━━━━━━━━━\n`;
+    text += `✅ Davomat: <b>${attendPct}%</b> (${totalPresent}/${5 * EMPLOYEES.length})\n`;
+    text += `⏰ Kechikishlar: <b>${totalLate}</b>\n`;
+    text += `❌ Sababsiz: <b>${totalAbsent}</b>\n`;
+    text += `🏥 Kasal: <b>${totalSick}</b>\n`;
+    text += `🕐 Jami kechikish: <b>${fmtMins(totalLateMins)}</b>\n`;
+    text += `🎯 O'rtacha intizom: <b>${avgScore}/100</b>\n`;
+    text += `━━━━━━━━━━━━━━━━━━\n\n`;
+
+    text += `🏆 <b>Eng yaxshilar:</b>\n`;
+    const medals = ["🥇", "🥈", "🥉"];
+    empResults.slice(0, 3).forEach((e, i) => {
+      text += `${medals[i]} ${e.name} — <b>${e.score}</b> ball\n`;
+    });
+
+    const worst = empResults.filter(e => e.score < 100).slice(-3).reverse();
+    if (worst.length > 0) {
+      text += `\n⚠️ <b>Diqqatga muhtoj:</b>\n`;
+      worst.forEach(e => {
+        const reasons = [];
+        if (e.late > 0) reasons.push(`${e.late} kechikish`);
+        if (e.absent > 0) reasons.push(`${e.absent} yo'qlik`);
+        if (e.lateMins > 0) reasons.push(fmtMins(e.lateMins));
+        text += `  ⚡ ${e.name} — ${e.score} ball (${reasons.join(", ")})\n`;
+      });
+    }
+
+    text += `\n📍 Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi`;
+
+    await sendMessage(cfg.botToken, cfg.chatId, text);
     return null;
   });
