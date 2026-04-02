@@ -3694,6 +3694,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var[liveTime,setLiveTime]=useState(new Date());
   var[submitting,setSubmitting]=useState(false);
   var[cameraError,setCameraError]=useState(null);
+  var[empNote,setEmpNote]=useState("");
   var[livenessOk,setLivenessOk]=useState(false);
   var[livenessPhase,setLivenessPhase]=useState(0);
   var[livenessProgress,setLivenessProgress]=useState(0);
@@ -3986,23 +3987,26 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
       arrivedBeforeDeadline:isMorningOnTime,
       arrivalStatus:isMorningOnTime?"present":late>0?"late":"present",
       gpsDistance:gpsData?gpsData.distance:0,gpsAccuracy:gpsData?gpsData.accuracy:0,
-      gpsLat:gpsData?gpsData.lat:0,gpsLng:gpsData?gpsData.lng:0,gpsOk:gpsStatus==="ok",photo:capturedPhoto
+      gpsLat:gpsData?gpsData.lat:0,gpsLng:gpsData?gpsData.lng:0,gpsOk:gpsStatus==="ok",
+      photo:capturedPhoto,
+      empNote:empNote.trim()||""
     };
     var rec=(attendanceData[todayKey]&&attendanceData[todayKey][empKey])||{status:"present",morning:0,afternoon:0,note:""};
     var u={};
+    var notePrefix=empNote.trim()?(" | Izoh: "+empNote.trim()):"";
     if(uiSession==="morning"){
       u.morning=late;
       u.status=late>0?"late":"present";
-      u.note=(rec.note?rec.note+" | ":"")+(isMorningOnTime?"Ertalab selfie (09:10 gacha): ":"Selfie 09:10 dan keyin: ")+tStr;
+      u.note=(rec.note?rec.note+" | ":"")+(isMorningOnTime?"Ertalab selfie (09:10 gacha): ":"Selfie 09:10 dan keyin: ")+tStr+notePrefix;
     }
-    else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+(late===0?"Tushlikdan keyingi selfie (14:10 gacha): ":"Selfie 14:10 dan keyin: ")+tStr;}
+    else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+(late===0?"Tushlikdan keyingi selfie (14:10 gacha): ":"Selfie 14:10 dan keyin: ")+tStr+notePrefix;}
 
     db.ref("checkins/"+todayKey+"/"+empKey+"/"+uiSession).set(checkinObj)
     .then(function(){return db.ref("attendance/"+todayKey+"/"+empKey).update(u);})
     .then(function(){
       showToast("\u2713 "+(uiSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!");
       lockedSessionRef.current=null;
-      setCapturedPhoto(null);setSubmitting(false);
+      setCapturedPhoto(null);setSubmitting(false);setEmpNote("");
     })
     .catch(function(e){
       showToast("\u26A0 Xatolik: "+(e.message||"Firebase muammo"));
@@ -4096,6 +4100,9 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           curDone.lateMinutes>0?React.createElement("span",{style:{color:"var(--ruby)"}},"Kechikish: "+curDone.lateMinutes+" daqiqa")
           :React.createElement("span",{style:{color:"var(--emerald)"}},"Vaqtida \u2713")
         ),
+        curDone.empNote&&React.createElement("div",{style:{marginTop:10,padding:"8px 14px",background:"var(--cobalt-bg)",borderRadius:"var(--r)",fontSize:12,color:"var(--cobalt)",fontStyle:"italic",textAlign:"left"}},
+          React.createElement("span",{style:{fontWeight:700,fontStyle:"normal"}},"💬 Izohingiz: "),curDone.empNote
+        ),
         React.createElement("div",null,
           React.createElement("span",{className:"selfie-done-detail"},"\u{1F550} "+curDone.time),
           React.createElement("span",{className:"selfie-done-detail"},"\u{1F4CD} "+curDone.gpsDistance+"m")
@@ -4188,8 +4195,28 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
         // Preview
         capturedPhoto&&React.createElement("div",{style:{width:"100%"}},
           React.createElement("img",{src:capturedPhoto,className:"selfie-preview-img",alt:""}),
+          React.createElement("div",{style:{padding:"10px 14px 0"}},
+            React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"var(--t2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".6px"}},"💬 Izoh (ixtiyoriy)"),
+            React.createElement("textarea",{
+              value:empNote,
+              onChange:function(e){setEmpNote(e.target.value);},
+              placeholder:"Kech kelish sababi yoki boshqa izoh...",
+              maxLength:300,
+              rows:3,
+              style:{
+                width:"100%",padding:"10px 12px",
+                border:"1.5px solid var(--border)",
+                borderRadius:"var(--r)",
+                fontSize:13,fontFamily:"Outfit,sans-serif",
+                color:"var(--t1)",background:"var(--white)",
+                outline:"none",resize:"none",boxSizing:"border-box",
+                lineHeight:1.6
+              }
+            }),
+            empNote.trim()&&React.createElement("div",{style:{fontSize:10,color:"var(--t4)",textAlign:"right",marginTop:3}},empNote.length+"/300")
+          ),
           React.createElement("div",{className:"selfie-preview-actions"},
-            React.createElement("button",{className:"selfie-retake-btn",onClick:function(){setCapturedPhoto(null);startCamera();}},"\u{1F504} Qayta"),
+            React.createElement("button",{className:"selfie-retake-btn",onClick:function(){setCapturedPhoto(null);setEmpNote("");startCamera();}},"\u{1F504} Qayta"),
             React.createElement("button",{className:"selfie-confirm-btn",onClick:confirmCheckin,disabled:submitting},submitting?"\u23F3 Saqlanmoqda...":"\u2705 Tasdiqlash")
           ),
           gpsStatus==="far"&&React.createElement("div",{style:{padding:"8px 14px",background:"rgba(192,57,43,.15)",fontSize:11,color:"#fca5a5",textAlign:"center"}},"\u26A0 Ofisdan "+(gpsData?gpsData.distance:0)+"m uzoqda")
@@ -4213,7 +4240,8 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           c.photo&&React.createElement("img",{src:c.photo,className:"selfie-history-photo",alt:""}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"selfie-history-emp"},c.name),
-            React.createElement("div",{style:{fontSize:10,color:"var(--t3)"}},sesIcn+" \u00B7 "+c.gpsDistance+"m "+(c.gpsOk?"\u2713":"\u26A0"))
+            React.createElement("div",{style:{fontSize:10,color:"var(--t3)"}},sesIcn+" \u00B7 "+c.gpsDistance+"m "+(c.gpsOk?"\u2713":"\u26A0")),
+            c.empNote&&React.createElement("div",{style:{fontSize:10,color:"var(--cobalt)",marginTop:2,fontStyle:"italic"}},"\u{1F4AC} "+c.empNote)
           ),
           React.createElement("div",{style:{textAlign:"right"}},
             React.createElement("div",{className:"selfie-history-time"},c.time||"\u2014"),
