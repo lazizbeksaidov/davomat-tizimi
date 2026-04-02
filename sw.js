@@ -1,5 +1,5 @@
-var CACHE_NAME="xodimlar-monitoring-pwa-v5";
-var APP_SHELL=["./","./index.html","./sw.js","./muhammadov-jaloliddin.jpg"];
+var CACHE_NAME="xodimlar-monitoring-pwa-v4";
+var APP_SHELL=["./","./index.html","./sw.js"];
 var LAST_PAGE_KEY="last-successful-page";
 
 function isCacheableResponse(response){
