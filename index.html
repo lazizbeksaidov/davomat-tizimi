@@ -407,11 +407,22 @@
       box-shadow: 0 0 8px rgba(13,122,91,.4);
       animation: pulse 2s infinite;
     }
+    .topbar-dot.offline {
+      background: var(--ruby);
+      box-shadow: 0 0 8px rgba(192,57,43,.36);
+      animation: none;
+    }
+    .topbar-dot.cached {
+      background: var(--gold);
+      box-shadow: 0 0 8px rgba(200,150,42,.34);
+    }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
     .topbar-status {
       display: flex; align-items: center; gap: 7px;
       font-size: 11px; font-weight: 500; color: var(--t3);
     }
+    .topbar-status.is-offline { color: var(--ruby); }
+    .topbar-status.is-cached { color: var(--amber); }
 
     /* ─── MAIN AREA ─────────────────────────────── */
     .main { flex: 1; padding: 26px 28px 48px; }
@@ -756,6 +767,339 @@
       background: rgba(255,255,255,.12);
       color: rgba(255,255,255,.82);
       border: 1px solid rgba(255,255,255,.14);
+    }
+    .offline-banner {
+      margin: 14px 28px 0;
+      padding: 13px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(200,150,42,.22);
+      background: linear-gradient(135deg,#fffaf0 0%,#fff3de 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      box-shadow: var(--s1);
+    }
+    .offline-banner-main { min-width: 0; }
+    .offline-banner-title {
+      color: var(--navy);
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+    .offline-banner-sub {
+      margin-top: 3px;
+      color: var(--t3);
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+    .offline-banner-meta {
+      flex-shrink: 0;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(200,150,42,.12);
+      color: var(--amber);
+      font-size: 10.5px;
+      font-weight: 700;
+      border: 1px solid rgba(200,150,42,.18);
+    }
+    .dashboard-hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 22px;
+      padding: 24px;
+      margin-bottom: 18px;
+      background:
+        radial-gradient(circle at top right, rgba(232,184,75,.22) 0%, transparent 30%),
+        linear-gradient(135deg, #0b1833 0%, #10224a 50%, #173468 100%);
+      color: #fff;
+      box-shadow: var(--s4);
+    }
+    .dashboard-hero::before,
+    .dashboard-hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: .22;
+    }
+    .dashboard-hero::before {
+      width: 260px;
+      height: 260px;
+      right: -120px;
+      top: -120px;
+      background: radial-gradient(circle, rgba(232,184,75,.8) 0%, transparent 68%);
+    }
+    .dashboard-hero::after {
+      width: 220px;
+      height: 220px;
+      left: -120px;
+      bottom: -150px;
+      background: radial-gradient(circle, rgba(52,99,232,.85) 0%, transparent 70%);
+    }
+    .dashboard-hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .dashboard-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .9px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.82);
+    }
+    .dashboard-hero-title {
+      margin-top: 14px;
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      line-height: 1.1;
+      letter-spacing: -.6px;
+    }
+    .dashboard-hero-sub {
+      margin-top: 12px;
+      max-width: 640px;
+      font-size: 13px;
+      line-height: 1.75;
+      color: rgba(255,255,255,.72);
+    }
+    .dashboard-pill-list {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .dashboard-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.82);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .dashboard-highlight {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 20px;
+      padding: 18px;
+      backdrop-filter: blur(14px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 100%;
+    }
+    .dashboard-highlight-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .9px;
+      color: rgba(255,255,255,.62);
+      font-weight: 700;
+    }
+    .dashboard-highlight-value {
+      margin-top: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: #fff;
+    }
+    .dashboard-highlight-sub {
+      margin-top: 8px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: rgba(255,255,255,.74);
+    }
+    .dashboard-highlight-meta {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,.1);
+      font-size: 11px;
+      color: rgba(255,255,255,.64);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .trend-chart-wrap { padding: 18px 18px 14px; }
+    .trend-chart-svg {
+      width: 100%;
+      height: 150px;
+      display: block;
+      overflow: visible;
+    }
+    .trend-chart-axis {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--t4);
+    }
+    .metric-stack {
+      padding: 16px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .metric-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .metric-name {
+      min-width: 126px;
+      max-width: 126px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--t2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .metric-track {
+      flex: 1;
+      height: 8px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .metric-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width .45s ease;
+    }
+    .metric-number {
+      min-width: 52px;
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .dashboard-list {
+      padding: 14px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .dashboard-list-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+    }
+    .dashboard-list-main { min-width: 0; }
+    .dashboard-list-name {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--navy);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dashboard-list-sub {
+      margin-top: 3px;
+      font-size: 10.5px;
+      color: var(--t4);
+      line-height: 1.45;
+    }
+    .dashboard-score-pill {
+      flex-shrink: 0;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .dashboard-empty {
+      padding: 28px 18px;
+      text-align: center;
+      color: var(--t4);
+      font-size: 12px;
+    }
+    .dashboard-signal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      padding: 0 18px 18px;
+    }
+    .dashboard-signal {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .dashboard-signal-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      color: var(--t4);
+    }
+    .dashboard-signal-value {
+      margin-top: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: -.7px;
+    }
+    .dashboard-signal-sub {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--t3);
+      line-height: 1.5;
+    }
+    .pwa-health {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .pwa-health-card {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .pwa-health-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .75px;
+      color: var(--t4);
+    }
+    .pwa-health-value {
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--navy);
+    }
+    .pwa-health-sub {
+      margin-top: 4px;
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--t3);
     }
 
     /* ─── MODAL ─────────────────────────────────── */
@@ -1685,6 +2029,22 @@
         flex-direction: column !important;
         align-items: stretch !important;
       }
+      .offline-banner {
+        margin: 12px 14px 0 !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+      }
+      .dashboard-hero {
+        padding: 18px !important;
+        border-radius: 18px !important;
+      }
+      .dashboard-hero-grid {
+        grid-template-columns: 1fr !important;
+      }
+      .dashboard-hero-title { font-size: 26px !important; }
+      .dashboard-highlight-value { font-size: 30px !important; }
+      .trend-chart-wrap { padding: 16px 14px 12px !important; }
+      .dashboard-score-pill { font-size: 10.5px !important; }
       .pwa-banner-actions { width: 100% !important; }
       .pwa-install-btn, .pwa-dismiss-btn { flex: 1 !important; }
 
@@ -1826,133 +2186,6 @@
     }
     .emp-profile-detail-value {
       font-size: 12.5px; color: var(--t1); font-weight: 500;
-    }
-
-    /* ─── DARK MODE ───────────────────────────── */
-    [data-theme="dark"] {
-      --ink:#e8edf5; --ink-deep:#f3f6fb; --navy:#c4ccdb; --navy-mid:#9ba8c2; --navy-lt:#6b7896;
-      --slate:#4b5563; --mist:#1a1f2e; --cloud:#0d1117; --white:#161b22;
-      --gold:#e8b84b; --gold-lt:#f5d280; --gold-pale:rgba(232,184,75,.1); --gold-glow:rgba(232,184,75,.12);
-      --emerald:#2dd4a0; --emerald-bg:rgba(13,122,91,.15); --ruby:#ff6b6b; --ruby-bg:rgba(192,57,43,.12);
-      --amber:#f59e0b; --amber-bg:rgba(245,158,11,.1); --cobalt:#60a5fa; --cobalt-bg:rgba(96,165,250,.1);
-      --violet:#a78bfa; --violet-bg:rgba(167,139,250,.1); --teal:#22d3ee; --teal-bg:rgba(34,211,238,.1);
-      --ash:#9ca3af; --ash-bg:rgba(156,163,175,.1);
-      --t1:#e8edf5; --t2:#b0bac9; --t3:#8892a4; --t4:#5a6478; --t5:#3a4252;
-      --surface:#161b22; --surface2:#1c2230; --surface3:#222939; --border:#2a3142; --border2:#363f54;
-      --s1:0 1px 3px rgba(0,0,0,.3); --s2:0 4px 16px rgba(0,0,0,.4); --s3:0 12px 40px rgba(0,0,0,.5); --s4:0 24px 60px rgba(0,0,0,.6);
-    }
-    [data-theme="dark"] body { background:var(--cloud); color:var(--t1); }
-    [data-theme="dark"] .sidebar { background:#0d1117; }
-    [data-theme="dark"] .login-right { background:#161b22; }
-    [data-theme="dark"] .login-card-title { color:var(--t1); }
-    [data-theme="dark"] .form-input { background:#1c2230; border-color:#2a3142; color:#e8edf5; }
-    [data-theme="dark"] .form-input:focus { background:#222939; }
-    [data-theme="dark"] table { color:var(--t1); }
-    [data-theme="dark"] thead th { background:#1c2230; color:var(--t3); border-color:#2a3142; }
-    [data-theme="dark"] tbody tr:hover { background:#1c2230; }
-    [data-theme="dark"] .status-select { background:#1c2230; color:#e8edf5; border-color:#2a3142; }
-    [data-theme="dark"] .num-input { background:#1c2230; color:#e8edf5; border-color:#2a3142; }
-    [data-theme="dark"] .text-input { background:#1c2230; color:#e8edf5; border-color:#2a3142; }
-    [data-theme="dark"] .pwa-banner { background:#161b22; border-color:#2a3142; }
-    .dark-toggle {
-      width:100%; padding:7px 12px; margin-top:6px;
-      background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
-      border-radius:8px; color:rgba(255,255,255,.35);
-      font-size:11.5px; font-weight:600; font-family:'Outfit',sans-serif;
-      cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;
-      transition:all .18s;
-    }
-    .dark-toggle:hover { background:rgba(255,255,255,.08); color:rgba(255,255,255,.6); }
-
-    /* ─── SELFIE REMINDER ─────────────────────── */
-    .selfie-reminder { margin-bottom:18px; animation:reminderSlide .4s ease; }
-    @keyframes reminderSlide { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
-    .reminder-card {
-      background:linear-gradient(135deg,#fef9ee 0%,#fff7ed 100%);
-      border:1.5px solid rgba(200,150,42,.25); border-radius:var(--rl); padding:18px 22px;
-      display:flex; align-items:center; gap:16px; cursor:pointer; transition:all .2s;
-      box-shadow:0 2px 12px rgba(200,150,42,.1); position:relative; overflow:hidden;
-    }
-    .reminder-card:hover { border-color:rgba(200,150,42,.45); box-shadow:0 4px 20px rgba(200,150,42,.18); transform:translateY(-1px); }
-    .reminder-card::before { content:''; position:absolute; top:0; left:0; bottom:0; width:4px; background:linear-gradient(180deg,var(--gold),var(--gold-lt)); border-radius:var(--rl) 0 0 var(--rl); }
-    .reminder-pulse { width:48px; height:48px; border-radius:50%; background:rgba(200,150,42,.12); display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; animation:reminderPulse 2s ease infinite; }
-    @keyframes reminderPulse { 0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(200,150,42,.3)} 50%{transform:scale(1.05);box-shadow:0 0 0 8px rgba(200,150,42,0)} }
-    .reminder-content { flex:1; min-width:0; }
-    .reminder-title { font-size:14.5px; font-weight:700; color:var(--amber); margin-bottom:3px; }
-    .reminder-sub { font-size:12.5px; color:var(--t3); line-height:1.5; }
-    .reminder-btn { padding:8px 18px; background:linear-gradient(135deg,var(--gold),var(--gold-lt)); color:var(--ink-deep); border:none; border-radius:8px; font-size:12px; font-weight:700; font-family:'Outfit',sans-serif; cursor:pointer; transition:all .2s; white-space:nowrap; box-shadow:0 2px 8px rgba(200,150,42,.25); }
-    .reminder-btn:hover { box-shadow:0 4px 14px rgba(200,150,42,.35); transform:translateY(-1px); }
-    .reminder-done { background:linear-gradient(135deg,#e3f5ef 0%,#edfaf4 100%); border:1.5px solid rgba(13,122,91,.15); border-radius:var(--rl); padding:14px 22px; display:flex; align-items:center; gap:14px; margin-bottom:18px; position:relative; overflow:hidden; animation:reminderSlide .4s ease; }
-    .reminder-done::before { content:''; position:absolute; top:0; left:0; bottom:0; width:4px; background:var(--emerald); border-radius:var(--rl) 0 0 var(--rl); }
-    .reminder-done-icon { font-size:20px; }
-    .reminder-done-text { font-size:13px; font-weight:600; color:var(--emerald); }
-    .reminder-done-sub { font-size:11.5px; color:var(--t3); margin-top:1px; }
-    [data-theme="dark"] .reminder-card { background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(245,158,11,.04)); border-color:rgba(245,158,11,.2); }
-    [data-theme="dark"] .reminder-done { background:linear-gradient(135deg,rgba(13,122,91,.1),rgba(13,122,91,.05)); border-color:rgba(45,212,160,.15); }
-
-    /* ─── ANNOUNCEMENTS ───────────────────────── */
-    .ann-list { display:flex; flex-direction:column; gap:12px; }
-    .ann-card { background:var(--white); border:1px solid var(--border); border-radius:var(--rl); padding:18px 22px; box-shadow:var(--s1); position:relative; overflow:hidden; transition:transform .15s,box-shadow .15s; }
-    .ann-card:hover { transform:translateY(-1px); box-shadow:var(--s2); }
-    .ann-card::before { content:''; position:absolute; top:0; left:0; bottom:0; width:4px; border-radius:var(--rl) 0 0 var(--rl); }
-    .ann-card.ann-urgent::before { background:var(--ruby); }
-    .ann-card.ann-normal::before { background:var(--cobalt); }
-    .ann-card.ann-info::before { background:var(--emerald); }
-    .ann-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-    .ann-badge { font-size:10px; font-weight:700; padding:3px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:.5px; }
-    .ann-badge.urgent { background:var(--ruby-bg); color:var(--ruby); }
-    .ann-badge.normal { background:var(--cobalt-bg); color:var(--cobalt); }
-    .ann-badge.info { background:var(--emerald-bg); color:var(--emerald); }
-    .ann-date { font-size:11px; color:var(--t4); margin-left:auto; font-family:'JetBrains Mono',monospace; }
-    .ann-title { font-size:15px; font-weight:700; color:var(--navy); margin-bottom:6px; }
-    .ann-text { font-size:13px; color:var(--t2); line-height:1.7; }
-    .ann-author { font-size:11px; color:var(--t4); margin-top:10px; font-style:italic; }
-    .ann-del { position:absolute; top:12px; right:12px; width:28px; height:28px; border-radius:50%; border:none; background:var(--ruby-bg); color:var(--ruby); font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .15s; }
-    .ann-card:hover .ann-del { opacity:1; }
-    .ann-form { background:var(--white); border:1px solid var(--border); border-radius:var(--rl); padding:22px; box-shadow:var(--s2); margin-bottom:20px; }
-    .ann-form-row { margin-bottom:14px; }
-    .ann-form-row label { display:block; font-size:11px; font-weight:600; color:var(--t3); text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; }
-    .ann-form-row input,.ann-form-row textarea,.ann-form-row select { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:var(--r); font-size:13px; font-family:'Outfit',sans-serif; color:var(--t1); background:var(--cloud); outline:none; transition:border-color .15s; }
-    .ann-form-row input:focus,.ann-form-row textarea:focus,.ann-form-row select:focus { border-color:var(--gold); }
-    .ann-form-row textarea { min-height:80px; resize:vertical; }
-    .ann-submit { padding:10px 24px; background:linear-gradient(135deg,var(--navy),var(--navy-lt)); color:#fff; border:none; border-radius:var(--r); font-size:13px; font-weight:600; font-family:'Outfit',sans-serif; cursor:pointer; box-shadow:0 2px 8px rgba(10,14,26,.15); transition:all .15s; }
-    .ann-submit:hover { box-shadow:0 4px 14px rgba(10,14,26,.25); }
-    .ann-submit:disabled { opacity:.6; cursor:not-allowed; }
-
-    /* ─── RANKINGS ─────────────────────────────── */
-    .rank-podium { display:flex; align-items:flex-end; justify-content:center; gap:12px; margin-bottom:28px; padding:20px 0; }
-    .rank-pod { text-align:center; border-radius:var(--rl); padding:16px 20px; min-width:120px; transition:transform .15s; }
-    .rank-pod:hover { transform:translateY(-3px); }
-    .rank-pod.gold { background:linear-gradient(135deg,#fef3c7,#fde68a); border:1.5px solid rgba(245,158,11,.3); order:2; padding-bottom:28px; }
-    .rank-pod.silver { background:linear-gradient(135deg,#f1f5f9,#e2e8f0); border:1.5px solid rgba(148,163,184,.3); order:1; }
-    .rank-pod.bronze { background:linear-gradient(135deg,#fef2e8,#fed7aa); border:1.5px solid rgba(251,146,60,.25); order:3; }
-    .rank-medal { font-size:32px; margin-bottom:6px; }
-    .rank-name { font-size:13px; font-weight:700; color:var(--navy); margin-bottom:2px; }
-    .rank-pct { font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; }
-    .rank-pod.gold .rank-pct { color:#b45309; }
-    .rank-pod.silver .rank-pct { color:#475569; }
-    .rank-pod.bronze .rank-pct { color:#c2410c; }
-    .rank-table-row { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); transition:background .1s; }
-    .rank-table-row:hover { background:var(--cloud); }
-    .rank-pos { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; font-family:'JetBrains Mono',monospace; flex-shrink:0; }
-    .rank-bar-wrap { flex:1; height:6px; background:var(--surface3); border-radius:99px; overflow:hidden; }
-    .rank-bar { height:100%; border-radius:99px; transition:width .6s ease; }
-
-    /* ─── WEATHER WIDGET ──────────────────────── */
-    .weather-box { padding:10px 14px; margin:0 10px 8px; border-radius:10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); }
-    .weather-row { display:flex; align-items:center; gap:8px; }
-    .weather-icon { font-size:20px; }
-    .weather-temp { font-size:16px; font-weight:700; color:rgba(255,255,255,.85); font-family:'JetBrains Mono',monospace; }
-    .weather-desc { font-size:10px; color:rgba(255,255,255,.35); margin-top:2px; }
-    .weather-details { display:flex; gap:10px; margin-top:6px; }
-    .weather-detail { font-size:9.5px; color:rgba(255,255,255,.28); display:flex; align-items:center; gap:3px; }
-
-    @media(max-width:768px){
-      .reminder-card { flex-wrap:wrap; padding:14px 16px; gap:12px; }
-      .reminder-pulse { width:40px; height:40px; font-size:20px; }
-      .reminder-btn { width:100%; text-align:center; padding:10px; }
-      .rank-podium { flex-wrap:wrap; }
-      .rank-pod { min-width:100px; }
     }
   </style>
 </head>
@@ -2347,12 +2580,50 @@ function getWeekdayLabel(v){
   const d=v instanceof Date?v:parseDateKey(v);
   return d.toLocaleDateString("uz-UZ",{weekday:"long"});
 }
+function getOvertimeEntry(checkinsData,dateKey,empName){
+  return checkinsData?.[dateKey]?.[safeKey(empName)]?.overtime||null;
+}
+function getOvertimeMinutes(checkinsData,dateKey,empName){
+  const mins=Number(getOvertimeEntry(checkinsData,dateKey,empName)?.overtimeMinutes||0);
+  return Number.isFinite(mins)&&mins>0?mins:0;
+}
+function getOvertimeRowsForDates(checkinsData,dates,empName){
+  return dates
+    .map(d=>{
+      const dateKey=d instanceof Date?fmtDate(d):String(d);
+      const overtime=getOvertimeEntry(checkinsData,dateKey,empName);
+      const minutes=Number(overtime?.overtimeMinutes||0);
+      if(!Number.isFinite(minutes)||minutes<=0) return null;
+      return {
+        dateKey,
+        dateObj:d instanceof Date?new Date(d):parseDateKey(dateKey),
+        minutes,
+        time:overtime?.time||"—"
+      };
+    })
+    .filter(Boolean);
+}
+function getMonthOvertimeRows(checkinsData,yr,mon,empName){
+  return Object.keys(checkinsData||{})
+    .filter(dateKey=>{
+      const d=parseDateKey(dateKey);
+      return d.getFullYear()===yr&&d.getMonth()===mon;
+    })
+    .sort()
+    .map(dateKey=>{
+      const overtime=getOvertimeEntry(checkinsData,dateKey,empName);
+      const minutes=Number(overtime?.overtimeMinutes||0);
+      if(!Number.isFinite(minutes)||minutes<=0) return null;
+      return {dateKey,dateObj:parseDateKey(dateKey),minutes,time:overtime?.time||"—"};
+    })
+    .filter(Boolean);
+}
 function getCheckinEntriesForDate(checkinsData,dateKey){
   const dayData=checkinsData?.[dateKey]||{};
   const list=[];
   Object.keys(dayData).forEach(empKey=>{
     const sessions=dayData[empKey]||{};
-    ["morning","afternoon"].forEach(sessionKey=>{
+    ["morning","afternoon","overtime"].forEach(sessionKey=>{
       const entry=sessions[sessionKey];
       if(!entry) return;
       list.push(Object.assign({
@@ -2379,19 +2650,21 @@ function exportDailyExcel(dateKey,attendanceData,checkinsData){
     var morning=rec.morning||0;
     var afternoon=rec.afternoon||0;
     var total=morning+afternoon;
+    var overtime=getOvertimeMinutes(checkinsData,dateKey,emp);
     return{
       "№":i+1,
       "F.I.O":emp,
       "Holat":stLabel,
-      "09:10 kechikish (daq)":morning||"",
-      "14:10 kechikish (daq)":afternoon||"",
+      "09:00 kechikish (daq)":morning||"",
+      "14:00 kechikish (daq)":afternoon||"",
       "Jami kechikish (daq)":total||"",
+      "Qo'shimcha ish (daq)":overtime||"",
       "Izoh":rec.note||""
     };
   });
   var ws=XLSX.utils.json_to_sheet(rows);
   // Column widths
-  ws["!cols"]=[{wch:4},{wch:28},{wch:14},{wch:18},{wch:18},{wch:18},{wch:30}];
+  ws["!cols"]=[{wch:4},{wch:28},{wch:14},{wch:18},{wch:18},{wch:18},{wch:18},{wch:30}];
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Kunlik "+dayLabel);
   XLSX.writeFile(wb,"Davomat_"+dayLabel+".xlsx");
@@ -2414,6 +2687,8 @@ function exportMonthlyExcel(yr,mon,monthDates,attendanceData,checkinsData){
       else if(st==="vacation")vacation++;
       lateMins+=(rec.morning||0)+(rec.afternoon||0);
     });
+    var overtimeRows=getOvertimeRowsForDates(checkinsData,monthDates,emp);
+    var overtimeMins=overtimeRows.reduce(function(s,r){return s+r.minutes;},0);
     var score=Math.max(0,100-Math.round(lateMins/Math.max(1,totalDays*480)*100*8)-absent*5-late*2);
     return{
       "№":i+1,
@@ -2426,11 +2701,12 @@ function exportMonthlyExcel(yr,mon,monthDates,attendanceData,checkinsData){
       "Xizmat safari":trip||"",
       "Ta'til":vacation||"",
       "Kechikish (daq)":lateMins||"",
+      "Qo'shimcha ish (daq)":overtimeMins||"",
       "Intizom bali":score
     };
   });
   var ws1=XLSX.utils.json_to_sheet(rows);
-  ws1["!cols"]=[{wch:4},{wch:28},{wch:10},{wch:10},{wch:14},{wch:10},{wch:8},{wch:14},{wch:8},{wch:14},{wch:14}];
+  ws1["!cols"]=[{wch:4},{wch:28},{wch:10},{wch:10},{wch:14},{wch:10},{wch:8},{wch:14},{wch:8},{wch:14},{wch:18},{wch:14}];
 
   // Detail sheet — har bir kun alohida
   var detailRows=[];
@@ -2441,20 +2717,22 @@ function exportMonthlyExcel(yr,mon,monthDates,attendanceData,checkinsData){
       var rec=(attendanceData[dk]&&attendanceData[dk][safeKey(emp)])||{};
       var st=rec.status||"present";
       var stLabel=(STATUSES[st]||STATUSES.present).label;
+      var overtime=getOvertimeMinutes(checkinsData,dk,emp);
       detailRows.push({
         "Sana":dk,
         "Kun":dayName,
         "F.I.O":emp,
         "Holat":stLabel,
-        "09:10 (daq)":rec.morning||"",
-        "14:10 (daq)":rec.afternoon||"",
+        "09:00 (daq)":rec.morning||"",
+        "14:00 (daq)":rec.afternoon||"",
         "Jami kech. (daq)":(rec.morning||0)+(rec.afternoon||0)||"",
+        "Qo'sh. ish (daq)":overtime||"",
         "Izoh":rec.note||""
       });
     });
   });
   var ws2=XLSX.utils.json_to_sheet(detailRows);
-  ws2["!cols"]=[{wch:12},{wch:12},{wch:28},{wch:14},{wch:10},{wch:10},{wch:14},{wch:30}];
+  ws2["!cols"]=[{wch:12},{wch:12},{wch:28},{wch:14},{wch:10},{wch:10},{wch:14},{wch:14},{wch:30}];
 
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws1,"Umumiy — "+monName);
@@ -2478,13 +2756,14 @@ function exportStatsExcel(yr,mon,period,dates,empStats,sorted,totals){
       "Ta'til":s.vacation||"",
       "Sababli":s.excused||"",
       "Kechikish (daq)":s.lateMins||"",
+      "Qo'sh. ish (daq)":s.overtimeMins||"",
       "Intizom bali":s.score
     };
   });
   // Totals row
-  rows.push({"№":"","F.I.O":"JAMI","Davomat":totals.present,"Kechikish (soni)":totals.late,"Sababsiz":totals.absent,"Kasal":totals.sick,"Kechikish (daq)":totals.lateMins});
+  rows.push({"№":"","F.I.O":"JAMI","Davomat":totals.present,"Kechikish (soni)":totals.late,"Sababsiz":totals.absent,"Kasal":totals.sick,"Kechikish (daq)":totals.lateMins,"Qo'sh. ish (daq)":totals.overtimeMins});
   var ws=XLSX.utils.json_to_sheet(rows);
-  ws["!cols"]=[{wch:4},{wch:28},{wch:10},{wch:14},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:14},{wch:14}];
+  ws["!cols"]=[{wch:4},{wch:28},{wch:10},{wch:14},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:14},{wch:14},{wch:14}];
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,periodLabel+" — "+monName+" "+yr);
   XLSX.writeFile(wb,"Statistika_"+periodLabel+"_"+monName+"_"+yr+".xlsx");
@@ -2503,6 +2782,528 @@ function Ring({pct,size=44,stroke=5,color="var(--emerald)"}){
         {Math.round(pct)}
       </text>
     </svg>
+  );
+}
+
+const SNAPSHOT_KEYS={
+  attendance:"xodimlar-attendance-cache-v2",
+  checkins:"xodimlar-checkins-cache-v2",
+  meta:"xodimlar-cache-meta-v2"
+};
+
+function clamp(v,min,max){return Math.min(max,Math.max(min,v))}
+function readLocalJSON(key,fallback){
+  try{
+    if(typeof window==="undefined") return fallback;
+    const raw=window.localStorage.getItem(key);
+    return raw?JSON.parse(raw):fallback;
+  }catch(_e){
+    return fallback;
+  }
+}
+function writeLocalJSON(key,value){
+  try{
+    if(typeof window==="undefined") return false;
+    window.localStorage.setItem(key,JSON.stringify(value));
+    return true;
+  }catch(_e){
+    return false;
+  }
+}
+function saveSnapshotBundle(kind,data){
+  if(!SNAPSHOT_KEYS[kind]) return null;
+  const safeData=data||{};
+  if(!writeLocalJSON(SNAPSHOT_KEYS[kind],safeData)) return null;
+  const meta=readLocalJSON(SNAPSHOT_KEYS.meta,{})||{};
+  meta[kind]={updatedAt:Date.now(),records:Object.keys(safeData).length};
+  writeLocalJSON(SNAPSHOT_KEYS.meta,meta);
+  return meta;
+}
+function getSnapshotBundle(kind){return SNAPSHOT_KEYS[kind]?readLocalJSON(SNAPSHOT_KEYS[kind],null):null}
+function getSnapshotMeta(){return readLocalJSON(SNAPSHOT_KEYS.meta,null)}
+function formatRelativeSync(ts){
+  if(!ts) return "Kesh mavjud emas";
+  const diff=Math.max(0,Date.now()-ts);
+  const mins=Math.round(diff/60000);
+  if(mins<1) return "Hozirgina sinxronlangan";
+  if(mins<60) return mins+" daqiqa oldin";
+  const hours=Math.round(mins/60);
+  if(hours<24) return hours+" soat oldin";
+  return Math.round(hours/24)+" kun oldin";
+}
+function formatDayShort(date){
+  return String(date.getDate()).padStart(2,"0")+"."+String(date.getMonth()+1).padStart(2,"0");
+}
+function calcDisciplineScore(totalDays,lateMins,late,absent,overtimeMins){
+  const safeDays=Math.max(1,totalDays);
+  const latePenalty=Math.round((lateMins/Math.max(1,safeDays*480))*100*8);
+  const absentPenalty=absent*6;
+  const lateCountPenalty=late*2;
+  const overtimeBonus=Math.min(6,Math.round((overtimeMins||0)/180));
+  return clamp(100-latePenalty-absentPenalty-lateCountPenalty+overtimeBonus,0,100);
+}
+function buildEmployeeStats(attendanceData,checkinsData,dates){
+  const totalDays=Math.max(1,(dates||[]).length);
+  return EMPLOYEES.map(emp=>{
+    let present=0,late=0,absent=0,sick=0,trip=0,training=0,vacation=0,excused=0,lateMins=0;
+    (dates||[]).forEach(d=>{
+      const dateKey=d instanceof Date?fmtDate(d):String(d);
+      const rec=attendanceData?.[dateKey]?.[safeKey(emp)];
+      const st=rec?.status||"present";
+      if(st==="present")present++;
+      else if(st==="late"){late++;present++;}
+      else if(st==="absent")absent++;
+      else if(st==="sick")sick++;
+      else if(st==="trip")trip++;
+      else if(st==="training")training++;
+      else if(st==="vacation")vacation++;
+      else if(st==="excused")excused++;
+      lateMins+=(rec?.morning||0)+(rec?.afternoon||0);
+    });
+    const overtimeRows=getOvertimeRowsForDates(checkinsData,dates,emp);
+    const overtimeMins=overtimeRows.reduce((sum,row)=>sum+row.minutes,0);
+    return{
+      emp,present,late,absent,sick,trip,training,vacation,excused,lateMins,
+      overtimeMins,overtimeDays:overtimeRows.length,
+      score:calcDisciplineScore(totalDays,lateMins,late,absent,overtimeMins)
+    };
+  });
+}
+function summarizeStats(stats,totalDays){
+  const totals=(stats||[]).reduce((acc,s)=>({
+    present:acc.present+s.present,
+    late:acc.late+s.late,
+    absent:acc.absent+s.absent,
+    sick:acc.sick+s.sick,
+    trip:acc.trip+s.trip,
+    training:acc.training+s.training,
+    vacation:acc.vacation+s.vacation,
+    excused:acc.excused+s.excused,
+    lateMins:acc.lateMins+s.lateMins,
+    overtimeMins:acc.overtimeMins+s.overtimeMins
+  }),{present:0,late:0,absent:0,sick:0,trip:0,training:0,vacation:0,excused:0,lateMins:0,overtimeMins:0});
+  const slotCount=Math.max(1,Math.max(1,totalDays)*EMPLOYEES.length);
+  const avgScore=Math.round((stats||[]).reduce((sum,s)=>sum+s.score,0)/Math.max(1,(stats||[]).length));
+  const riskCount=(stats||[]).filter(s=>s.score<70||s.absent>0||s.lateMins>45).length;
+  return Object.assign(totals,{
+    avgScore,
+    riskCount,
+    attendancePct:Math.round(totals.present/slotCount*100)
+  });
+}
+function getWeekBlocks(baseDate,weeksCount){
+  const anchor=baseDate?new Date(baseDate):new Date();
+  const baseWeek=getWeekDates(anchor);
+  const monday=baseWeek[0];
+  return Array.from({length:weeksCount},(_,idx)=>{
+    const start=new Date(monday);
+    start.setDate(monday.getDate()-(weeksCount-1-idx)*7);
+    const dates=Array.from({length:5},(__,dayIdx)=>{
+      const d=new Date(start);
+      d.setDate(start.getDate()+dayIdx);
+      return d;
+    });
+    return{start,dates,label:formatDayShort(start)};
+  });
+}
+function buildWeeklyTrend(attendanceData,checkinsData,baseDate,weeksCount){
+  return getWeekBlocks(baseDate,weeksCount).map(block=>{
+    const stats=buildEmployeeStats(attendanceData,checkinsData,block.dates);
+    const summary=summarizeStats(stats,block.dates.length);
+    return{
+      label:block.label,
+      start:block.start,
+      avgScore:summary.avgScore,
+      lateMins:summary.lateMins,
+      absent:summary.absent,
+      attendancePct:summary.attendancePct,
+      riskCount:summary.riskCount,
+      overtimeMins:summary.overtimeMins
+    };
+  });
+}
+function buildRiskEmployees(stats){
+  return (stats||[])
+    .map(s=>Object.assign({},s,{
+      riskValue:s.absent*30+s.late*12+Math.round(s.lateMins/4)-Math.min(6,Math.round(s.overtimeMins/120))
+    }))
+    .filter(s=>s.riskValue>0||s.score<75)
+    .sort((a,b)=>b.riskValue-a.riskValue||a.score-b.score||b.lateMins-a.lateMins);
+}
+function getTodaySelfieCoverage(checkinsData,dateKey){
+  const day=checkinsData?.[dateKey]||{};
+  let morning=0,afternoon=0,both=0,overtime=0;
+  EMPLOYEES.forEach(emp=>{
+    const rec=day[safeKey(emp)]||{};
+    if(rec.morning) morning++;
+    if(rec.afternoon) afternoon++;
+    if(rec.overtime) overtime++;
+    if(rec.morning&&rec.afternoon) both++;
+  });
+  return{morning,afternoon,both,overtime,missing:EMPLOYEES.length-both};
+}
+function buildTodayAlerts(attendanceData,checkinsData,dateKey,now){
+  const current=now||new Date();
+  const needMorning=current.getHours()>=9;
+  const needAfternoon=current.getHours()>=14;
+  return EMPLOYEES.map(emp=>{
+    const rec=attendanceData?.[dateKey]?.[safeKey(emp)]||{status:"present",morning:0,afternoon:0};
+    const sessions=checkinsData?.[dateKey]?.[safeKey(emp)]||{};
+    const lateMins=(rec.morning||0)+(rec.afternoon||0);
+    const flags=[];
+    if(rec.status==="absent") flags.push("Sababsiz yo'q");
+    else if(rec.status==="late"||lateMins>0) flags.push("Kechikish: "+lateMins+" daqiqa");
+    if(needMorning&&!sessions.morning) flags.push("Ertalabki selfie yo'q");
+    if(needAfternoon&&sessions.morning&&!sessions.afternoon) flags.push("Tushlikdan keyingi selfie yo'q");
+    const severity=(rec.status==="absent"?90:0)+(lateMins>0?30+Math.min(30,lateMins):0)+(flags.length-1)*10;
+    return{emp,flags,lateMins,status:rec.status||"present",severity};
+  })
+  .filter(item=>item.flags.length>0)
+  .sort((a,b)=>b.severity-a.severity||b.lateMins-a.lateMins||a.emp.localeCompare(b.emp))
+  .slice(0,6);
+}
+function getScoreTone(score){
+  if(score>=85) return{color:"var(--emerald)",bg:"var(--emerald-bg)",border:"rgba(13,122,91,.16)"};
+  if(score>=65) return{color:"var(--amber)",bg:"var(--amber-bg)",border:"rgba(161,98,7,.16)"};
+  return{color:"var(--ruby)",bg:"var(--ruby-bg)",border:"rgba(192,57,43,.16)"};
+}
+function TrendLineChart({points,color="var(--gold)"}){
+  if(!points||!points.length) return null;
+  const width=320,height=132,padX=16,padY=18;
+  const values=points.map(p=>Number(p.value)||0);
+  const max=Math.max(1,...values);
+  const min=Math.min(...values);
+  const range=Math.max(1,max-min);
+  const coords=points.map((point,index)=>{
+    const x=padX+(points.length===1?0:(index*(width-padX*2)/(points.length-1)));
+    const y=height-padY-(((Number(point.value)||0)-min)/range)*(height-padY*2);
+    return{x,y,value:Number(point.value)||0,label:point.label};
+  });
+  return(
+    <div className="trend-chart-wrap">
+      <svg className="trend-chart-svg" viewBox={`0 0 ${width} ${height}`}>
+        {[0,.25,.5,.75,1].map((step,index)=>{
+          const y=padY+step*(height-padY*2);
+          return<line key={index} x1={padX} y1={y} x2={width-padX} y2={y} stroke="rgba(155,168,194,.18)" strokeWidth="1"/>;
+        })}
+        <polyline
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={coords.map(point=>`${point.x},${point.y}`).join(" ")}
+        />
+        {coords.map((point,index)=>(
+          <g key={index}>
+            <circle cx={point.x} cy={point.y} r="4.5" fill="#fff" stroke={color} strokeWidth="2"/>
+            <title>{point.label}: {point.value}</title>
+          </g>
+        ))}
+      </svg>
+      <div className="trend-chart-axis">
+        {points.map((point,index)=><span key={index}>{point.label}</span>)}
+      </div>
+    </div>
+  );
+}
+function BossDashboard({user,attendanceData,checkinsData,onEmpClick,onlineStatus,snapshotMeta}){
+  const now=new Date();
+  const currentYear=now.getFullYear();
+  const currentMonth=now.getMonth();
+  const monthDates=useMemo(()=>getMonthDates(currentYear,currentMonth),[currentYear,currentMonth]);
+  const monthStats=useMemo(()=>buildEmployeeStats(attendanceData,checkinsData,monthDates),[attendanceData,checkinsData,monthDates]);
+  const summary=useMemo(()=>summarizeStats(monthStats,monthDates.length),[monthStats,monthDates.length]);
+  const trend=useMemo(()=>buildWeeklyTrend(attendanceData,checkinsData,now,6),[attendanceData,checkinsData,fmtDate(now)]);
+  const riskList=useMemo(()=>buildRiskEmployees(monthStats).slice(0,5),[monthStats]);
+  const stableList=useMemo(()=>[...monthStats].sort((a,b)=>b.score-a.score||b.present-a.present||a.lateMins-b.lateMins).slice(0,5),[monthStats]);
+  const scoreTone=getScoreTone(summary.avgScore);
+  const syncTs=Math.max(snapshotMeta?.attendance?.updatedAt||0,snapshotMeta?.checkins?.updatedAt||0);
+  const latestWeek=trend[trend.length-1]||{lateMins:0,absent:0,overtimeMins:0};
+  const prevWeek=trend[trend.length-2]||latestWeek;
+  const weekDelta=latestWeek.avgScore-prevWeek.avgScore;
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="dashboard-hero">
+        <div className="dashboard-hero-grid">
+          <div>
+            <div className="dashboard-kicker">Rahbar Dashboard</div>
+            <div className="dashboard-hero-title">{user.title||"Rahbar ko'rinishi"}</div>
+            <div className="dashboard-hero-sub">
+              Joriy oy bo'yicha intizom indeksi, haftalik dinamika va risk xodimlar bir sahifada jamlandi.
+              Qaror qabul qilish uchun eng muhim ko'rsatkichlar realtime yoki offline snapshot rejimida tayyor turadi.
+            </div>
+            <div className="dashboard-pill-list">
+              <div className="dashboard-pill">📅 {MONTHS[currentMonth]} {currentYear}</div>
+              <div className="dashboard-pill">{onlineStatus?"🟢 Realtime ulangan":"🟠 Offline snapshot"}</div>
+              <div className="dashboard-pill">🕒 {formatRelativeSync(syncTs)}</div>
+            </div>
+          </div>
+          <div className="dashboard-highlight">
+            <div>
+              <div className="dashboard-highlight-label">Intizom Indeksi</div>
+              <div className="dashboard-highlight-value">{summary.avgScore}</div>
+              <div className="dashboard-highlight-sub">
+                O'rtacha davomat {summary.attendancePct}% · risk guruhida {summary.riskCount} xodim.
+              </div>
+            </div>
+            <div className="dashboard-highlight-meta">
+              <span>Haftalik trend</span>
+              <span style={{color:weekDelta>=0?"#a7f3d0":"#fecaca",fontWeight:700}}>
+                {weekDelta>=0?"+":""}{weekDelta} ball
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="stats-grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))"}}>
+        <div className="stat-card c-violet"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={summary.avgScore} size={42} stroke={4} color={scoreTone.color}/></div>
+          <div className="stat-num">{summary.avgScore}</div><div className="stat-label">Intizom indeksi</div></div></div>
+        <div className="stat-card c-green"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">✓</div></div>
+          <div className="stat-num">{summary.attendancePct}<sup>%</sup></div><div className="stat-label">Davomat ulushi</div></div></div>
+        <div className="stat-card c-amber"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">⚠</div></div>
+          <div className="stat-num">{summary.riskCount}</div><div className="stat-label">Risk xodimlar</div></div></div>
+        <div className="stat-card c-cobalt"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+          <div className="stat-num">{summary.overtimeMins}<sup> d</sup></div><div className="stat-label">Qo'shimcha ish yuki</div></div></div>
+      </div>
+
+      <div className="section-grid">
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">📈 Intizom trendlari</div><div className="table-meta">So'nggi 6 haftalik o'rtacha ko'rsatkich</div></div>
+          </div>
+          <TrendLineChart points={trend.map(item=>({label:item.label,value:item.avgScore}))} color="var(--gold)"/>
+          <div className="metric-stack">
+            <div className="metric-row"><div className="metric-name">Davomat</div><div className="metric-track"><div className="metric-fill" style={{width:`${summary.attendancePct}%`,background:"linear-gradient(90deg,var(--emerald),#22c55e)"}}/></div><div className="metric-number">{summary.attendancePct}%</div></div>
+            <div className="metric-row"><div className="metric-name">Risk guruhi</div><div className="metric-track"><div className="metric-fill" style={{width:`${Math.min(100,summary.riskCount/EMPLOYEES.length*100)}%`,background:"linear-gradient(90deg,var(--ruby),#ef4444)"}}/></div><div className="metric-number">{summary.riskCount}</div></div>
+            <div className="metric-row"><div className="metric-name">Qo'sh. ish</div><div className="metric-track"><div className="metric-fill" style={{width:`${Math.min(100,summary.overtimeMins/Math.max(1,EMPLOYEES.length*90)*100)}%`,background:"linear-gradient(90deg,var(--cobalt),#3463e8)"}}/></div><div className="metric-number">{fmtMins(summary.overtimeMins)}</div></div>
+          </div>
+        </div>
+
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">📊 Haftalik dinamika</div><div className="table-meta">Kechikish va sababsiz holat bo'yicha bosim</div></div>
+          </div>
+          <TrendLineChart points={trend.map(item=>({label:item.label,value:item.lateMins}))} color="var(--ruby)"/>
+          <div className="dashboard-signal-grid">
+            <div className="dashboard-signal"><div className="dashboard-signal-label">Oxirgi hafta</div><div className="dashboard-signal-value">{fmtMins(latestWeek.lateMins)}</div><div className="dashboard-signal-sub">{latestWeek.absent} ta sababsiz holat</div></div>
+            <div className="dashboard-signal"><div className="dashboard-signal-label">Risk xodimlar</div><div className="dashboard-signal-value">{latestWeek.riskCount}</div><div className="dashboard-signal-sub">So'nggi haftadagi faol risklar</div></div>
+            <div className="dashboard-signal"><div className="dashboard-signal-label">Qo'sh. ish</div><div className="dashboard-signal-value">{fmtMins(latestWeek.overtimeMins)}</div><div className="dashboard-signal-sub">Hafta bo'yicha yig'ilgan vaqt</div></div>
+          </div>
+        </div>
+
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">🚨 Risk xodimlar</div><div className="table-meta">Aralash risk formulasi: kechikish, yo'qlik va intizom</div></div>
+          </div>
+          <div className="dashboard-list">
+            {!riskList.length&&<div className="dashboard-empty">Hozircha kuchli risk zonasi kuzatilmayapti.</div>}
+            {riskList.map(item=>{
+              const tone=getScoreTone(item.score);
+              return(
+                <div key={item.emp} className="dashboard-list-row">
+                  <div className="dashboard-list-main">
+                    <div className="dashboard-list-name emp-link" onClick={()=>onEmpClick(item.emp)}>{item.emp}</div>
+                    <div className="dashboard-list-sub">{item.absent>0?`${item.absent} ta sababsiz holat · `:""}{item.late>0?`${item.late} ta kechikish · `:""}{fmtMins(item.lateMins)} umumiy kechikish</div>
+                  </div>
+                  <div className="dashboard-score-pill" style={{color:tone.color,background:tone.bg,borderColor:tone.border}}>{item.score}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">🏅 Barqaror xodimlar</div><div className="table-meta">Yuqori intizom va yaxshi davomat ko'rsatkichlari</div></div>
+          </div>
+          <div className="dashboard-list">
+            {stableList.map(item=>{
+              const tone=getScoreTone(item.score);
+              return(
+                <div key={item.emp} className="dashboard-list-row">
+                  <div className="dashboard-list-main">
+                    <div className="dashboard-list-name emp-link" onClick={()=>onEmpClick(item.emp)}>{item.emp}</div>
+                    <div className="dashboard-list-sub">{item.present} / {monthDates.length} kun davomat · {item.lateMins===0?"kechikish yo'q":fmtMins(item.lateMins)+" kechikish"}</div>
+                  </div>
+                  <div className="dashboard-score-pill" style={{color:tone.color,background:tone.bg,borderColor:tone.border}}>{item.score}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function HRDashboard({attendanceData,checkinsData,onEmpClick,onlineStatus,snapshotMeta,isStandalone}){
+  const now=new Date();
+  const todayKey=fmtDate(now);
+  const currentYear=now.getFullYear();
+  const currentMonth=now.getMonth();
+  const monthDates=useMemo(()=>getMonthDates(currentYear,currentMonth),[currentYear,currentMonth]);
+  const monthStats=useMemo(()=>buildEmployeeStats(attendanceData,checkinsData,monthDates),[attendanceData,checkinsData,monthDates]);
+  const monthSummary=useMemo(()=>summarizeStats(monthStats,monthDates.length),[monthStats,monthDates.length]);
+  const todaySummary=useMemo(()=>{
+    const totals={present:0,late:0,absent:0,other:0,lateMins:0,overtimeMins:0};
+    EMPLOYEES.forEach(emp=>{
+      const rec=attendanceData?.[todayKey]?.[safeKey(emp)];
+      const st=rec?.status||"present";
+      if(st==="present") totals.present++;
+      else if(st==="late"){totals.late++;totals.present++;}
+      else if(st==="absent") totals.absent++;
+      else totals.other++;
+      totals.lateMins+=(rec?.morning||0)+(rec?.afternoon||0);
+      totals.overtimeMins+=getOvertimeMinutes(checkinsData,todayKey,emp);
+    });
+    return totals;
+  },[attendanceData,checkinsData,todayKey]);
+  const selfieSummary=useMemo(()=>getTodaySelfieCoverage(checkinsData,todayKey),[checkinsData,todayKey]);
+  const alerts=useMemo(()=>buildTodayAlerts(attendanceData,checkinsData,todayKey,now),[attendanceData,checkinsData,todayKey]);
+  const trend=useMemo(()=>buildWeeklyTrend(attendanceData,checkinsData,now,6),[attendanceData,checkinsData,todayKey]);
+  const riskList=useMemo(()=>buildRiskEmployees(monthStats).slice(0,5),[monthStats]);
+  const overtimeTop=useMemo(()=>[...monthStats].filter(item=>item.overtimeMins>0).sort((a,b)=>b.overtimeMins-a.overtimeMins).slice(0,5),[monthStats]);
+  const syncTs=Math.max(snapshotMeta?.attendance?.updatedAt||0,snapshotMeta?.checkins?.updatedAt||0);
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="dashboard-hero">
+        <div className="dashboard-hero-grid">
+          <div>
+            <div className="dashboard-kicker">Kadrlar Dashboard</div>
+            <div className="dashboard-hero-title">Bugungi nazorat va PWA holati</div>
+            <div className="dashboard-hero-sub">
+              Bugungi kechikishlar, selfie qamrovi, xavfli xodimlar va offline sinxronlash holati bir panelga jamlandi.
+              Kadrlar bo'limi operativ qarorlarni shu sahifadan tez ko'radi.
+            </div>
+            <div className="dashboard-pill-list">
+              <div className="dashboard-pill">📍 Bugun: {todayKey}</div>
+              <div className="dashboard-pill">{onlineStatus?"🟢 Realtime ulangan":"🟠 Offline snapshot"}</div>
+              <div className="dashboard-pill">📲 {isStandalone?"Ilova rejimi":"Brauzer rejimi"}</div>
+            </div>
+          </div>
+          <div className="dashboard-highlight">
+            <div>
+              <div className="dashboard-highlight-label">Tezkor Ko'rik</div>
+              <div className="dashboard-highlight-value">{todaySummary.late+todaySummary.absent}</div>
+              <div className="dashboard-highlight-sub">
+                Bugun alohida e'tibor talab qilayotgan holatlar soni. Selfie qamrovi {selfieSummary.both}/{EMPLOYEES.length}.
+              </div>
+            </div>
+            <div className="dashboard-highlight-meta">
+              <span>Oxirgi snapshot</span>
+              <span>{formatRelativeSync(syncTs)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="stats-grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))"}}>
+        <div className="stat-card c-amber"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">⏰</div></div>
+          <div className="stat-num">{todaySummary.late}</div><div className="stat-label">Bugungi kechikishlar</div></div></div>
+        <div className="stat-card c-red"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">✗</div></div>
+          <div className="stat-num">{todaySummary.absent}</div><div className="stat-label">Sababsiz yo'qlik</div></div></div>
+        <div className="stat-card c-cobalt"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">📸</div></div>
+          <div className="stat-num">{selfieSummary.both}<sup> / {EMPLOYEES.length}</sup></div><div className="stat-label">To'liq selfie qamrovi</div></div></div>
+        <div className="stat-card c-violet"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={monthSummary.avgScore} size={42} stroke={4} color={getScoreTone(monthSummary.avgScore).color}/></div>
+          <div className="stat-num">{monthSummary.avgScore}</div><div className="stat-label">Oylik intizom</div></div></div>
+      </div>
+
+      <div className="section-grid">
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">🚨 Bugungi kuzatuv ro'yxati</div><div className="table-meta">Eng tezkor aralashuv talab qiladigan holatlar</div></div>
+          </div>
+          <div className="dashboard-list">
+            {!alerts.length&&<div className="dashboard-empty">Bugungi operativ ogohlantirishlar topilmadi.</div>}
+            {alerts.map(item=>(
+              <div key={item.emp} className="dashboard-list-row">
+                <div className="dashboard-list-main">
+                  <div className="dashboard-list-name emp-link" onClick={()=>onEmpClick(item.emp)}>{item.emp}</div>
+                  <div className="dashboard-list-sub">{item.flags.join(" · ")}</div>
+                </div>
+                <div className="dashboard-score-pill" style={{color:"var(--ruby)",background:"var(--ruby-bg)",borderColor:"rgba(192,57,43,.16)"}}>
+                  {item.status==="absent"?"Yo'q":"Risk"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">📉 Haftalik operativ trend</div><div className="table-meta">So'nggi 6 haftalik kechikish dinamikasi</div></div>
+          </div>
+          <TrendLineChart points={trend.map(item=>({label:item.label,value:item.lateMins}))} color="var(--gold)"/>
+          <div className="metric-stack">
+            <div className="metric-row"><div className="metric-name">Davomat</div><div className="metric-track"><div className="metric-fill" style={{width:`${monthSummary.attendancePct}%`,background:"linear-gradient(90deg,var(--emerald),#22c55e)"}}/></div><div className="metric-number">{monthSummary.attendancePct}%</div></div>
+            <div className="metric-row"><div className="metric-name">Kechikish</div><div className="metric-track"><div className="metric-fill" style={{width:`${Math.min(100,monthSummary.late/Math.max(1,EMPLOYEES.length*monthDates.length)*1000)}%`,background:"linear-gradient(90deg,var(--gold),var(--gold-lt))"}}/></div><div className="metric-number">{monthSummary.late}</div></div>
+            <div className="metric-row"><div className="metric-name">Selfie qamrovi</div><div className="metric-track"><div className="metric-fill" style={{width:`${Math.round(selfieSummary.both/EMPLOYEES.length*100)}%`,background:"linear-gradient(90deg,var(--cobalt),#3463e8)"}}/></div><div className="metric-number">{selfieSummary.both}</div></div>
+          </div>
+        </div>
+
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">⚠ Oylik risk guruhi</div><div className="table-meta">Tizimli nazorat talab qilayotgan xodimlar</div></div>
+          </div>
+          <div className="dashboard-list">
+            {!riskList.length&&<div className="dashboard-empty">Oylik risk guruhi aniqlanmadi.</div>}
+            {riskList.map(item=>{
+              const tone=getScoreTone(item.score);
+              return(
+                <div key={item.emp} className="dashboard-list-row">
+                  <div className="dashboard-list-main">
+                    <div className="dashboard-list-name emp-link" onClick={()=>onEmpClick(item.emp)}>{item.emp}</div>
+                    <div className="dashboard-list-sub">{item.late} ta kechikish · {item.absent} ta sababsiz · {fmtMins(item.lateMins)}</div>
+                  </div>
+                  <div className="dashboard-score-pill" style={{color:tone.color,background:tone.bg,borderColor:tone.border}}>{item.score}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">🌙 Qo'shimcha ish yuki</div><div className="table-meta">18:00 dan keyingi eng faol xodimlar</div></div>
+          </div>
+          <div className="dashboard-list">
+            {!overtimeTop.length&&<div className="dashboard-empty">Hozircha qo'shimcha ish qaydlari topilmadi.</div>}
+            {overtimeTop.map(item=>(
+              <div key={item.emp} className="dashboard-list-row">
+                <div className="dashboard-list-main">
+                  <div className="dashboard-list-name emp-link" onClick={()=>onEmpClick(item.emp)}>{item.emp}</div>
+                  <div className="dashboard-list-sub">{item.overtimeDays} kun qayd · {fmtMins(item.overtimeMins)}</div>
+                </div>
+                <div className="dashboard-score-pill" style={{color:"var(--cobalt)",background:"var(--cobalt-bg)",borderColor:"rgba(30,76,190,.16)"}}>
+                  {fmtMins(item.overtimeMins)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="table-card" style={{marginTop:16}}>
+        <div className="table-header">
+          <div><div className="table-title">📲 Offline va PWA holati</div><div className="table-meta">Ilova o'rnatilishi va lokal snapshot tayyorgarligi</div></div>
+        </div>
+        <div className="pwa-health">
+          <div className="pwa-health-card"><div className="pwa-health-title">Ulanish</div><div className="pwa-health-value">{onlineStatus?"Realtime faol":"Offline rejim"}</div><div className="pwa-health-sub">Internet uzilganda ham oxirgi saqlangan ma'lumotlar ishlatiladi.</div></div>
+          <div className="pwa-health-card"><div className="pwa-health-title">Attendance snapshot</div><div className="pwa-health-value">{snapshotMeta?.attendance?.records||0} kunlik yozuv</div><div className="pwa-health-sub">{formatRelativeSync(snapshotMeta?.attendance?.updatedAt||0)}</div></div>
+          <div className="pwa-health-card"><div className="pwa-health-title">Checkin snapshot</div><div className="pwa-health-value">{snapshotMeta?.checkins?.records||0} selfie yozuv</div><div className="pwa-health-sub">{formatRelativeSync(snapshotMeta?.checkins?.updatedAt||0)}</div></div>
+          <div className="pwa-health-card"><div className="pwa-health-title">Ilova rejimi</div><div className="pwa-health-value">{isStandalone?"Home Screen app":"Brauzer oynasi"}</div><div className="pwa-health-sub">Service worker app shell va oxirgi muvaffaqiyatli sahifani keshda saqlaydi.</div></div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2705,7 +3506,7 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
   useEffect(()=>{ setStatusDrill(null); },[dateKey]);
 
   const counts=useMemo(()=>{
-    const c={present:0,late:0,absent:0,other:0,lateMins:0};
+    const c={present:0,late:0,absent:0,other:0,lateMins:0,overtimeMins:0,overtimeCount:0};
     EMPLOYEES.forEach(emp=>{
       const rec=attendanceData[dateKey]?.[safeKey(emp)];
       const st=rec?.status||"present";
@@ -2714,9 +3515,12 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
       else if(st==="absent")c.absent++;
       else c.other++;
       c.lateMins+=(rec?.morning||0)+(rec?.afternoon||0);
+      const overtimeMins=getOvertimeMinutes(checkinsData,dateKey,emp);
+      c.overtimeMins+=overtimeMins;
+      if(overtimeMins>0) c.overtimeCount++;
     });
     return c;
-  },[dateKey,attendanceData]);
+  },[dateKey,attendanceData,checkinsData]);
 
   const toggleDrill=useCallback((key)=>{
     setStatusDrill(prev=>prev===key?null:key);
@@ -2849,6 +3653,15 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
             <div className="stat-label">Kechikish (daqiqa)</div>
           </div>
         </div>}
+        {canView&&<div className="stat-card c-cobalt">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+            <div className="stat-num">{counts.overtimeMins}<sup> d</sup></div>
+            <div className="stat-label">Qo'shimcha ish</div>
+            <div className="stat-hint">{counts.overtimeCount} ta xodimda qayd bor</div>
+          </div>
+        </div>}
       </div>
 
       {statusDrill&&(
@@ -2874,7 +3687,7 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
                     <div className={`drill-name ${canView?"emp-link":""}`} onClick={()=>canView&&updateRecord("__openModal__",r.emp)}>{r.emp}</div>
                     <div className="drill-sub">
                       {statusDrill==="late"
-                        ?`09:10: ${r.morning} d · 14:10: ${r.afternoon} d${r.note?` · ${r.note}`:""}`
+                        ?`09:00: ${r.morning} d · 14:00: ${r.afternoon} d${r.note?` · ${r.note}`:""}`
                         :(r.note||"Izoh kiritilmagan")}
                     </div>
                   </div>
@@ -2904,8 +3717,9 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
                 <th style={{width:44}}>№</th>
                 <th>F.I.O</th>
                 <th style={{width:170}}>Holat</th>
-                <th className="th-center" style={{width:110}}>09:10 kechikish</th>
-                <th className="th-center" style={{width:110}}>14:10 kechikish</th>
+                <th className="th-center" style={{width:110}}>09:00 kechikish</th>
+                <th className="th-center" style={{width:110}}>14:00 kechikish</th>
+                <th className="th-center" style={{width:120}}>18:00+ qo'sh. ish</th>
                 <th>Izoh</th>
               </tr>
             </thead>
@@ -2913,6 +3727,7 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
               {filtered.map((emp)=>{
                 const idx=EMPLOYEES.indexOf(emp);
                 const rec=attendanceData[dateKey]?.[safeKey(emp)]||{status:"present",morning:0,afternoon:0,note:""};
+                const overtimeMins=getOvertimeMinutes(checkinsData,dateKey,emp);
                 const active=["present","late"].includes(rec.status);
                 const stDef=STATUSES[rec.status]||STATUSES.present;
                 return(
@@ -2944,6 +3759,11 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
                       {active
                         ? <input type="number" min="0" max="240" disabled={!isAdmin} value={rec.afternoon} className="num-input"
                             onChange={e=>updateRecord(dateKey,emp,"afternoon",Math.max(0,parseInt(e.target.value)||0))}/>
+                        : <span className="zero-val">—</span>}
+                    </td>
+                    <td className="th-center">
+                      {overtimeMins>0
+                        ? <span className="late-val" style={{color:"var(--cobalt)"}}>{fmtMins(overtimeMins)}</span>
                         : <span className="zero-val">—</span>}
                     </td>
                     <td>
@@ -3047,8 +3867,10 @@ function MonthlyView({attendanceData,checkinsData,onEmpClick}){
       if(st==="present")present++;else if(st==="late"){late++;present++}else if(st==="absent")absent++;
       else if(st==="sick")sick++;else if(st==="trip")trip++;else if(st==="vacation")vacation++;
       lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
-    return{emp,present,late,absent,sick,trip,vacation,lateMins};
-  }),[monthDates,attendanceData]);
+    const overtimeRows=getOvertimeRowsForDates(checkinsData,monthDates,emp);
+    const overtimeMins=overtimeRows.reduce((sum,row)=>sum+row.minutes,0);
+    return{emp,present,late,absent,sick,trip,vacation,lateMins,overtimeMins,overtimeDays:overtimeRows.length};
+  }),[monthDates,attendanceData,checkinsData]);
   const totalDays=monthDates.length;
   return(
     <div style={{animation:"fadeUp .35s ease"}}>
@@ -3071,7 +3893,7 @@ function MonthlyView({attendanceData,checkinsData,onEmpClick}){
           <th className="th-center">Davomat</th><th className="th-center">Kech.</th>
           <th className="th-center">Yo'q</th><th className="th-center">Kasal</th>
           <th className="th-center">Safari</th><th className="th-center">Ta'til</th>
-          <th className="th-right">Kech. vaqti</th>
+          <th className="th-right">Kech. vaqti</th><th className="th-right">Qo'sh. ish</th>
         </tr></thead>
         <tbody>{empStats.map((s,i)=>{
           const pct=Math.round(s.present/totalDays*100);
@@ -3092,6 +3914,7 @@ function MonthlyView({attendanceData,checkinsData,onEmpClick}){
             <td className="th-center">{s.trip>0?<span className="badge" style={{color:"var(--cobalt)",background:"var(--cobalt-bg)"}}>{s.trip}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-center">{s.vacation>0?<span className="badge" style={{color:"var(--teal)",background:"var(--teal-bg)"}}>{s.vacation}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-right">{s.lateMins>0?<span className="late-val">{fmtMins(s.lateMins)}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-right">{s.overtimeMins>0?<span className="late-val" style={{color:"var(--cobalt)"}}>{s.overtimeDays} kun · {fmtMins(s.overtimeMins)}</span>:<span className="zero-val">—</span>}</td>
           </tr>);
         })}</tbody></table></div>
       </div>
@@ -3120,12 +3943,15 @@ function StatsView({attendanceData,checkinsData,onEmpClick}){
       else if(st==="sick")sick++;else if(st==="trip")trip++;else if(st==="training")training++;
       else if(st==="vacation")vacation++;else if(st==="excused")excused++;
       lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
+    const overtimeRows=getOvertimeRowsForDates(checkinsData,dates,emp);
+    const overtimeMins=overtimeRows.reduce((sum,row)=>sum+row.minutes,0);
     const score=Math.max(0,100-Math.round(lateMins/Math.max(1,totalDays*480)*100*8)-absent*5-late*2);
-    return{emp,present,late,absent,sick,trip,training,vacation,excused,lateMins,score};
-  }),[dates,attendanceData,totalDays]);
+    return{emp,present,late,absent,sick,trip,training,vacation,excused,lateMins,overtimeMins,overtimeDays:overtimeRows.length,score};
+  }),[dates,attendanceData,checkinsData,totalDays]);
   const sorted=useMemo(()=>[...empStats].sort((a,b)=>sortBy==="present"?b.present-a.present:sortBy==="score"?b.score-a.score:b[sortBy]-a[sortBy]),[empStats,sortBy]);
-  const totals=empStats.reduce((t,s)=>({present:t.present+s.present,late:t.late+s.late,absent:t.absent+s.absent,sick:t.sick+s.sick,lateMins:t.lateMins+s.lateMins}),{present:0,late:0,absent:0,sick:0,lateMins:0});
+  const totals=empStats.reduce((t,s)=>({present:t.present+s.present,late:t.late+s.late,absent:t.absent+s.absent,sick:t.sick+s.sick,lateMins:t.lateMins+s.lateMins,overtimeMins:t.overtimeMins+s.overtimeMins,overtimeDays:t.overtimeDays+s.overtimeDays}),{present:0,late:0,absent:0,sick:0,lateMins:0,overtimeMins:0,overtimeDays:0});
   const maxLate=Math.max(1,...sorted.map(s=>s.lateMins));
+  const maxOvertime=Math.max(1,...sorted.map(s=>s.overtimeMins));
   const avgScore=Math.round(empStats.reduce((s,e)=>s+e.score,0)/EMPLOYEES.length);
   const pie=[
     {l:"Ish joyida",v:totals.present,c:"var(--emerald)"},{l:"Kechikdi",v:totals.late,c:"var(--gold)"},
@@ -3160,6 +3986,10 @@ function StatsView({attendanceData,checkinsData,onEmpClick}){
         <div className="stat-card c-navy"><div className="stat-accent"/><div className="stat-card-inner">
           <div className="stat-top"><div className="stat-icon-wrap">⏱</div></div>
           <div className="stat-num">{totals.lateMins}<sup> d</sup></div><div className="stat-label">Kechikish (daqiqa)</div></div></div>
+        <div className="stat-card c-cobalt"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+          <div className="stat-num">{totals.overtimeMins}<sup> d</sup></div><div className="stat-label">Qo'shimcha ish</div>
+          <div className="stat-hint">{totals.overtimeDays} ta kun qayd etilgan</div></div></div>
         <div className="stat-card c-red"><div className="stat-accent"/><div className="stat-card-inner">
           <div className="stat-top"><div className="stat-icon-wrap">✗</div></div>
           <div className="stat-num">{totals.absent}</div><div className="stat-label">Sababsiz yo'qlik</div></div></div>
@@ -3187,6 +4017,29 @@ function StatsView({attendanceData,checkinsData,onEmpClick}){
                   }}/>
                 </div>
                 <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,fontWeight:700,color:s.lateMins>60?"var(--ruby)":"var(--amber)",width:52,textAlign:"right",flexShrink:0}}>{fmtMins(s.lateMins)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="table-card">
+          <div className="table-header">
+            <div><div className="table-title">🌙 Qo'shimcha Ish Reytingi</div><div className="table-meta">18:00 dan keyingi ishlangan vaqt</div></div>
+          </div>
+          <div style={{padding:"14px 18px",maxHeight:380,overflowY:"auto"}}>
+            {sorted.filter(s=>s.overtimeMins>0).length===0&&
+              <div style={{textAlign:"center",color:"var(--t4)",padding:28,fontSize:12}}>Bu davrda qo'shimcha ish qayd etilmagan</div>}
+            {sorted.filter(s=>s.overtimeMins>0).slice(0,15).map((s,i)=>(
+              <div key={s.emp+"_ot"} className="bar-item" onClick={()=>onEmpClick(s.emp)}>
+                <span style={{width:20,fontSize:10,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",textAlign:"right",flexShrink:0}}>{i+1}</span>
+                <span style={{width:105,fontSize:12,fontWeight:600,color:"var(--navy)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}}>{s.emp.split(" ")[0]}</span>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{
+                    width:`${Math.max(4,s.overtimeMins/maxOvertime*100)}%`,
+                    background:"linear-gradient(90deg,var(--cobalt),#3463e8)"
+                  }}/>
+                </div>
+                <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,fontWeight:700,color:"var(--cobalt)",width:72,textAlign:"right",flexShrink:0}}>{fmtMins(s.overtimeMins)}</span>
               </div>
             ))}
           </div>
@@ -3227,7 +4080,7 @@ function StatsView({attendanceData,checkinsData,onEmpClick}){
         <div className="table-header">
           <div><div className="table-title">Batafsil Ko'rsatkichlar</div><div className="table-meta">{totalDays} kun · {EMPLOYEES.length} xodim</div></div>
           <div style={{display:"flex",gap:3}}>
-            {[["lateMins","Kechikish"],["late","Soni"],["absent","Yo'qlik"],["score","Intizom"]].map(([k,v])=>
+            {[["lateMins","Kechikish"],["overtimeMins","Qo'sh. ish"],["late","Soni"],["absent","Yo'qlik"],["score","Intizom"]].map(([k,v])=>
               <button key={k} className={`sort-btn ${sortBy===k?"active":""}`} onClick={()=>setSortBy(k)}>{v}</button>)}
           </div>
         </div>
@@ -3235,7 +4088,7 @@ function StatsView({attendanceData,checkinsData,onEmpClick}){
           <th style={{width:44}}>№</th><th style={{minWidth:165}}>F.I.O</th>
           <th className="th-center">Davomat</th><th className="th-center">Kech.</th>
           <th className="th-center">Yo'q</th><th className="th-center">Kasal</th>
-          <th className="th-center">Safari</th><th className="th-right">Kech. vaqt</th>
+          <th className="th-center">Safari</th><th className="th-right">Kech. vaqt</th><th className="th-right">Qo'sh. ish</th>
           <th className="th-center" style={{width:100}}>Intizom</th>
         </tr></thead>
         <tbody>{sorted.map((s,i)=>{
@@ -3252,6 +4105,7 @@ function StatsView({attendanceData,checkinsData,onEmpClick}){
             <td className="th-center">{s.sick>0?<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>{s.sick}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-center">{s.trip>0?<span className="badge" style={{color:"var(--cobalt)",background:"var(--cobalt-bg)"}}>{s.trip}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-right">{s.lateMins>0?<span className="late-val">{fmtMins(s.lateMins)}</span>:<span className="zero-val">—</span>}</td>
+            <td className="th-right">{s.overtimeMins>0?<span className="late-val" style={{color:"var(--cobalt)"}}>{s.overtimeDays} kun · {fmtMins(s.overtimeMins)}</span>:<span className="zero-val">—</span>}</td>
             <td className="th-center">
               <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"center"}}>
                 <div style={{width:38,height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}}>
@@ -3311,6 +4165,7 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
 
   const todayKey=fmtDate(liveNow);
   const todayRec=attendanceData[todayKey]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
+  const todayOvertimeMins=getOvertimeMinutes(checkinsData,todayKey,empName);
   const todayState=STATUSES[todayRec.status]||STATUSES.present;
   const workStatuses=["present","late","trip","training"];
 
@@ -3342,8 +4197,8 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
     if(st==="present"||st==="late"){
       const cur=dt.getHours()*60+dt.getMinutes();
       let penalty=0;
-      if(cur>=9*60+10) penalty+=Math.max(0,rec?.morning||0);
-      if(cur>=14*60+10) penalty+=Math.max(0,rec?.afternoon||0);
+      if(cur>=9*60) penalty+=Math.max(0,rec?.morning||0);
+      if(cur>=14*60) penalty+=Math.max(0,rec?.afternoon||0);
       return Math.max(0,progress-penalty);
     }
     return progress;
@@ -3356,6 +4211,7 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
 
   const todayWorkedMins=useMemo(()=>getRealtimeWorkedMins(todayRec,liveNow),[todayRec,liveNow]);
   const todayWorkedPct=Math.min(100,Math.round(todayWorkedMins/480*100));
+  const monthOvertimeRows=useMemo(()=>getMonthOvertimeRows(checkinsData,yr,mon,empName),[checkinsData,yr,mon,empName]);
 
   const stats=useMemo(()=>{
     let presentOnly=0,late=0,lateMins=0,absent=0,sick=0,other=0,workedDays=0;
@@ -3365,10 +4221,11 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
       else if(st==="sick")sick++;else other++;
       if(workStatuses.includes(st)) workedDays++;
       lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
+    const overtimeMins=monthOvertimeRows.reduce((sum,row)=>sum+row.minutes,0);
     const total=monthDates.length;
     const score=Math.max(0,100-Math.round(lateMins/Math.max(1,total*480)*100*8)-absent*5-late*2);
-    return{presentOnly,late,totalPresent:presentOnly+late,lateMins,absent,sick,other,workedDays,total,score};
-  },[monthDates,attendanceData]);
+    return{presentOnly,late,totalPresent:presentOnly+late,lateMins,overtimeMins,overtimeDays:monthOvertimeRows.length,absent,sick,other,workedDays,total,score};
+  },[monthDates,attendanceData,monthOvertimeRows]);
 
   // YANGLIK: Bu oy ishlashi reja qilingan jami soat
   const plannedMonthHours = monthDates.length * 8;
@@ -3548,6 +4405,22 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
           </div>
         </div>
 
+        <div className="stat-card c-violet">
+          <div className="stat-accent"/>
+          <div className="stat-card-inner">
+            <div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+            <div className="stat-num">{stats.overtimeMins}<sup> d</sup></div>
+            <div className="stat-label">Qo'shimcha ishlangan vaqt</div>
+            <div className="emp-live-note">
+              {stats.overtimeDays>0
+                ? `${stats.overtimeDays} kun qayd etilgan`
+                : "Bu oycha qo'shimcha vaqt kiritilmagan"}
+            </div>
+            <span className="emp-live-pill" style={{color:"var(--violet)",background:"var(--violet-bg)"}}>
+              Bugun: {todayOvertimeMins>0?fmtMins(todayOvertimeMins):"—"}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="table-card vacation-card">
@@ -3632,6 +4505,9 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
         <div className="stat-card c-red"><div className="stat-accent"/>
           <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">⏱</div></div>
           <div className="stat-num">{stats.lateMins}<sup> d</sup></div><div className="stat-label">Kechikish vaqti</div></div></div>
+        <div className="stat-card c-cobalt"><div className="stat-accent"/>
+          <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+          <div className="stat-num">{stats.overtimeMins}<sup> d</sup></div><div className="stat-label">Qo'shimcha ish vaqti</div></div></div>
         <div className="stat-card c-violet"><div className="stat-accent"/>
           <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={stats.score} size={42} stroke={4} color={scColor}/></div>
           <div className="stat-num" style={{color:scColor}}>{stats.score}</div><div className="stat-label">Intizom bali</div></div></div>
@@ -3647,11 +4523,13 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
         </div>
         <div className="scroll-x"><table><thead><tr>
           <th>Sana</th><th>Kun</th><th>Holat</th>
-          <th className="th-center">09:10</th><th className="th-center">14:10</th><th>Izoh</th>
+          <th className="th-center">09:00</th><th className="th-center">14:00</th><th className="th-center">18:00+</th><th>Izoh</th>
         </tr></thead>
         <tbody>{weekDates.map((date,i)=>{
           const dk=fmtDate(date);
           const rec=attendanceData[dk]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
+          const overtime=getOvertimeEntry(checkinsData,dk,empName);
+          const overtimeMins=Number(overtime?.overtimeMinutes||0);
           const st=STATUSES[rec.status];const isToday=dk===fmtDate(today);
           return(
             <tr key={dk} style={isToday?{background:"rgba(200,150,42,.04)"}:{}}>
@@ -3663,10 +4541,38 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
               <td><span className="badge" style={{color:st.color,background:st.bg}}>{st.icon} {st.label}</span></td>
               <td className="th-center">{rec.morning>0?<span className="late-val">{rec.morning} d</span>:<span className="zero-val">—</span>}</td>
               <td className="th-center">{rec.afternoon>0?<span className="late-val">{rec.afternoon} d</span>:<span className="zero-val">—</span>}</td>
+              <td className="th-center">{overtimeMins>0?<span className="late-val" style={{color:"var(--cobalt)"}}>{fmtMins(overtimeMins)}</span>:<span className="zero-val">—</span>}</td>
               <td style={{color:"var(--t3)",fontSize:12}}>{rec.note||<span className="zero-val">—</span>}</td>
             </tr>
           );
         })}</tbody></table></div>
+      </div>
+
+      <div className="table-card" style={{marginTop:16}}>
+        <div className="table-header">
+          <div>
+            <div className="table-title">Qo'shimcha Ishlangan Vaqt</div>
+            <div className="table-meta">{MONTHS[mon]} {yr} · {stats.overtimeDays} kun · jami {fmtMins(stats.overtimeMins)}</div>
+          </div>
+        </div>
+        <div className="scroll-x"><table><thead><tr>
+          <th>Sana</th><th>Kun</th><th className="th-center">Chiqish</th><th className="th-right">Qo'shimcha vaqt</th>
+        </tr></thead>
+        <tbody>
+          {monthOvertimeRows.length===0&&(
+            <tr>
+              <td colSpan="4" style={{textAlign:"center",padding:"22px 14px",color:"var(--t4)"}}>Bu oy uchun qo'shimcha ishlangan vaqt qayd etilmagan</td>
+            </tr>
+          )}
+          {monthOvertimeRows.map(row=>(
+            <tr key={row.dateKey}>
+              <td><span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12.5,fontWeight:600,color:"var(--navy)"}}>{row.dateKey}</span></td>
+              <td style={{color:"var(--t3)",fontSize:12,textTransform:"capitalize"}}>{getWeekdayLabel(row.dateObj)}</td>
+              <td className="th-center">{row.time}</td>
+              <td className="th-right"><span className="late-val" style={{color:"var(--cobalt)"}}>{fmtMins(row.minutes)}</span></td>
+            </tr>
+          ))}
+        </tbody></table></div>
       </div>
     </div>
   );
@@ -3692,6 +4598,7 @@ function SelfieHistoryView({checkinsData}){
     return{
       entries:allEntries.length,
       employees:employeeCount,
+      overtime:allEntries.filter(entry=>entry.session==="overtime").length,
       gpsAvg
     };
   },[allEntries]);
@@ -3706,7 +4613,8 @@ function SelfieHistoryView({checkinsData}){
 
   function getSessionMeta(session){
     if(session==="morning") return {icon:"🌅",label:"Ertalab",color:"var(--gold)",bg:"var(--gold-pale)"};
-    return {icon:"🌆",label:"Tushlik",color:"var(--violet)",bg:"var(--violet-bg)"};
+    if(session==="afternoon") return {icon:"🌆",label:"Tushlik",color:"var(--violet)",bg:"var(--violet-bg)"};
+    return {icon:"🌙",label:"Qo'shimcha ish",color:"var(--cobalt)",bg:"var(--cobalt-bg)"};
   }
 
   return(
@@ -3733,6 +4641,9 @@ function SelfieHistoryView({checkinsData}){
         <div className="stat-card c-green"><div className="stat-accent"/><div className="stat-card-inner">
           <div className="stat-top"><div className="stat-icon-wrap">👥</div></div>
           <div className="stat-num">{stats.employees}</div><div className="stat-label">Qayd kiritgan xodim</div></div></div>
+        <div className="stat-card c-violet"><div className="stat-accent"/><div className="stat-card-inner">
+          <div className="stat-top"><div className="stat-icon-wrap">🌙</div></div>
+          <div className="stat-num">{stats.overtime}</div><div className="stat-label">Qo'shimcha ish selfielari</div></div></div>
         <div className="stat-card c-navy"><div className="stat-accent"/><div className="stat-card-inner">
           <div className="stat-top"><div className="stat-icon-wrap">📍</div></div>
           <div className="stat-num">{stats.gpsAvg}<sup> m</sup></div><div className="stat-label">O'rtacha GPS masofa</div></div></div>
@@ -3750,6 +4661,7 @@ function SelfieHistoryView({checkinsData}){
               <option value="all">Barcha sessiyalar</option>
               <option value="morning">🌅 Ertalab</option>
               <option value="afternoon">🌆 Tushlik</option>
+              <option value="overtime">🌙 Qo'shimcha ish</option>
             </select>
           </div>
         </div>
@@ -3786,13 +4698,16 @@ function SelfieHistoryView({checkinsData}){
                   Vaqt: <strong style={{color:"var(--navy)"}}>{entry.time||"—"}</strong>
                   {" · "}GPS: <strong style={{color:gpsDistance<=OFFICE_LOCATION.radius?"var(--emerald)":"var(--ruby)"}}>{gpsDistance}m</strong>
                   {" · "}Aniqlik: ±{Number(entry.gpsAccuracy||0)}m
-                  {entry.lateMinutes>0&&` · Kechikish: ${entry.lateMinutes} daqiqa`}
+                  {entry.session==="overtime"&&entry.overtimeMinutes>0&&` · Qo'shimcha: ${fmtMins(entry.overtimeMinutes)}`}
+                  {entry.session!=="overtime"&&entry.lateMinutes>0&&` · Kechikish: ${entry.lateMinutes} daqiqa`}
                 </div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
                 <div className="selfie-history-time">{entry.time||"—"}</div>
                 <span className="selfie-history-badge" style={{color:meta.color,background:meta.bg}}>
-                  {entry.lateMinutes>0
+                  {entry.session==="overtime"
+                    ? `+${entry.overtimeMinutes||0}d`
+                    : entry.lateMinutes>0
                     ? `${entry.lateMinutes}d`
                     : "✓"}
                 </span>
@@ -3821,7 +4736,6 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var[liveTime,setLiveTime]=useState(new Date());
   var[submitting,setSubmitting]=useState(false);
   var[cameraError,setCameraError]=useState(null);
-  var[empNote,setEmpNote]=useState("");
   var[livenessOk,setLivenessOk]=useState(false);
   var[livenessPhase,setLivenessPhase]=useState(0);
   var[livenessProgress,setLivenessProgress]=useState(0);
@@ -3838,27 +4752,18 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var phaseStartRef=useRef(0);
   var challengeQueueRef=useRef([]);
   var livenessPhaseRef=useRef(0);
-  var lockedSessionRef=useRef(null);
 
   var todayKey=fmtDate(new Date());
   var empKey=safeKey(user.name);
   var curHour=liveTime.getHours();
   var curMinute=liveTime.getMinutes();
   var curTotalMins=curHour*60+curMinute;
-  var isTooEarlyWindow=curTotalMins<7*60;
-  var isLunchWaitWindow=curTotalMins>=13*60&&curTotalMins<13*60+30;
+  var isOvertimeWindow=curTotalMins>=18*60||curTotalMins<6*60;
+  var isTooEarlyWindow=curTotalMins>=6*60&&curTotalMins<7*60;
   var isMorningWindow=curTotalMins>=7*60&&curTotalMins<13*60;
-  var isAfternoonWindow=curTotalMins>=13*60+30&&curTotalMins<18*60;
-  var isAfterHoursWaiting=curTotalMins>=18*60;
-  var curSession=isMorningWindow?"morning":isAfternoonWindow?"afternoon":"waiting";
-  var isMorningWaiting=curSession==="waiting"&&isTooEarlyWindow;
-  var isAfternoonWaiting=curSession==="waiting"&&isLunchWaitWindow;
-  var isClosedWaiting=curSession==="waiting"&&isAfterHoursWaiting;
-  var morningGraceTotal=9*60+10;
-  var afternoonGraceTotal=14*60+10;
-  var uiSession=(cameraActive||capturedPhoto)?(lockedSessionRef.current||curSession):curSession;
-  var sesLabel=uiSession==="morning"?"Ertalabki (07:00 dan, 09:10 gacha imtiyozli)":uiSession==="afternoon"?"Tushlikdan keyin (13:30 dan, 14:10 gacha imtiyozli)":isAfternoonWaiting?"Tushlikdan keyingi selfie 13:30 dan boshlanadi":isClosedWaiting?"Bugungi selfie vaqti tugagan":"Ertalabki selfie 07:00 dan boshlanadi";
-  var sesIcon=uiSession==="morning"?"\u{1F305}":uiSession==="afternoon"?"\u{1F307}":isAfternoonWaiting?"\u{1F37D}":isClosedWaiting?"\u{1F512}":"\u23F3";
+  var curSession=isOvertimeWindow?"overtime":isMorningWindow?"morning":isTooEarlyWindow?"waiting":"afternoon";
+  var sesLabel=curSession==="morning"?"Ertalabki (07:00 dan, 09:00 gacha vaqtida)":curSession==="afternoon"?"Tushlikdan keyin (14:00 dan keyin)":curSession==="overtime"?"Qo\u2018shimcha ish (18:00 - 06:00)":"Ertalabki selfie 07:00 dan boshlanadi";
+  var sesIcon=curSession==="morning"?"\u{1F305}":curSession==="afternoon"?"\u{1F307}":curSession==="overtime"?"\u{1F319}":"\u23F3";
 
   var isSecure=location.protocol==="https:"||location.hostname==="localhost"||location.hostname==="127.0.0.1";
 
@@ -3904,7 +4809,8 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
 
   var myM=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].morning:null;
   var myA=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].afternoon:null;
-  var curDone=uiSession==="morning"?myM:uiSession==="afternoon"?myA:null;
+  var myO=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].overtime:null;
+  var curDone=curSession==="morning"?myM:curSession==="afternoon"?myA:curSession==="overtime"?myO:null;
   var bothDone=myM&&myA;
   var gpsOk=gpsStatus==="ok"||gpsStatus==="far";
 
@@ -4007,7 +4913,6 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     if(!gpsOk)return;
     setCameraError(null);
     resetLivenessCheck();
-    lockedSessionRef.current=curSession;
     if(!isSecure){setCameraError("HTTPS kerak. Bu sayt http:// orqali ochilgan \u2014 kamera ishlamaydi.");return;}
     if(streamRef.current){streamRef.current.getTracks().forEach(function(t){t.stop();});streamRef.current=null;}
     if(videoRef.current)videoRef.current.srcObject=null;
@@ -4038,7 +4943,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
         setCameraError(msg);
       });
     });
-  },[gpsOk,isSecure,curSession]);
+  },[gpsOk,isSecure]);
 
   var stopCamera=useCallback(function(){
     stopLivenessCheck();
@@ -4073,8 +4978,8 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     // Top
     ctx.fillStyle="rgba(0,0,0,.6)";ctx.fillRect(0,0,w,36);
     ctx.font="bold 13px "+F;ctx.textAlign="left";
-    ctx.fillStyle=uiSession==="morning"?"#fbbf24":"#a78bfa";
-    ctx.fillText(uiSession==="morning"?"ERTALABKI":"TUSHLIK",10,24);
+    ctx.fillStyle=curSession==="morning"?"#fbbf24":curSession==="afternoon"?"#a78bfa":"#34d399";
+    ctx.fillText(curSession==="morning"?"ERTALABKI":curSession==="afternoon"?"TUSHLIK":"QO'SHIMCHA ISH",10,24);
     if(gpsData){ctx.textAlign="right";ctx.fillStyle=gpsStatus==="ok"?"#6ee7b7":"#fca5a5";ctx.font="bold 11px "+F;ctx.fillText("GPS:"+gpsData.distance+"m "+(gpsStatus==="ok"?"\u2713":"\u26A0"),w-10,24);}
     // Bottom
     ctx.fillStyle="rgba(0,0,0,.65)";ctx.fillRect(0,h-50,w,50);
@@ -4082,7 +4987,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     ctx.fillStyle="rgba(255,255,255,.5)";ctx.font="10px "+F;ctx.fillText(dTxt+" \u00B7 "+OFFICE_LOCATION.address,w/2,h-8);
     setCapturedPhoto(cvs.toDataURL("image/jpeg",0.6));
     stopCamera();
-  },[stopCamera,gpsData,gpsStatus,uiSession,livenessOk]);
+  },[stopCamera,gpsData,gpsStatus,curSession,livenessOk]);
 
   // Confirm
   var confirmCheckin=useCallback(function(){
@@ -4092,62 +4997,74 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     var tStr=now.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
     var hr=now.getHours(),mn=now.getMinutes();
 
+    if(curSession==="overtime"){
+      // Overtime — faqat checkins ga yoziladi, attendance ga TEGMAYDI
+      var overtimeMinutes=hr>=18?(hr-18)*60+mn:(6*60)+(hr*60+mn);
+      var checkinObj={
+        name:user.name,session:"overtime",time:tStr,timestamp:now.toISOString(),
+        overtimeMinutes:overtimeMinutes,lateMinutes:0,
+        gpsDistance:gpsData?gpsData.distance:0,gpsAccuracy:gpsData?gpsData.accuracy:0,
+        gpsLat:gpsData?gpsData.lat:0,gpsLng:gpsData?gpsData.lng:0,gpsOk:gpsStatus==="ok",photo:capturedPhoto
+      };
+      db.ref("checkins/"+todayKey+"/"+empKey+"/overtime").set(checkinObj)
+      .then(function(){
+        showToast("\u2713 Qo\u2018shimcha ish vaqti qayd etildi! ("+tStr+")");
+        setCapturedPhoto(null);setSubmitting(false);
+      })
+      .catch(function(e){
+        showToast("\u26A0 Xatolik: "+(e.message||"Firebase muammo"));
+        setSubmitting(false);
+      });
+      return;
+    }
+
     // Morning / Afternoon — attendance ga ham yoziladi
-    if(uiSession==="morning"&&hr<7){
+    if(curSession==="morning"&&hr<7){
       showToast("\u26A0 Ertalabki selfie 07:00 dan keyin olinadi");
       setSubmitting(false);
       return;
     }
     var late=0;
-    if(uiSession==="morning"){
-      var currentTotal=hr*60+mn;
-      if(currentTotal>morningGraceTotal)late=currentTotal-morningGraceTotal;
-    }
-    else{
-      var currentAfternoonTotal=hr*60+mn;
-      if(currentAfternoonTotal>afternoonGraceTotal)late=currentAfternoonTotal-afternoonGraceTotal;
-    }
-    var isMorningOnTime=uiSession==="morning"&&late===0;
+    if(curSession==="morning"){if(hr>9||(hr===9&&mn>0))late=(hr-9)*60+mn;}
+    else{if(hr>14||(hr===14&&mn>0))late=(hr-14)*60+mn;}
+    var isMorningOnTime=curSession==="morning"&&late===0;
 
     var checkinObj={
-      name:user.name,session:uiSession,time:tStr,timestamp:now.toISOString(),lateMinutes:late,
+      name:user.name,session:curSession,time:tStr,timestamp:now.toISOString(),lateMinutes:late,
       arrivedBeforeDeadline:isMorningOnTime,
       arrivalStatus:isMorningOnTime?"present":late>0?"late":"present",
       gpsDistance:gpsData?gpsData.distance:0,gpsAccuracy:gpsData?gpsData.accuracy:0,
-      gpsLat:gpsData?gpsData.lat:0,gpsLng:gpsData?gpsData.lng:0,gpsOk:gpsStatus==="ok",
-      photo:capturedPhoto,
-      empNote:empNote.trim()||""
+      gpsLat:gpsData?gpsData.lat:0,gpsLng:gpsData?gpsData.lng:0,gpsOk:gpsStatus==="ok",photo:capturedPhoto
     };
     var rec=(attendanceData[todayKey]&&attendanceData[todayKey][empKey])||{status:"present",morning:0,afternoon:0,note:""};
     var u={};
-    var notePrefix=empNote.trim()?(" | Izoh: "+empNote.trim()):"";
-    if(uiSession==="morning"){
+    if(curSession==="morning"){
       u.morning=late;
       u.status=late>0?"late":"present";
-      u.note=(rec.note?rec.note+" | ":"")+(isMorningOnTime?"Ertalab selfie (09:10 gacha): ":"Selfie 09:10 dan keyin: ")+tStr+notePrefix;
+      u.note=(rec.note?rec.note+" | ":"")+(isMorningOnTime?"Ertalab selfie (09:00 gacha): ":"Selfie 09:00: ")+tStr;
     }
-    else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+(late===0?"Tushlikdan keyingi selfie (14:10 gacha): ":"Selfie 14:10 dan keyin: ")+tStr+notePrefix;}
+    else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+"Selfie 14:00: "+tStr;}
 
-    db.ref("checkins/"+todayKey+"/"+empKey+"/"+uiSession).set(checkinObj)
+    db.ref("checkins/"+todayKey+"/"+empKey+"/"+curSession).set(checkinObj)
     .then(function(){return db.ref("attendance/"+todayKey+"/"+empKey).update(u);})
     .then(function(){
-      showToast("\u2713 "+(uiSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!");
-      lockedSessionRef.current=null;
-      setCapturedPhoto(null);setSubmitting(false);setEmpNote("");
+      showToast("\u2713 "+(curSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!");
+      setCapturedPhoto(null);setSubmitting(false);
     })
     .catch(function(e){
       showToast("\u26A0 Xatolik: "+(e.message||"Firebase muammo"));
       setSubmitting(false);
     });
-  },[capturedPhoto,submitting,user,todayKey,empKey,gpsData,gpsStatus,attendanceData,uiSession]);
+  },[capturedPhoto,submitting,user,todayKey,empKey,gpsData,gpsStatus,attendanceData,curSession]);
 
-  // Admin list
+  // Admin list — includes overtime
   var todayList=useMemo(function(){
     var tc=(checkinsData[todayKey])||{};var list=[];
     Object.keys(tc).forEach(function(k){
       var v=tc[k];
       if(v&&v.morning)list.push(Object.assign({key:k+"_m"},v.morning));
       if(v&&v.afternoon)list.push(Object.assign({key:k+"_a"},v.afternoon));
+      if(v&&v.overtime)list.push(Object.assign({key:k+"_o"},v.overtime));
     });
     list.sort(function(a,b){return(a.timestamp||"").localeCompare(b.timestamp||"");});
     return list;
@@ -4156,7 +5073,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     var tc=(checkinsData[todayKey])||{};
     return EMPLOYEES.filter(function(emp){
       var rec=tc[safeKey(emp)]||{};
-      return !(rec.morning||rec.afternoon);
+      return !(rec.morning||rec.afternoon||rec.overtime);
     });
   },[checkinsData,todayKey]);
 
@@ -4184,32 +5101,33 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     React.createElement("div",{className:"page-header"},
       React.createElement("div",null,
         React.createElement("div",{className:"page-title"},"\u{1F4F8} Selfie Davomat"),
-        React.createElement("div",{className:"page-subtitle"},todayKey+" \u00B7 "+user.name+(uiSession==="morning"?" \u00B7 07:00-09:10 oralig'idagi selfie ertalab kelgan deb olinadi":uiSession==="afternoon"||isAfternoonWaiting?" \u00B7 13:30-14:10 oralig'idagi selfie tushlikdan keyingi kechikishsiz qayd hisoblanadi":""))
+        React.createElement("div",{className:"page-subtitle"},todayKey+" \u00B7 "+user.name+(curSession==="morning"?" \u00B7 07:00-09:00 oralig'idagi selfie ertalab kelgan deb olinadi":curSession==="overtime"?" \u00B7 18:00-06:00 oralig'i qo'shimcha ish hisoblanadi":""))
       )
     ),
 
     // Session cards
     React.createElement("div",{style:{display:"flex",gap:8,marginBottom:16}},
-      [{d:myM,l:"Ertalab",i:"\u{1F305}"},{d:myA,l:"Tushlik",i:"\u{1F307}"}].map(function(s){
+      [{d:myM,l:"Ertalab",i:"\u{1F305}",type:"attend"},{d:myA,l:"Tushlik",i:"\u{1F307}",type:"attend"},{d:myO,l:"Qo\u2018shimcha",i:"\u{1F319}",type:"overtime"}].map(function(s){
+        var isOT=s.type==="overtime";
         var hasData=!!s.d;
-        var bg=!hasData?"var(--surface3)":(s.d.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)");
-        var bdr=!hasData?"var(--border)":(s.d.lateMinutes>0?"rgba(192,57,43,.12)":"rgba(13,122,91,.12)");
-        var icon=!hasData?s.i:(s.d.lateMinutes>0?"\u23F0":"\u2705");
-        var valColor=s.d&&s.d.lateMinutes>0?"var(--ruby)":"var(--emerald)";
-        var valText=!hasData?"Kutilmoqda":(s.d.lateMinutes>0?s.d.lateMinutes+" daq kech":(s.d.arrivedBeforeDeadline?"Kelgan ✓":"Vaqtida ✓"));
+        var bg=!hasData?"var(--surface3)":isOT?"var(--cobalt-bg)":(s.d.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)");
+        var bdr=!hasData?"var(--border)":isOT?"rgba(30,76,190,.12)":(s.d.lateMinutes>0?"rgba(192,57,43,.12)":"rgba(13,122,91,.12)");
+        var icon=!hasData?s.i:isOT?"\u{1F4AA}":(s.d.lateMinutes>0?"\u23F0":"\u2705");
+        var valColor=isOT?"var(--cobalt)":(s.d&&s.d.lateMinutes>0?"var(--ruby)":"var(--emerald)");
+        var valText=!hasData?"Kutilmoqda":isOT?(s.d.time+" \u00B7 +"+((s.d.overtimeMinutes||0)>=60?Math.floor((s.d.overtimeMinutes||0)/60)+"s "+((s.d.overtimeMinutes||0)%60)+"d":(s.d.overtimeMinutes||0)+"d")):(s.d.lateMinutes>0?s.d.lateMinutes+" daq kech":(s.d.arrivedBeforeDeadline?"Kelgan ✓":"Vaqtida ✓"));
         return React.createElement("div",{key:s.l,style:{flex:1,padding:"12px 8px",borderRadius:"var(--rl)",background:bg,border:"1px solid "+bdr,textAlign:"center"}},
           React.createElement("div",{style:{fontSize:22,marginBottom:3}},icon),
           React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"var(--navy)",marginBottom:2}},s.l),
           hasData?React.createElement(React.Fragment,null,
             React.createElement("div",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:14,fontWeight:800,color:valColor}},s.d.time),
             React.createElement("div",{style:{fontSize:9,marginTop:2,color:valColor,fontWeight:600}},valText)
-          ):React.createElement("div",{style:{fontSize:9,color:"var(--t4)",marginTop:2}},"Kutilmoqda")
+          ):React.createElement("div",{style:{fontSize:9,color:"var(--t4)",marginTop:2}},isOT?"18:00 dan keyin":"Kutilmoqda")
         );
       })
     ),
 
     // Session indicator
-    !curDone&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:uiSession==="morning"?"var(--amber-bg)":uiSession==="afternoon"?"var(--violet-bg)":"var(--surface3)",border:"1px solid "+(uiSession==="morning"?"rgba(161,98,7,.12)":uiSession==="afternoon"?"rgba(109,40,217,.12)":"rgba(75,85,99,.12)"),borderRadius:"var(--r)",marginBottom:12,fontSize:12,fontWeight:600,color:uiSession==="morning"?"var(--amber)":uiSession==="afternoon"?"var(--violet)":"var(--ash)"}},
+    !curDone&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:curSession==="morning"?"var(--amber-bg)":curSession==="afternoon"?"var(--violet-bg)":curSession==="overtime"?"var(--cobalt-bg)":"var(--surface3)",border:"1px solid "+(curSession==="morning"?"rgba(161,98,7,.12)":curSession==="afternoon"?"rgba(109,40,217,.12)":curSession==="overtime"?"rgba(30,76,190,.12)":"rgba(75,85,99,.12)"),borderRadius:"var(--r)",marginBottom:12,fontSize:12,fontWeight:600,color:curSession==="morning"?"var(--amber)":curSession==="afternoon"?"var(--violet)":curSession==="overtime"?"var(--cobalt)":"var(--ash)"}},
       React.createElement("span",{style:{fontSize:20}},sesIcon),
       React.createElement("span",null,sesLabel),
       React.createElement("span",{style:{marginLeft:"auto",fontFamily:"JetBrains Mono,monospace",fontSize:14,fontWeight:800}},liveTime.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"}))
@@ -4217,25 +5135,25 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
 
     // Done card
     curDone&&!canView?(function(){
-      var sesName=uiSession==="morning"?"Ertalabki":"Tushlik";
+      var isOT=curSession==="overtime";
+      var sesName=curSession==="morning"?"Ertalabki":curSession==="afternoon"?"Tushlik":"Qo\u2018shimcha ish";
       return React.createElement("div",{className:"selfie-done-card"},
-        React.createElement("div",{className:"selfie-done-icon"},"\u2705"),
+        React.createElement("div",{className:"selfie-done-icon"},isOT?"\u{1F4AA}":"\u2705"),
         curDone.photo&&React.createElement("img",{src:curDone.photo,className:"selfie-done-photo",alt:""}),
-        React.createElement("div",{className:"selfie-done-title"},sesName+" qayd etilgan!"),
+        React.createElement("div",{className:"selfie-done-title",style:isOT?{color:"var(--cobalt)"}:{}},sesName+" qayd etilgan!"),
         React.createElement("div",{className:"selfie-done-sub"},
           "Vaqt: ",React.createElement("strong",null,curDone.time),React.createElement("br",null),
-          curDone.lateMinutes>0?React.createElement("span",{style:{color:"var(--ruby)"}},"Kechikish: "+curDone.lateMinutes+" daqiqa")
+          isOT?React.createElement("span",{style:{color:"var(--cobalt)"}},"Qo\u2018shimcha: +"+(curDone.overtimeMinutes>=60?Math.floor(curDone.overtimeMinutes/60)+" soat "+(curDone.overtimeMinutes%60)+" daqiqa":curDone.overtimeMinutes+" daqiqa"))
+          :curDone.lateMinutes>0?React.createElement("span",{style:{color:"var(--ruby)"}},"Kechikish: "+curDone.lateMinutes+" daqiqa")
           :React.createElement("span",{style:{color:"var(--emerald)"}},"Vaqtida \u2713")
-        ),
-        curDone.empNote&&React.createElement("div",{style:{marginTop:10,padding:"8px 14px",background:"var(--cobalt-bg)",borderRadius:"var(--r)",fontSize:12,color:"var(--cobalt)",fontStyle:"italic",textAlign:"left"}},
-          React.createElement("span",{style:{fontWeight:700,fontStyle:"normal"}},"💬 Izohingiz: "),curDone.empNote
         ),
         React.createElement("div",null,
           React.createElement("span",{className:"selfie-done-detail"},"\u{1F550} "+curDone.time),
-          React.createElement("span",{className:"selfie-done-detail"},"\u{1F4CD} "+curDone.gpsDistance+"m")
+          React.createElement("span",{className:"selfie-done-detail"},"\u{1F4CD} "+curDone.gpsDistance+"m"),
+          isOT&&React.createElement("span",{className:"selfie-done-detail",style:{background:"var(--cobalt-bg)",color:"var(--cobalt)"}},"\u{1F4AA} Overtime")
         ),
-        !bothDone&&React.createElement("div",{style:{marginTop:14,padding:"10px 14px",background:"var(--surface3)",borderRadius:"var(--r)",fontSize:12,color:"var(--t3)"}},
-          "\u{1F4A1} "+(uiSession==="morning"?"Tushlikdan keyin (13:30 dan) yana selfie olishingiz kerak":"Ertalabki selfie olingan")
+        !isOT&&!bothDone&&React.createElement("div",{style:{marginTop:14,padding:"10px 14px",background:"var(--surface3)",borderRadius:"var(--r)",fontSize:12,color:"var(--t3)"}},
+          "\u{1F4A1} "+(curSession==="morning"?"Tushlikdan keyin (13:00 dan) yana selfie olishingiz kerak":"Ertalabki selfie olingan")
         )
       );
     })():
@@ -4282,8 +5200,8 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
 
         curSession==="waiting"&&gpsOk&&!cameraActive&&!capturedPhoto&&React.createElement("div",{style:{padding:"40px 30px",textAlign:"center"}},
           React.createElement("div",{style:{fontSize:34,marginBottom:12}},"\u23F3"),
-          React.createElement("div",{style:{color:"rgba(255,255,255,.86)",fontSize:15,fontWeight:700}},isAfternoonWaiting?"Tushlikdan keyingi selfie hali ochilmagan":isClosedWaiting?"Bugungi selfie vaqti tugagan":"Ertalabgi selfie hali ochilmagan"),
-          React.createElement("div",{style:{color:"rgba(255,255,255,.45)",fontSize:12,marginTop:8,lineHeight:1.7}},isAfternoonWaiting?"13:30 dan keyin tushlikdan keyingi selfie olish mumkin.":isClosedWaiting?"Bugungi selfie oynalari yakunlangan. Ertaga ertalab 07:00 dan qayta ochiladi.":"07:00 dan keyin ertalabgi selfie olish mumkin.",React.createElement("br",null),isAfternoonWaiting?"14:10 gacha kelganlar kechikkan hisoblanmaydi.":isClosedWaiting?"Tizim endi faqat ertalab va tushlikdan keyingi davomat uchun ishlaydi.":"09:10 gacha kelganlar kechikkan hisoblanmaydi.")
+          React.createElement("div",{style:{color:"rgba(255,255,255,.86)",fontSize:15,fontWeight:700}},"Ertalabgi selfie hali ochilmagan"),
+          React.createElement("div",{style:{color:"rgba(255,255,255,.45)",fontSize:12,marginTop:8,lineHeight:1.7}},"07:00 dan keyin ertalabgi selfie olish mumkin.",React.createElement("br",null),"06:00 gacha bo'lgan selfie esa qo'shimcha ish vaqtiga kiradi.")
         ),
 
         // Camera start button
@@ -4291,13 +5209,13 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           React.createElement("span",{style:{fontSize:48}},sesIcon),
           React.createElement("span",{style:{fontSize:16,fontWeight:700}},"Kamerani yoqish"),
           React.createElement("span",{style:{fontSize:11,opacity:.5}},sesLabel),
-          React.createElement("span",{style:{fontSize:10,opacity:.45,maxWidth:240,lineHeight:1.5}},(curSession==="morning"?"07:00-09:10 oralig'idagi selfie ertalab kelgan deb olinadi. ":"13:30-14:10 oralig'idagi selfie tushlikdan keyingi kechikishsiz qayd hisoblanadi. ")+"Galereya va fayl yuklash bloklangan. Faqat live kamera stream ishlaydi.")
+          React.createElement("span",{style:{fontSize:10,opacity:.45,maxWidth:240,lineHeight:1.5}},(curSession==="morning"?"07:00-09:00 oralig'idagi selfie ertalab kelgan deb olinadi. ":curSession==="overtime"?"18:00-06:00 oralig'i qo'shimcha ishga yoziladi. ":"")+"Galereya va fayl yuklash bloklangan. Faqat live kamera stream ishlaydi.")
         ),
 
         // Camera active — overlay controls
         cameraActive&&React.createElement("div",{style:{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"flex-end",pointerEvents:"none"}},
           // Session badge
-          React.createElement("div",{style:{position:"absolute",top:10,left:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:uiSession==="morning"?"#fbbf24":"#a78bfa"}},uiSession==="morning"?"\u2600 ERTALAB":"\u{1F319} TUSHLIK"),
+          React.createElement("div",{style:{position:"absolute",top:10,left:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:curSession==="morning"?"#fbbf24":curSession==="afternoon"?"#a78bfa":"#60a5fa"}},curSession==="morning"?"\u2600 ERTALAB":curSession==="afternoon"?"\u{1F319} TUSHLIK":"\u{1F4AA} QO'SHIMCHA"),
           // GPS badge
           gpsData&&React.createElement("div",{style:{position:"absolute",top:10,right:10,padding:"4px 10px",background:"rgba(0,0,0,.5)",borderRadius:8,fontSize:10,fontWeight:700,color:gpsStatus==="ok"?"#6ee7b7":"#fca5a5"}},"\u{1F4CD}"+gpsData.distance+"m"),
           React.createElement("div",{style:{position:"absolute",top:44,left:10,right:10,background:"rgba(0,0,0,.58)",border:"1px solid rgba(255,255,255,.08)",borderRadius:12,padding:"10px 12px",pointerEvents:"none"}},
@@ -4322,28 +5240,8 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
         // Preview
         capturedPhoto&&React.createElement("div",{style:{width:"100%"}},
           React.createElement("img",{src:capturedPhoto,className:"selfie-preview-img",alt:""}),
-          React.createElement("div",{style:{padding:"10px 14px 0"}},
-            React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"var(--t2)",marginBottom:6,textTransform:"uppercase",letterSpacing:".6px"}},"💬 Izoh (ixtiyoriy)"),
-            React.createElement("textarea",{
-              value:empNote,
-              onChange:function(e){setEmpNote(e.target.value);},
-              placeholder:"Kech kelish sababi yoki boshqa izoh...",
-              maxLength:300,
-              rows:3,
-              style:{
-                width:"100%",padding:"10px 12px",
-                border:"1.5px solid var(--border)",
-                borderRadius:"var(--r)",
-                fontSize:13,fontFamily:"Outfit,sans-serif",
-                color:"var(--t1)",background:"var(--white)",
-                outline:"none",resize:"none",boxSizing:"border-box",
-                lineHeight:1.6
-              }
-            }),
-            empNote.trim()&&React.createElement("div",{style:{fontSize:10,color:"var(--t4)",textAlign:"right",marginTop:3}},empNote.length+"/300")
-          ),
           React.createElement("div",{className:"selfie-preview-actions"},
-            React.createElement("button",{className:"selfie-retake-btn",onClick:function(){setCapturedPhoto(null);setEmpNote("");startCamera();}},"\u{1F504} Qayta"),
+            React.createElement("button",{className:"selfie-retake-btn",onClick:function(){setCapturedPhoto(null);startCamera();}},"\u{1F504} Qayta"),
             React.createElement("button",{className:"selfie-confirm-btn",onClick:confirmCheckin,disabled:submitting},submitting?"\u23F3 Saqlanmoqda...":"\u2705 Tasdiqlash")
           ),
           gpsStatus==="far"&&React.createElement("div",{style:{padding:"8px 14px",background:"rgba(192,57,43,.15)",fontSize:11,color:"#fca5a5",textAlign:"center"}},"\u26A0 Ofisdan "+(gpsData?gpsData.distance:0)+"m uzoqda")
@@ -4358,17 +5256,17 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
         React.createElement("div",{className:"table-meta"},todayList.length+" ta yozuv")
       )),
       todayList.map(function(c,i){
-        var sesIcn=c.session==="morning"?"\u{1F305}":"\u{1F307}";
-        var badgeColor=c.lateMinutes>0?"var(--ruby)":"var(--emerald)";
-        var badgeBg=c.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)";
-        var badgeText=c.lateMinutes>0?c.lateMinutes+"d":"\u2713";
+        var isOT=c.session==="overtime";
+        var sesIcn=c.session==="morning"?"\u{1F305}":c.session==="afternoon"?"\u{1F307}":"\u{1F4AA}";
+        var badgeColor=isOT?"var(--cobalt)":(c.lateMinutes>0?"var(--ruby)":"var(--emerald)");
+        var badgeBg=isOT?"var(--cobalt-bg)":(c.lateMinutes>0?"var(--ruby-bg)":"var(--emerald-bg)");
+        var badgeText=isOT?"+"+(c.overtimeMinutes||0)+"d":(c.lateMinutes>0?c.lateMinutes+"d":"\u2713");
         return React.createElement("div",{key:c.key,className:"selfie-history-item"},
           React.createElement("span",{style:{fontSize:11,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",width:22}},i+1),
           c.photo&&React.createElement("img",{src:c.photo,className:"selfie-history-photo",alt:""}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"selfie-history-emp"},c.name),
-            React.createElement("div",{style:{fontSize:10,color:"var(--t3)"}},sesIcn+" \u00B7 "+c.gpsDistance+"m "+(c.gpsOk?"\u2713":"\u26A0")),
-            c.empNote&&React.createElement("div",{style:{fontSize:10,color:"var(--cobalt)",marginTop:2,fontStyle:"italic"}},"\u{1F4AC} "+c.empNote)
+            React.createElement("div",{style:{fontSize:10,color:"var(--t3)"}},sesIcn+" \u00B7 "+c.gpsDistance+"m "+(c.gpsOk?"\u2713":"\u26A0")+(isOT?" \u00B7 Qo\u2018shimcha":""))
           ),
           React.createElement("div",{style:{textAlign:"right"}},
             React.createElement("div",{className:"selfie-history-time"},c.time||"\u2014"),
@@ -4437,199 +5335,6 @@ function setupPWAAssets(){
   if(appleIcon)appleIcon.href=iconUrl;
 }
 
-/* ═══ SELFIE ESLATMA ═══ */
-function SelfieReminder({user,checkinsData,onGoSelfie}){
-  const[now,setNow]=useState(new Date());
-  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),30000);return()=>clearInterval(t);},[]);
-  const todayKey=fmtDate(now),empKey=safeKey(user.name),h=now.getHours(),m=now.getMinutes(),totalM=h*60+m,dow=now.getDay();
-  if(dow===0||dow===6)return null;
-  const my=checkinsData?.[todayKey]?.[empKey],mDone=my?.morning,aDone=my?.afternoon,ts=String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
-  if(mDone&&aDone)return(<div className="reminder-done"><div className="reminder-done-icon">✅</div><div><div className="reminder-done-text">Bugungi selfie davomat to'liq!</div><div className="reminder-done-sub">Ertalabki: {mDone.time||"✓"} · Tushlik: {aDone.time||"✓"}</div></div></div>);
-  if(totalM>=420&&totalM<780&&!mDone){const u=totalM>=525;return(<div className="selfie-reminder"><div className="reminder-card" onClick={onGoSelfie}><div className="reminder-pulse">📸</div><div className="reminder-content"><div className="reminder-title">{u?"⚠️ Ertalabki selfie vaqti tugamoqda!":"Ertalabki selfie qilishni unutmang!"}</div><div className="reminder-sub">09:10 gacha kechikishsiz. Hozir {ts}</div></div><button className="reminder-btn">Selfie →</button></div></div>);}
-  if(totalM>=810&&totalM<1080&&!aDone){const u=totalM>=830;return(<div className="selfie-reminder"><div className="reminder-card" onClick={onGoSelfie}><div className="reminder-pulse">📸</div><div className="reminder-content"><div className="reminder-title">{u?"⚠️ Tushlik selfie vaqti tugamoqda!":"Tushlik selfie qilishni unutmang!"}</div><div className="reminder-sub">14:10 gacha kechikishsiz. Hozir {ts}</div></div><button className="reminder-btn">Selfie →</button></div></div>);}
-  if(mDone&&!aDone&&totalM>=780&&totalM<810)return(<div className="reminder-done"><div className="reminder-done-icon">☕</div><div><div className="reminder-done-text" style={{color:"var(--amber)"}}>Tushlik tanaffus</div><div className="reminder-done-sub">Ertalabki: {mDone.time||"✓"} · Tushlik selfie 13:30 da</div></div></div>);
-  if(mDone&&!aDone&&totalM<780)return(<div className="reminder-done"><div className="reminder-done-icon">✅</div><div><div className="reminder-done-text">Ertalabki selfie qilingan!</div><div className="reminder-done-sub">Vaqt: {mDone.time||"✓"} · Tushlik 13:30 dan</div></div></div>);
-  return null;
-}
-
-/* ═══ E'LONLAR PANELI ═══ */
-function AnnouncementsView({user,isAdmin}){
-  const[anns,setAnns]=useState([]);
-  const[title,setTitle]=useState("");
-  const[text,setText]=useState("");
-  const[priority,setPriority]=useState("normal");
-  const[saving,setSaving]=useState(false);
-
-  useEffect(()=>{
-    const ref=db.ref("announcements");
-    ref.on("value",snap=>{
-      const d=snap.val()||{};
-      const arr=Object.entries(d).map(([id,v])=>({id,...v})).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
-      setAnns(arr);
-    });
-    return()=>ref.off();
-  },[]);
-
-  function handlePost(){
-    if(!title.trim()||!text.trim())return;
-    setSaving(true);
-    const id=Date.now().toString(36)+Math.random().toString(36).substr(2,4);
-    db.ref("announcements/"+id).set({
-      title:title.trim(), text:text.trim(), priority,
-      author:user.name, date:fmtDate(new Date()),
-      dateDisplay:new Date().toLocaleDateString("uz-UZ",{day:"2-digit",month:"2-digit",year:"numeric"}),
-      timestamp:Date.now()
-    }).then(()=>{setTitle("");setText("");setPriority("normal");setSaving(false);});
-  }
-  function handleDelete(id){if(window.confirm("Bu e'lonni o'chirmoqchimisiz?"))db.ref("announcements/"+id).remove();}
-  const priLabels={urgent:"🔴 Shoshilinch",normal:"🔵 Oddiy",info:"🟢 Ma'lumot"};
-  return(
-    <div>
-      <div className="page-header"><div><div className="page-title">E'lonlar</div><div className="page-subtitle">Muhim xabarlar va ko'rsatmalar</div></div></div>
-      {isAdmin&&(<div className="ann-form">
-        <div style={{fontSize:14,fontWeight:700,color:"var(--navy)",marginBottom:16}}>📢 Yangi e'lon yaratish</div>
-        <div className="ann-form-row"><label>Sarlavha</label><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="E'lon sarlavhasi..."/></div>
-        <div className="ann-form-row"><label>Matn</label><textarea value={text} onChange={e=>setText(e.target.value)} placeholder="E'lon matni..."/></div>
-        <div className="ann-form-row"><label>Muhimlik</label>
-          <select value={priority} onChange={e=>setPriority(e.target.value)}>
-            <option value="urgent">🔴 Shoshilinch</option>
-            <option value="normal">🔵 Oddiy</option>
-            <option value="info">🟢 Ma'lumot</option>
-          </select>
-        </div>
-        <button className="ann-submit" onClick={handlePost} disabled={saving||!title.trim()||!text.trim()}>{saving?"Saqlanmoqda...":"📢 E'lon qilish"}</button>
-      </div>)}
-      <div className="ann-list">
-        {anns.length===0&&<div className="empty-state"><div className="empty-icon">📭</div><div className="empty-title">E'lonlar yo'q</div><div className="empty-sub">Hozircha hech qanday e'lon yo'q</div></div>}
-        {anns.map(a=>(
-          <div key={a.id} className={`ann-card ann-${a.priority||"normal"}`}>
-            {isAdmin&&<button className="ann-del" onClick={()=>handleDelete(a.id)} title="O'chirish">✕</button>}
-            <div className="ann-top">
-              <span className={`ann-badge ${a.priority||"normal"}`}>{priLabels[a.priority]||"🔵 Oddiy"}</span>
-              <span className="ann-date">{a.dateDisplay||a.date}</span>
-            </div>
-            <div className="ann-title">{a.title}</div>
-            <div className="ann-text">{a.text}</div>
-            <div className="ann-author">— {a.author}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ═══ XODIMLAR REYTINGI ═══ */
-function RankingsView({attendanceData,onEmpClick}){
-  const today=new Date();
-  const[yr,setYr]=useState(today.getFullYear());
-  const[mon,setMon]=useState(today.getMonth());
-  const monthDates=useMemo(()=>getMonthDates(yr,mon),[yr,mon]);
-  const workDays=useMemo(()=>monthDates.filter(d=>isWorkday(d)),[monthDates]);
-  const totalDays=workDays.length;
-  const monNames=["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
-
-  const rankings=useMemo(()=>{
-    return EMPLOYEES.map(emp=>{
-      const key=safeKey(emp);
-      let present=0,absent=0,late=0,totalLateMin=0;
-      workDays.forEach(d=>{
-        const dk=fmtDate(d);
-        const rec=attendanceData[dk]?.[key];
-        const st=rec?.status||"present";
-        if(st==="present"||st==="late"||st==="trip"||st==="training"){present++;const l=(rec?.morning||0)+(rec?.afternoon||0);if(l>0){late++;totalLateMin+=l;}}
-        else if(st==="absent")absent++;
-      });
-      const pct=totalDays>0?Math.round(present/totalDays*100):0;
-      return{name:emp,present,absent,late,totalLateMin,pct};
-    }).sort((a,b)=>b.pct-a.pct||a.totalLateMin-b.totalLateMin||a.absent-b.absent);
-  },[workDays,attendanceData,totalDays]);
-
-  function prevMon(){if(mon===0){setMon(11);setYr(y=>y-1)}else setMon(m=>m-1)}
-  function nextMon(){if(mon===11){setMon(0);setYr(y=>y+1)}else setMon(m=>m+1)}
-  const top3=rankings.slice(0,3);
-  const barColors=["#f59e0b","#94a3b8","#fb923c","#60a5fa","#a78bfa","#34d399","#f87171"];
-
-  return(
-    <div>
-      <div className="page-header">
-        <div><div className="page-title">🏆 Xodimlar Reytingi</div><div className="page-subtitle">Oylik intizom bo'yicha</div></div>
-        <div className="page-actions">
-          <div className="date-nav">
-            <button className="date-nav-btn" onClick={prevMon}>‹</button>
-            <div className="date-display">{monNames[mon]} {yr}</div>
-            <button className="date-nav-btn" onClick={nextMon}>›</button>
-          </div>
-        </div>
-      </div>
-      {totalDays>0&&top3.length>=3&&(<div className="rank-podium">
-        {[1,0,2].map(i=>{const r=top3[i];const cls=["gold","silver","bronze"][i];const medals=["🥇","🥈","🥉"];
-          return(<div key={i} className={`rank-pod ${cls}`}>
-            <div className="rank-medal">{medals[i]}</div>
-            <div className="rank-name">{r.name.split(" ")[0]}</div>
-            <div className="rank-pct">{r.pct}%</div>
-            <div style={{fontSize:10,color:"var(--t3)",marginTop:4}}>{r.present}/{totalDays} kun</div>
-          </div>);
-        })}
-      </div>)}
-      <div className="table-card">
-        <div className="table-header"><div className="table-title">To'liq reyting</div><div className="table-meta">{totalDays} ish kuni</div></div>
-        <div style={{padding:"4px 0"}}>
-          {rankings.map((r,i)=>(
-            <div key={r.name} className="rank-table-row" style={{cursor:"pointer"}} onClick={()=>onEmpClick&&onEmpClick(r.name)}>
-              <div className="rank-pos" style={{background:i<3?["#fef3c7","#f1f5f9","#fed7aa"][i]:"var(--surface3)",color:i<3?["#b45309","#475569","#c2410c"][i]:"var(--t3)"}}>{i+1}</div>
-              <div style={{flex:"0 0 140px",minWidth:0}}>
-                <div className="emp-name emp-link" style={{fontSize:12.5}}>{r.name}</div>
-              </div>
-              <div className="rank-bar-wrap">
-                <div className="rank-bar" style={{width:r.pct+"%",background:barColors[i%barColors.length]}}/>
-              </div>
-              <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:13,fontWeight:700,color:"var(--navy)",minWidth:42,textAlign:"right"}}>{r.pct}%</div>
-              <div style={{display:"flex",gap:8,fontSize:11,color:"var(--t3)",minWidth:100}}>
-                <span>✅{r.present}</span>
-                {r.absent>0&&<span style={{color:"var(--ruby)"}}>❌{r.absent}</span>}
-                {r.late>0&&<span style={{color:"var(--amber)"}}>⏰{r.totalLateMin}′</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══ OB-HAVO WIDGET ═══ */
-function WeatherWidget(){
-  const[w,setW]=useState(null);
-  useEffect(()=>{
-    function fetchW(){
-      fetch("https://api.open-meteo.com/v1/forecast?latitude=40.1&longitude=65.37&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=Asia/Tashkent")
-        .then(r=>r.json()).then(d=>{if(d.current)setW(d.current);}).catch(()=>{});
-    }
-    fetchW();
-    const t=setInterval(fetchW,1800000);
-    return()=>clearInterval(t);
-  },[]);
-  if(!w)return null;
-  const codes={0:"☀️ Ochiq",1:"🌤 Az bulutli",2:"⛅ Bulutli",3:"☁️ To'liq bulutli",45:"🌫 Tuman",48:"🌫 Tuman",51:"🌧 Yengil yomg'ir",53:"🌧 Yomg'ir",55:"🌧 Kuchli yomg'ir",61:"🌧 Yomg'ir",63:"🌧 O'rtacha",65:"🌧 Kuchli",71:"🌨 Qor",73:"🌨 Qor",75:"🌨 Kuchli qor",77:"🌨 Don",80:"🌦 Yomg'ir",81:"🌦 Yomg'ir",82:"⛈ Dovul",85:"🌨 Qor",86:"🌨 Qor",95:"⛈ Momaqaldiroq",96:"⛈ Do'l",99:"⛈ Do'l"};
-  const desc=codes[w.weather_code]||"🌤 Oddiy";
-  const icon=desc.split(" ")[0];
-  return(
-    <div className="weather-box">
-      <div className="weather-row">
-        <div className="weather-icon">{icon}</div>
-        <div>
-          <div className="weather-temp">{Math.round(w.temperature_2m)}°C</div>
-          <div className="weather-desc">Navoiy · {desc.split(" ").slice(1).join(" ")}</div>
-        </div>
-      </div>
-      <div className="weather-details">
-        <div className="weather-detail">💧 {w.relative_humidity_2m}%</div>
-        <div className="weather-detail">💨 {Math.round(w.wind_speed_10m)} km/s</div>
-      </div>
-    </div>
-  );
-}
-
 /* ═══ MAIN APP ═══ */
 function App(){
   const [user,setUser]=useState(null);
@@ -4650,9 +5355,10 @@ function App(){
   const [isStandalone,setIsStandalone]=useState(false);
   const [iosInstallHint,setIosInstallHint]=useState(false);
   const [hideInstallBanner,setHideInstallBanner]=useState(false);
+  const [onlineStatus,setOnlineStatus]=useState(()=>typeof navigator==="undefined"?true:navigator.onLine);
+  const [snapshotMeta,setSnapshotMeta]=useState(()=>getSnapshotMeta());
   const toastRef=useRef(null);
-  const [darkMode,setDarkMode]=useState(()=>{try{return localStorage.getItem("xodimlar-dark")==="true"}catch(e){return false}});
-  useEffect(()=>{document.documentElement.setAttribute("data-theme",darkMode?"dark":"light");try{localStorage.setItem("xodimlar-dark",darkMode)}catch(e){}},[darkMode]);
+  const snapshotHydratedRef=useRef(false);
 
   useEffect(()=>{const t=setInterval(()=>setClock(new Date()),30000);return()=>clearInterval(t)},[]);
 
@@ -4690,7 +5396,9 @@ function App(){
     window.matchMedia("(display-mode: standalone)").addEventListener?.("change",onDisplayChange);
 
     if("serviceWorker" in navigator&&secure){
-      navigator.serviceWorker.register("./sw.js").catch(function(err){console.error("SW register xato",err);});
+      navigator.serviceWorker.register("./sw.js")
+        .then(function(reg){reg.update&&reg.update();})
+        .catch(function(err){console.error("SW register xato",err);});
     }
 
     return()=>{
@@ -4701,16 +5409,29 @@ function App(){
   },[]);
 
   useEffect(()=>{
+    if(typeof window==="undefined") return;
+    function onOnline(){setOnlineStatus(true);}
+    function onOffline(){setOnlineStatus(false);}
+    window.addEventListener("online",onOnline);
+    window.addEventListener("offline",onOffline);
+    return()=>{
+      window.removeEventListener("online",onOnline);
+      window.removeEventListener("offline",onOffline);
+    };
+  },[]);
+
+  useEffect(()=>{
     const unsub=auth.onAuthStateChanged((fUser)=>{
       if(fUser){
         const email=fUser.email.toLowerCase();
         const info=USERS_INFO[email]||{role:"employee",name:email};
         setUser({email,...info});
-        setView(info.role==="employee"?"myStats":"daily");
+        setView(info.role==="employee"?"myStats":info.role==="boss"?"bossDashboard":"hrDashboard");
       }else{
         setUser(null);
         setData({});
         setCheckinsData({});
+        snapshotHydratedRef.current=false;
       }
       setLoading(false);
     });
@@ -4718,16 +5439,46 @@ function App(){
   },[]);
 
   useEffect(()=>{
+    if(!user||snapshotHydratedRef.current) return;
+    snapshotHydratedRef.current=true;
+    const cachedAttendance=getSnapshotBundle("attendance")||{};
+    const cachedCheckins=getSnapshotBundle("checkins")||{};
+    if(Object.keys(cachedAttendance).length) setData(prev=>Object.keys(prev).length?prev:cachedAttendance);
+    if(Object.keys(cachedCheckins).length) setCheckinsData(prev=>Object.keys(prev).length?prev:cachedCheckins);
+    setSnapshotMeta(getSnapshotMeta());
+  },[user]);
+
+  useEffect(()=>{
     if(!user)return;
     const ref=db.ref("attendance");
-    ref.on("value",(snap)=>setData(snap.val()||{}),(err)=>console.error(err));
+    ref.on("value",(snap)=>{
+      const next=snap.val()||{};
+      setData(next);
+      const nextMeta=saveSnapshotBundle("attendance",next)||getSnapshotMeta();
+      if(nextMeta) setSnapshotMeta(nextMeta);
+    },(err)=>{
+      console.error(err);
+      const cached=getSnapshotBundle("attendance");
+      if(cached) setData(cached);
+      setSnapshotMeta(getSnapshotMeta());
+    });
     return()=>ref.off();
   },[user]);
 
   useEffect(()=>{
     if(!user)return;
     const ref=db.ref("checkins");
-    ref.on("value",(snap)=>setCheckinsData(snap.val()||{}),(err)=>console.error(err));
+    ref.on("value",(snap)=>{
+      const next=snap.val()||{};
+      setCheckinsData(next);
+      const nextMeta=saveSnapshotBundle("checkins",next)||getSnapshotMeta();
+      if(nextMeta) setSnapshotMeta(nextMeta);
+    },(err)=>{
+      console.error(err);
+      const cached=getSnapshotBundle("checkins");
+      if(cached) setCheckinsData(cached);
+      setSnapshotMeta(getSnapshotMeta());
+    });
     return()=>ref.off();
   },[user]);
 
@@ -4855,26 +5606,49 @@ function App(){
   const isAdmin=user.role==="admin";
   const isBoss=user.role==="boss";
   const canManage=isAdmin||isBoss;
-  const adminNav=[
+  const hrNav=[
+    {k:"hrDashboard",icon:"🧭",label:"Kadrlar"},
     {k:"daily",icon:"📅",label:"Kunlik"},
     {k:"weekly",icon:"📆",label:"Haftalik"},
     {k:"monthly",icon:"🗓",label:"Oylik"},
     {k:"stats",icon:"📊",label:"Statistika"},
-    {k:"rankings",icon:"🏆",label:"Reyting"},
-    {k:"announcements",icon:"📢",label:"E'lonlar"},
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
-    ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
+    {k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"},
+    {k:"selfie",icon:"📸",label:"Selfie Davomat"}
+  ];
+  const bossNav=[
+    {k:"bossDashboard",icon:"👔",label:"Rahbar"},
+    {k:"daily",icon:"📅",label:"Kunlik"},
+    {k:"weekly",icon:"📆",label:"Haftalik"},
+    {k:"monthly",icon:"🗓",label:"Oylik"},
+    {k:"stats",icon:"📊",label:"Statistika"},
+    {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     {k:"selfie",icon:"📸",label:"Selfie Davomat"}
   ];
   const empNav=[
     {k:"myStats",icon:"👤",label:"Shaxsiy Kabinet"},
-    {k:"announcements",icon:"📢",label:"E'lonlar"},
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     {k:"selfie",icon:"📸",label:"Selfie Davomat"}
   ];
-  const navItems=canManage?adminNav:empNav;
-  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat"};
+  const navItems=isAdmin?hrNav:isBoss?bossNav:empNav;
+  const viewLabels={
+    hrDashboard:"Kadrlar Dashboard",
+    bossDashboard:"Rahbar Dashboard",
+    daily:"Kunlik Hisobot",
+    weekly:"Haftalik Hisobot",
+    monthly:"Oylik Hisobot",
+    stats:"Statistika va Tahlil",
+    myStats:"Shaxsiy Kabinet",
+    birthdays:"Tug'ilgan Kunlar",
+    selfieHistory:"Selfie Tarix",
+    selfie:"Selfie Davomat"
+  };
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
+  const syncTs=Math.max(snapshotMeta?.attendance?.updatedAt||0,snapshotMeta?.checkins?.updatedAt||0);
+  const statusClass=!onlineStatus?"is-offline":syncTs?"":"is-cached";
+  const dotClass=!onlineStatus?"offline":syncTs?"":"cached";
+  const statusText=!onlineStatus?(syncTs?"Offline snapshot":"Offline rejim"):syncTs?"Tizim faol":"Kesh tayyorlanmoqda";
+  const footerText=!onlineStatus?"Offline snapshot faol":`Firebase Real-time · ${syncTs?"Offline snapshot tayyor":"Kesh tayyorlanmoqda"}`;
 
   return(
     <div className="app">
@@ -4904,7 +5678,6 @@ function App(){
           ))}
         </div>
 
-        <WeatherWidget/>
         <div className="sidebar-footer">
           <div className="sidebar-user">
             <div className="sidebar-avatar">{user.name.charAt(0)}</div>
@@ -4913,9 +5686,6 @@ function App(){
               <div className="sidebar-user-role">{roleLabel}</div>
             </div>
           </div>
-          <button className="dark-toggle" onClick={()=>setDarkMode(p=>!p)}>
-            {darkMode?"☀️ Kunduzgi rejim":"🌙 Tungi rejim"}
-          </button>
           <button className="logout-btn" onClick={handleLogout}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -4953,7 +5723,7 @@ function App(){
       {/* MOBILE BOTTOM NAV */}
       <div className="mobile-bottom-nav">
         {navItems.map(({k,icon,label})=>{
-          const shortLabels={daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfieHistory:"Tarix",selfie:"Selfie",myStats:"Kabinet"};
+          const shortLabels={hrDashboard:"Kadr",bossDashboard:"Rahbar",daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfieHistory:"Tarix",selfie:"Selfie",myStats:"Kabinet"};
           return(
             <button key={k} className={`mob-nav-btn ${view===k?"active":""}`} onClick={()=>setView(k)}>
               <span className="mob-nav-icon">{icon}</span>
@@ -4975,9 +5745,9 @@ function App(){
             </div>
           </div>
           <div className="topbar-right">
-            <div className="topbar-status">
-              <div className="topbar-dot"/>
-              <span>Tizim faol</span>
+            <div className={`topbar-status ${statusClass}`}>
+              <div className={`topbar-dot ${dotClass}`}/>
+              <span>{statusText}</span>
             </div>
             <div className="topbar-clock">
               {clock.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"})}
@@ -5002,18 +5772,31 @@ function App(){
           </div>
         )}
 
+        {(!onlineStatus||!syncTs)&&(
+          <div className="offline-banner">
+            <div className="offline-banner-main">
+              <div className="offline-banner-title">{onlineStatus?"Lokal kesh tayyorlanmoqda":"Offline rejim yoqildi"}</div>
+              <div className="offline-banner-sub">
+                {onlineStatus
+                  ? "PWA shell va snapshotlar shakllanmoqda. Keyingi uzilishlarda sayt oxirgi saqlangan ma'lumotlar bilan ochiladi."
+                  : "Internet uzildi. Attendance va selfie ma'lumotlarining oxirgi saqlangan nusxasi ishlatiladi."}
+              </div>
+            </div>
+            <div className="offline-banner-meta">{formatRelativeSync(syncTs)}</div>
+          </div>
+        )}
+
         {/* MAIN */}
         <main className="main">
           {loading
             ? <div className="empty-state"><div className="empty-icon">⏳</div><div className="empty-title">Yuklanmoqda...</div><div className="empty-sub">Firebase bilan ulanish o'rnatilmoqda</div></div>
             : <>
-                {!canManage&&<SelfieReminder user={user} checkinsData={checkinsData} onGoSelfie={()=>setView("selfie")}/>}
+                {view==="hrDashboard"&&isAdmin&&<HRDashboard attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)} onlineStatus={onlineStatus} snapshotMeta={snapshotMeta} isStandalone={isStandalone}/>}
+                {view==="bossDashboard"&&isBoss&&<BossDashboard user={user} attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)} onlineStatus={onlineStatus} snapshotMeta={snapshotMeta}/>}
                 {view==="daily"&&canManage&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} checkinsData={checkinsData} updateRecord={dispatch}/>}
                 {view==="weekly"&&canManage&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="monthly"&&canManage&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="stats"&&canManage&&<StatsView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
-                {view==="rankings"&&canManage&&<RankingsView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
-                {view==="announcements"&&<AnnouncementsView user={user} isAdmin={isAdmin}/>}
                 {view==="selfieHistory"&&isAdmin&&<SelfieHistoryView checkinsData={checkinsData}/>}
                 {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>}
                 {view==="birthdays"&&<BirthdaysView/>}
@@ -5026,8 +5809,8 @@ function App(){
         <footer className="footer">
           <span>© {new Date().getFullYear()} Navoiy viloyati investitsiyalar, sanoat va savdo boshqarmasi</span>
           <div className="footer-badge">
-            <span style={{width:7,height:7,borderRadius:"50%",background:"var(--emerald)",display:"inline-block",boxShadow:"0 0 6px rgba(13,122,91,.5)"}}/>
-            Firebase Real-time · SSL himoyalangan
+            <span style={{width:7,height:7,borderRadius:"50%",background:onlineStatus?"var(--emerald)":"var(--gold)",display:"inline-block",boxShadow:onlineStatus?"0 0 6px rgba(13,122,91,.5)":"0 0 6px rgba(200,150,42,.45)"}}/>
+            {footerText}
           </div>
         </footer>
       </div>
