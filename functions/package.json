@@ -1,7 +1,7 @@
 {
   "name": "xodimlar-monitoring-bot",
   "description": "Telegram bot for Xodimlar Monitoring Tizimi",
-  "engines": {"node": "18"},
+  "engines": {"node": "20"},
   "main": "index.js",
   "dependencies": {
     "firebase-admin": "^11.11.0",

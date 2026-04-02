@@ -1,12 +1,6 @@
 /**
  * Firebase Cloud Functions — Xodimlar Monitoring Telegram Bot
- *
- * Deploy:
- *   cd functions && npm install
- *   firebase deploy --only functions
- *
- * Webhook o'rnatish (bir marta):
- *   https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<REGION>-xodimlar-7c13c.cloudfunctions.net/telegramWebhook
+ * Ma'lumot: checkins (selfie) + attendance (status) dan olinadi
  */
 
 const functions = require("firebase-functions");
@@ -16,12 +10,16 @@ const fetch = require("node-fetch");
 admin.initializeApp();
 const db = admin.database();
 
+const BOT_TOKEN = "8602585370:AAHcoFGShZBZQRGke2D7o8RTTZsI_yYdKWc";
+
 const EMPLOYEES = [
-  "Azimov Ravshan","G\u2018afforov Elbek","Hamrayev Doniyorbek","Eshmatov Bekzod",
-  "Haydarov Sardorbek","Tursunov Sirojiddin","Raximov Azizbek","Xolmatov Elbek",
-  "Qodirov Sherzod","Abdullayev Javohir","Mamatov Ravshan","Jumayev Behruz",
-  "Sultonov Doston","To\u2018xtasinov Sardor","Karimov Oybek","Nurmatov Jasurbek",
-  "Sobirov Ulug\u2018bek","Raxmatullayev Nodir","Yo\u2018ldoshev Eldor","Barnoqulov Shahzod",
+  "Umrzoqov Bunyod","Ermamatov Xurshid",
+  "Akbarova Moxlaroyim","Faxriddinov Oxunjon",
+  "Hamdamov Shuxrat","Nazarov Muzaffar","Nurmamatov Oxunjon",
+  "Xolmurodov Dostonjon","Qurbonov Shavkat","Narzullayev Rustam",
+  "Islomov G\u2018ulomjon","Ibrohimov Shuhrat","Barnoqulov Shahzod",
+  "Axadov Izzatullo","Jo\u2018raqulov Jahongirbek","Jaynakov Temur",
+  "Saidov Lazizbek","Pirbayev Berdiyor","Husainova Klara",
   "Ne\u2018matov Shahzodbek","Muhammadov Jaloliddin"
 ];
 
@@ -39,91 +37,137 @@ const BIRTHDAYS = {
   "Muhammadov Jaloliddin":"22.01.1994"
 };
 
+const DAYS_UZ = ["Yakshanba","Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba"];
+const STATUS_LABELS = {
+  sick: "bemor", trip: "xizmat safari", training: "malaka oshirish",
+  vacation: "ta\u2018til", excused: "sababli"
+};
+const STATUS_ICONS = {
+  sick: "🏥", trip: "✈️", training: "📚", vacation: "🏖", excused: "📋"
+};
+const NON_WORKING = ["sick", "trip", "training", "vacation", "excused"];
+
 function safeKey(name) {
-  return name.replace(/[.#$/\[\]]/g, "_");
+  return name.replace(/[\u2018\u2019\u02BC\u0060\u2018\u2019'`]/g, "").replace(/\s+/g, "_").replace(/[.#$/[\]]/g, "_");
 }
 
 function fmtDate(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
 function fmtMins(m) {
   if (!m) return "—";
-  if (m < 60) return `${m}d`;
-  return `${Math.floor(m / 60)}s ${m % 60}d`;
+  if (m < 60) return `${m} daqiqa`;
+  return `${Math.floor(m/60)} soat ${m%60} daqiqa`;
 }
 
-async function getTelegramConfig() {
-  const snap = await db.ref("telegram_config").once("value");
-  return snap.val() || {};
+async function getChatId() {
+  const snap = await db.ref("telegram_config/chatId").once("value");
+  return snap.val();
 }
 
-async function sendMessage(botToken, chatId, text) {
-  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-  const res = await fetch(url, {
+async function sendMessage(chatId, text) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+  return fetch(url, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true
-    })
-  });
-  return res.json();
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true })
+  }).then(r => r.json());
 }
 
+// ─── DAVOMAT HISOBOT ─────────────────────
+// Selfie (checkins) + attendance (status) dan ma'lumot oladi
 async function buildDavomatReport(dateKey) {
-  const snap = await db.ref(`attendance/${dateKey}`).once("value");
-  const dayData = snap.val() || {};
-
-  let present = 0, late = 0, absent = 0, sick = 0, trip = 0, training = 0, vacation = 0, excused = 0;
-  const lateList = [];
-  const absentList = [];
-
-  EMPLOYEES.forEach(emp => {
-    const rec = dayData[safeKey(emp)];
-    const st = rec?.status || "present";
-    if (st === "present") present++;
-    else if (st === "late") {
-      late++; present++;
-      const mins = (rec?.morning || 0) + (rec?.afternoon || 0);
-      lateList.push(`  ${emp.split(" ")[0]} — <b>${fmtMins(mins)}</b>`);
-    }
-    else if (st === "absent") { absent++; absentList.push(`  ${emp.split(" ")[0]}`); }
-    else if (st === "sick") sick++;
-    else if (st === "trip") trip++;
-    else if (st === "training") training++;
-    else if (st === "vacation") vacation++;
-    else if (st === "excused") excused++;
-  });
+  const [attSnap, checkSnap] = await Promise.all([
+    db.ref(`attendance/${dateKey}`).once("value"),
+    db.ref(`checkins/${dateKey}`).once("value")
+  ]);
+  const attData = attSnap.val() || {};
+  const checkins = checkSnap.val() || {};
 
   const d = dateKey.split("-");
+  const dateObj = new Date(parseInt(d[0]), parseInt(d[1])-1, parseInt(d[2]));
+  const dayName = DAYS_UZ[dateObj.getDay()];
   const dateDisp = `${d[2]}.${d[1]}.${d[0]}`;
-  const pct = Math.round(present / Math.max(1, EMPLOYEES.length) * 100);
 
-  let text = `📊 <b>Kunlik davomat — ${dateDisp}</b>\n`;
-  text += `━━━━━━━━━━━━━━━━━━\n`;
-  text += `✅ Ish joyida: <b>${present}</b>/${EMPLOYEES.length}\n`;
-  text += `⏰ Kechikdi: <b>${late}</b>\n`;
-  text += `❌ Sababsiz: <b>${absent}</b>\n`;
-  text += `🏥 Kasal: <b>${sick}</b>\n`;
-  text += `✈️ Safari: <b>${trip}</b>\n`;
-  if (training > 0) text += `📚 Malaka oshirish: <b>${training}</b>\n`;
-  if (vacation > 0) text += `🌴 Ta'til: <b>${vacation}</b>\n`;
-  if (excused > 0) text += `📋 Sababli: <b>${excused}</b>\n`;
-  text += `━━━━━━━━━━━━━━━━━━\n`;
-  text += `📈 Davomat: <b>${pct}%</b>`;
+  const kelganlar = [];   // selfie qilgan = kelgan
+  const sababli = [];     // sick/trip/vacation/excused/training
+  const kelmagan = [];    // selfie qilmagan va statusi yo'q
 
-  if (lateList.length > 0) text += `\n\n⏰ <b>Kechikkanlar:</b>\n${lateList.join("\n")}`;
-  if (absentList.length > 0) text += `\n\n❌ <b>Sababsiz yo'q:</b>\n${absentList.join("\n")}`;
+  EMPLOYEES.forEach(emp => {
+    const key = safeKey(emp);
+    const att = attData[key];
+    const check = checkins[key];
+    const status = att?.status;
+
+    // 1. Agar sababli status bo'lsa
+    if (status && NON_WORKING.includes(status)) {
+      sababli.push({ name: emp, status, label: STATUS_LABELS[status], icon: STATUS_ICONS[status] });
+      return;
+    }
+
+    // 2. Agar selfie qilgan bo'lsa = kelgan
+    if (check && (check.morning || check.afternoon)) {
+      const lateMin = (att?.morning || 0) + (att?.afternoon || 0);
+      kelganlar.push({ name: emp, lateMin, status: status || "present" });
+      return;
+    }
+
+    // 3. Agar attendance da present/late bo'lsa (selfiesiz ham)
+    if (status === "present" || status === "late") {
+      const lateMin = (att?.morning || 0) + (att?.afternoon || 0);
+      kelganlar.push({ name: emp, lateMin, status });
+      return;
+    }
+
+    // 4. Agar absent deb belgilangan bo'lsa
+    if (status === "absent") {
+      kelmagan.push(emp);
+      return;
+    }
+
+    // 5. Qolganlari — selfie qilmagan / kelmagan
+    kelmagan.push(emp);
+  });
+
+  const workingTotal = EMPLOYEES.length - sababli.length;
+  const pct = workingTotal > 0 ? Math.round(kelganlar.length / workingTotal * 100) : 0;
+
+  let text = `📋 <b>DAVOMAT HISOBOTI</b>\n`;
+  text += `📅 ${dateDisp} | ${dayName}\n`;
+  text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  // Kelganlar
+  text += `✅ <b>Kelganlar (${kelganlar.length}):</b>\n`;
+  kelganlar.forEach((e, i) => {
+    let line = `  ${i+1}. ${e.name}`;
+    if (e.lateMin > 0) line += ` ⏰ (${fmtMins(e.lateMin)} kechikdi)`;
+    text += line + "\n";
+  });
+
+  // Sababli
+  if (sababli.length > 0) {
+    text += `\n📋 <b>Sababli (${sababli.length}):</b>\n`;
+    sababli.forEach((e, i) => {
+      text += `  ${i+1}. ${e.name} (${e.icon} ${e.label})\n`;
+    });
+  }
+
+  // Kelmagan
+  if (kelmagan.length > 0) {
+    text += `\n❌ <b>Kelmagan / Selfie qilmagan (${kelmagan.length}):</b>\n`;
+    kelmagan.forEach((e, i) => {
+      text += `  ${i+1}. ${e}\n`;
+    });
+  }
+
+  text += `\n━━━━━━━━━━━━━━━━━━━━━\n`;
+  text += `📊 Davomat: ${kelganlar.length}/${workingTotal} (${pct}%)`;
 
   return text;
 }
 
+// ─── KECHIKKANLAR HISOBOT ─────────────────────
 async function buildKechikkanlarReport(dateKey) {
   const snap = await db.ref(`attendance/${dateKey}`).once("value");
   const dayData = snap.val() || {};
@@ -131,21 +175,22 @@ async function buildKechikkanlarReport(dateKey) {
   const lateList = [];
   EMPLOYEES.forEach(emp => {
     const rec = dayData[safeKey(emp)];
-    if (rec?.status === "late") {
-      const morning = rec.morning || 0;
-      const afternoon = rec.afternoon || 0;
-      lateList.push({name: emp, morning, afternoon, total: morning + afternoon});
+    if (!rec) return;
+    const morning = rec.morning || 0;
+    const afternoon = rec.afternoon || 0;
+    const total = morning + afternoon;
+    if (rec.status === "late" || total > 0) {
+      lateList.push({name: emp, morning, afternoon, total});
     }
   });
 
   if (lateList.length === 0) return "✅ Bugun kechikkan xodim yo'q!";
 
   lateList.sort((a, b) => b.total - a.total);
-
   const d = dateKey.split("-");
   let text = `⏰ <b>Kechikkanlar — ${d[2]}.${d[1]}.${d[0]}</b>\n━━━━━━━━━━━━━━━━━━\n`;
   lateList.forEach((item, i) => {
-    text += `${i + 1}. <b>${item.name}</b> — ${fmtMins(item.total)}`;
+    text += `${i+1}. <b>${item.name}</b> — ${fmtMins(item.total)}`;
     if (item.morning > 0 && item.afternoon > 0) {
       text += ` (ert: ${item.morning}d, tush: ${item.afternoon}d)`;
     }
@@ -155,41 +200,56 @@ async function buildKechikkanlarReport(dateKey) {
   return text;
 }
 
+// ─── OYLIK STATISTIKA ─────────────────────
 async function buildStatistikaReport() {
   const now = new Date();
   const yr = now.getFullYear();
   const mon = now.getMonth();
-  const firstDay = new Date(yr, mon, 1);
+  const today = fmtDate(now);
   const dates = [];
-  const d = new Date(firstDay);
-  while (d.getMonth() === mon) {
-    const dow = d.getDay();
-    if (dow >= 1 && dow <= 5) dates.push(fmtDate(new Date(d)));
+  const d = new Date(yr, mon, 1);
+  while (d.getMonth() === mon && fmtDate(d) <= today) {
+    if (d.getDay() >= 1 && d.getDay() <= 5) dates.push(fmtDate(new Date(d)));
     d.setDate(d.getDate() + 1);
   }
+  if (dates.length === 0) return "📈 Bu oyda hali ish kuni yo'q.";
 
-  const snap = await db.ref("attendance").once("value");
-  const allData = snap.val() || {};
+  const [attSnap, checkSnap] = await Promise.all([
+    db.ref("attendance").once("value"),
+    db.ref("checkins").once("value")
+  ]);
+  const allAtt = attSnap.val() || {};
+  const allCheckins = checkSnap.val() || {};
 
   let totalPresent = 0, totalLate = 0, totalAbsent = 0, totalLateMins = 0;
   const empScores = [];
 
   EMPLOYEES.forEach(emp => {
-    let present = 0, late = 0, absent = 0, lateMins = 0;
+    let present = 0, late = 0, absent = 0, lateMins = 0, workDays = 0;
     dates.forEach(dk => {
-      const rec = allData[dk]?.[safeKey(emp)];
-      const st = rec?.status || "present";
-      if (st === "present") present++;
-      else if (st === "late") { late++; present++; }
-      else if (st === "absent") absent++;
-      lateMins += (rec?.morning || 0) + (rec?.afternoon || 0);
+      const key = safeKey(emp);
+      const att = allAtt[dk]?.[key];
+      const check = allCheckins[dk]?.[key];
+      const status = att?.status;
+
+      if (status && NON_WORKING.includes(status)) return; // sababli — hisobga olinmaydi
+      workDays++;
+
+      const hasSelfie = check && (check.morning || check.afternoon);
+      if (hasSelfie || status === "present" || status === "late") {
+        present++;
+        if (status === "late" || (att?.morning || 0) + (att?.afternoon || 0) > 0) late++;
+        lateMins += (att?.morning || 0) + (att?.afternoon || 0);
+      } else {
+        absent++;
+      }
     });
     totalPresent += present;
     totalLate += late;
     totalAbsent += absent;
     totalLateMins += lateMins;
-    const score = Math.max(0, 100 - Math.round(lateMins / Math.max(1, dates.length * 480) * 100 * 8) - absent * 5 - late * 2);
-    empScores.push({name: emp, score, present, late, lateMins});
+    const score = Math.max(0, 100 - Math.round(lateMins / Math.max(1, workDays * 480) * 100 * 8) - absent * 5 - late * 2);
+    empScores.push({name: emp, score, present, late, absent, lateMins});
   });
 
   empScores.sort((a, b) => b.score - a.score);
@@ -198,322 +258,272 @@ async function buildStatistikaReport() {
 
   let text = `📈 <b>Oylik statistika — ${months[mon]} ${yr}</b>\n`;
   text += `━━━━━━━━━━━━━━━━━━\n`;
-  text += `📅 Ish kunlari: <b>${dates.length}</b>\n`;
+  text += `📅 O'tgan ish kunlari: <b>${dates.length}</b>\n`;
   text += `👥 Xodimlar: <b>${EMPLOYEES.length}</b>\n`;
-  text += `✅ Jami davomat: <b>${totalPresent}</b>\n`;
+  text += `✅ Jami kelgan: <b>${totalPresent}</b>\n`;
   text += `⏰ Kechikishlar: <b>${totalLate}</b>\n`;
-  text += `❌ Sababsiz: <b>${totalAbsent}</b>\n`;
-  text += `🕐 Kechikish vaqti: <b>${fmtMins(totalLateMins)}</b>\n`;
-  text += `🎯 O'rtacha intizom: <b>${avgScore}/100</b>\n`;
+  text += `❌ Kelmagan: <b>${totalAbsent}</b>\n`;
+  text += `🕐 Jami kechikish: <b>${fmtMins(totalLateMins)}</b>\n`;
+  text += `🎯 Intizom: <b>${avgScore}/100</b>\n`;
   text += `━━━━━━━━━━━━━━━━━━\n\n`;
-  text += `🏆 <b>Top 5 xodim:</b>\n`;
-  const medals = ["🥇","🥈","🥉","4️⃣","5️⃣"];
-  empScores.slice(0, 5).forEach((e, i) => {
-    text += `${medals[i]} ${e.name.split(" ")[0]} — <b>${e.score}</b> ball\n`;
+  text += `🏆 <b>Top 5:</b>\n`;
+  ["🥇","🥈","🥉","4️⃣","5️⃣"].forEach((m, i) => {
+    if (empScores[i]) text += `${m} ${empScores[i].name} — <b>${empScores[i].score}</b>\n`;
   });
 
-  if (empScores.length > 5) {
+  const worst = empScores.filter(e => e.score < 100);
+  if (worst.length > 0) {
     text += `\n⚠️ <b>Eng past:</b>\n`;
-    empScores.slice(-3).reverse().forEach(e => {
-      text += `  ${e.name.split(" ")[0]} — <b>${e.score}</b> ball\n`;
+    worst.slice(-3).reverse().forEach(e => {
+      text += `  ${e.name} — <b>${e.score}</b>\n`;
     });
   }
-
   return text;
 }
 
-// ─── Telegram Webhook Handler ─────────────────────
+// ═══ TELEGRAM WEBHOOK ═══
 exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
   if (req.method !== "POST") { res.status(200).send("OK"); return; }
-
-  const cfg = await getTelegramConfig();
-  if (!cfg.botToken) { res.status(200).send("No bot token"); return; }
-
-  const body = req.body;
-  const message = body?.message;
+  const message = req.body?.message;
   if (!message?.text) { res.status(200).send("OK"); return; }
 
   const chatId = message.chat.id;
-  const text = message.text.trim();
-  const cmd = text.split(" ")[0].split("@")[0].toLowerCase();
+  const cmd = message.text.trim().split(" ")[0].split("@")[0].toLowerCase();
   const todayKey = fmtDate(new Date());
+
+  if (message.chat.type === "group" || message.chat.type === "supergroup") {
+    await db.ref("telegram_config/chatId").set(chatId).catch(() => {});
+  }
 
   try {
     let reply = "";
     switch (cmd) {
-      case "/davomat":
-      case "/start":
-        reply = await buildDavomatReport(todayKey);
-        break;
+      case "/davomat": case "/start":
+        reply = await buildDavomatReport(todayKey); break;
       case "/kechikkanlar":
-        reply = await buildKechikkanlarReport(todayKey);
-        break;
+        reply = await buildKechikkanlarReport(todayKey); break;
       case "/statistika":
-        reply = await buildStatistikaReport();
-        break;
-      case "/yordam":
-      case "/help":
+        reply = await buildStatistikaReport(); break;
+      case "/yordam": case "/help":
         reply = "🤖 <b>Xodimlar Monitoring Bot</b>\n\n"
-          + "📊 /davomat — Bugungi kunlik davomat\n"
+          + "📊 /davomat — Bugungi davomat\n"
           + "⏰ /kechikkanlar — Kechikkan xodimlar\n"
           + "📈 /statistika — Oylik statistika\n"
-          + "❓ /yordam — Ushbu yordam\n\n"
+          + "❓ /yordam — Yordam\n\n"
           + "📍 Navoiy viloyati Investitsiyalar,\nsanoat va savdo boshqarmasi";
         break;
-      default:
-        res.status(200).send("OK");
-        return;
+      default: res.status(200).send("OK"); return;
     }
-
-    await sendMessage(cfg.botToken, chatId, reply);
+    await sendMessage(chatId, reply);
   } catch (err) {
     console.error("Webhook error:", err);
-    await sendMessage(cfg.botToken, chatId, "⚠ Xatolik yuz berdi. Qaytadan urinib ko'ring.").catch(() => {});
+    await sendMessage(chatId, "⚠ Xatolik yuz berdi.").catch(() => {});
   }
-
   res.status(200).send("OK");
 });
 
-// ─── Scheduled Daily Report (every day at 18:00 Tashkent time) ───
+// ═══ KUNLIK HISOBOT — 18:00 Dush-Juma ═══
 exports.dailyReport = functions.pubsub
-  .schedule("0 18 * * 1-5")
-  .timeZone("Asia/Tashkent")
+  .schedule("0 18 * * 1-5").timeZone("Asia/Tashkent")
   .onRun(async () => {
-    const cfg = await getTelegramConfig();
-    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
-
-    const todayKey = fmtDate(new Date());
-    const report = await buildDavomatReport(todayKey);
-    await sendMessage(cfg.botToken, cfg.chatId, report);
+    const chatId = await getChatId();
+    if (!chatId) return null;
+    await sendMessage(chatId, await buildDavomatReport(fmtDate(new Date())));
     return null;
   });
 
-// ─── Realtime: notify on new late/absent records ────
+// ═══ ABSENT BILDIRISHNOMA ═══
 exports.onAttendanceChange = functions.database
   .ref("attendance/{dateKey}/{empKey}")
   .onWrite(async (change, context) => {
-    const cfg = await getTelegramConfig();
-    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
-
+    const chatId = await getChatId();
+    if (!chatId) return null;
     const after = change.after.val();
     const before = change.before.val();
     if (!after) return null;
-
     const empKey = context.params.empKey;
     const dateKey = context.params.dateKey;
     const emp = EMPLOYEES.find(e => safeKey(e) === empKey) || empKey;
     const d = dateKey.split("-");
-    const dateDisp = `${d[2]}.${d[1]}.${d[0]}`;
-
-    // Only notify on status change to absent
-    if (cfg.notifyAbsent && after.status === "absent" && (!before || before.status !== "absent")) {
-      const text = `❌ <b>Sababsiz yo'qlik</b>\n\n👤 <b>${emp}</b>\n📅 ${dateDisp}`;
-      await sendMessage(cfg.botToken, cfg.chatId, text);
+    if (after.status === "absent" && (!before || before.status !== "absent")) {
+      await sendMessage(chatId, `❌ <b>Sababsiz yo'qlik</b>\n\n👤 <b>${emp}</b>\n📅 ${d[2]}.${d[1]}.${d[0]}`);
     }
-
     return null;
   });
 
-// ═══ 1. TUG'ILGAN KUN — har kuni 08:00 ═══
+// ═══ TUG'ILGAN KUN — 08:00 ═══
 exports.birthdayNotify = functions.pubsub
-  .schedule("0 8 * * *")
-  .timeZone("Asia/Tashkent")
+  .schedule("0 8 * * *").timeZone("Asia/Tashkent")
   .onRun(async () => {
-    const cfg = await getTelegramConfig();
-    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
-
+    const chatId = await getChatId();
+    if (!chatId) return null;
     const now = new Date();
-    const day = now.getDate();
-    const month = now.getMonth() + 1;
-    const birthdayList = [];
-
-    Object.entries(BIRTHDAYS).forEach(([name, dateStr]) => {
-      const parts = dateStr.split(".");
-      const bd = parseInt(parts[0], 10);
-      const bm = parseInt(parts[1], 10);
-      const by = parseInt(parts[2], 10);
-      if (bd === day && bm === month) {
-        const age = now.getFullYear() - by;
-        birthdayList.push({ name, age });
-      }
+    const day = now.getDate(), month = now.getMonth() + 1;
+    const list = [];
+    Object.entries(BIRTHDAYS).forEach(([name, ds]) => {
+      const p = ds.split(".");
+      if (parseInt(p[0]) === day && parseInt(p[1]) === month)
+        list.push({ name, age: now.getFullYear() - parseInt(p[2]) });
     });
-
-    if (birthdayList.length === 0) return null;
-
+    if (list.length === 0) return null;
     let text = "🎂🎉 <b>Bugun tug'ilgan kun!</b>\n\n";
-    birthdayList.forEach(b => {
-      text += `🎈 <b>${b.name}</b> — ${b.age} yoshga to'ldi!\n`;
-    });
-    text += "\n🥳 Tabriklaymiz! Sog'lik, baxt va omad tilaymiz!\n";
-    text += "📍 Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi";
-
-    await sendMessage(cfg.botToken, cfg.chatId, text);
+    list.forEach(b => { text += `🎈 <b>${b.name}</b> — ${b.age} yoshga to'ldi!\n`; });
+    text += "\n🥳 Tabriklaymiz! Sog'lik, baxt va omad tilaymiz!";
+    await sendMessage(chatId, text);
     return null;
   });
 
-// ═══ 2. ERTALABKI SELFIE TEKSHIRUV — har kuni 09:20 ═══
+// ═══ ERTALABKI SELFIE — 09:20 Dush-Juma ═══
 exports.morningSelfieCheck = functions.pubsub
-  .schedule("20 9 * * 1-5")
-  .timeZone("Asia/Tashkent")
+  .schedule("20 9 * * 1-5").timeZone("Asia/Tashkent")
   .onRun(async () => {
-    const cfg = await getTelegramConfig();
-    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
-
+    const chatId = await getChatId();
+    if (!chatId) return null;
     const todayKey = fmtDate(new Date());
-    const snap = await db.ref(`checkins/${todayKey}`).once("value");
-    const checkins = snap.val() || {};
-
+    const [attSnap, checkSnap] = await Promise.all([
+      db.ref(`attendance/${todayKey}`).once("value"),
+      db.ref(`checkins/${todayKey}`).once("value")
+    ]);
+    const attData = attSnap.val() || {};
+    const checkins = checkSnap.val() || {};
     const notDone = [];
+    let skipped = 0;
     EMPLOYEES.forEach(emp => {
-      const empKey = safeKey(emp);
-      const rec = checkins[empKey];
-      if (!rec || !rec.morning) {
-        notDone.push(emp);
-      }
+      const key = safeKey(emp);
+      const att = attData[key];
+      if (att && NON_WORKING.includes(att.status)) { skipped++; return; }
+      if (att && att.status === "absent") return;
+      const rec = checkins[key];
+      if (!rec || !rec.morning) notDone.push(emp);
     });
-
+    const working = EMPLOYEES.length - skipped;
     if (notDone.length === 0) {
-      const text = "✅ <b>Ertalabki selfie — 09:20</b>\n\nBarcha xodimlar selfie qilgan! 👏";
-      await sendMessage(cfg.botToken, cfg.chatId, text);
+      await sendMessage(chatId, "✅ <b>Ertalabki selfie — 09:20</b>\n\nBarcha xodimlar selfie qilgan! 👏");
       return null;
     }
-
-    let text = `📸 <b>Ertalabki selfie — 09:20</b>\n`;
-    text += `━━━━━━━━━━━━━━━━━━\n`;
+    let text = `📸 <b>Ertalabki selfie — 09:20</b>\n━━━━━━━━━━━━━━━━━━\n`;
     text += `⚠️ <b>${notDone.length} xodim selfie qilmagan:</b>\n\n`;
-    notDone.forEach((emp, i) => {
-      text += `${i + 1}. ${emp}\n`;
-    });
-    text += `\n✅ Selfie qilgan: <b>${EMPLOYEES.length - notDone.length}</b>/${EMPLOYEES.length}`;
-    text += `\n🕘 Tekshiruv vaqti: 09:20`;
-
-    await sendMessage(cfg.botToken, cfg.chatId, text);
+    notDone.forEach((e, i) => { text += `${i+1}. ${e}\n`; });
+    text += `\n✅ Qilgan: <b>${working - notDone.length}</b>/${working}`;
+    if (skipped > 0) text += `\n🌴 Ishda emas: <b>${skipped}</b>`;
+    await sendMessage(chatId, text);
     return null;
   });
 
-// ═══ 3. TUSHLIK SELFIE TEKSHIRUV — har kuni 14:20 ═══
+// ═══ TUSHLIK SELFIE — 14:20 Dush-Juma ═══
 exports.afternoonSelfieCheck = functions.pubsub
-  .schedule("20 14 * * 1-5")
-  .timeZone("Asia/Tashkent")
+  .schedule("20 14 * * 1-5").timeZone("Asia/Tashkent")
   .onRun(async () => {
-    const cfg = await getTelegramConfig();
-    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
-
+    const chatId = await getChatId();
+    if (!chatId) return null;
     const todayKey = fmtDate(new Date());
-    const snap = await db.ref(`checkins/${todayKey}`).once("value");
-    const checkins = snap.val() || {};
-
+    const [attSnap, checkSnap] = await Promise.all([
+      db.ref(`attendance/${todayKey}`).once("value"),
+      db.ref(`checkins/${todayKey}`).once("value")
+    ]);
+    const attData = attSnap.val() || {};
+    const checkins = checkSnap.val() || {};
     const notDone = [];
+    let skipped = 0;
     EMPLOYEES.forEach(emp => {
-      const empKey = safeKey(emp);
-      const rec = checkins[empKey];
-      if (!rec || !rec.afternoon) {
-        notDone.push(emp);
-      }
+      const key = safeKey(emp);
+      const att = attData[key];
+      if (att && NON_WORKING.includes(att.status)) { skipped++; return; }
+      if (att && att.status === "absent") return;
+      const rec = checkins[key];
+      if (!rec || !rec.afternoon) notDone.push(emp);
     });
-
+    const working = EMPLOYEES.length - skipped;
     if (notDone.length === 0) {
-      const text = "✅ <b>Tushlik selfie — 14:20</b>\n\nBarcha xodimlar selfie qilgan! 👏";
-      await sendMessage(cfg.botToken, cfg.chatId, text);
+      await sendMessage(chatId, "✅ <b>Tushlik selfie — 14:20</b>\n\nBarcha xodimlar selfie qilgan! 👏");
       return null;
     }
-
-    let text = `📸 <b>Tushlik selfie — 14:20</b>\n`;
-    text += `━━━━━━━━━━━━━━━━━━\n`;
+    let text = `📸 <b>Tushlik selfie — 14:20</b>\n━━━━━━━━━━━━━━━━━━\n`;
     text += `⚠️ <b>${notDone.length} xodim selfie qilmagan:</b>\n\n`;
-    notDone.forEach((emp, i) => {
-      text += `${i + 1}. ${emp}\n`;
-    });
-    text += `\n✅ Selfie qilgan: <b>${EMPLOYEES.length - notDone.length}</b>/${EMPLOYEES.length}`;
-    text += `\n🕑 Tekshiruv vaqti: 14:20`;
-
-    await sendMessage(cfg.botToken, cfg.chatId, text);
+    notDone.forEach((e, i) => { text += `${i+1}. ${e}\n`; });
+    text += `\n✅ Qilgan: <b>${working - notDone.length}</b>/${working}`;
+    if (skipped > 0) text += `\n🌴 Ishda emas: <b>${skipped}</b>`;
+    await sendMessage(chatId, text);
     return null;
   });
 
-// ═══ 4. HAFTALIK HISOBOT — har juma 17:00 ═══
+// ═══ HAFTALIK HISOBOT — Juma 17:00 ═══
 exports.weeklyReport = functions.pubsub
-  .schedule("0 17 * * 5")
-  .timeZone("Asia/Tashkent")
+  .schedule("0 17 * * 5").timeZone("Asia/Tashkent")
   .onRun(async () => {
-    const cfg = await getTelegramConfig();
-    if (!cfg.enabled || !cfg.botToken || !cfg.chatId) return null;
-
+    const chatId = await getChatId();
+    if (!chatId) return null;
     const now = new Date();
-    const day = now.getDay();
     const monday = new Date(now);
-    monday.setDate(now.getDate() - (day - 1));
-
+    monday.setDate(now.getDate() - (now.getDay() - 1));
     const weekDates = [];
     for (let i = 0; i < 5; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
+      const d = new Date(monday); d.setDate(monday.getDate() + i);
       weekDates.push(fmtDate(d));
     }
-
-    const snap = await db.ref("attendance").once("value");
-    const allData = snap.val() || {};
-
-    let totalPresent = 0, totalLate = 0, totalAbsent = 0, totalSick = 0, totalLateMins = 0;
+    const [attSnap, checkSnap] = await Promise.all([
+      db.ref("attendance").once("value"),
+      db.ref("checkins").once("value")
+    ]);
+    const allAtt = attSnap.val() || {};
+    const allCheckins = checkSnap.val() || {};
+    let totalPresent = 0, totalLate = 0, totalAbsent = 0, totalSick = 0, totalVacation = 0, totalLateMins = 0;
     const empResults = [];
-
     EMPLOYEES.forEach(emp => {
-      let present = 0, late = 0, absent = 0, lateMins = 0;
+      let present = 0, late = 0, absent = 0, lateMins = 0, workDays = 0;
       weekDates.forEach(dk => {
-        const rec = allData[dk]?.[safeKey(emp)];
-        const st = rec?.status || "present";
-        if (st === "present") present++;
-        else if (st === "late") { late++; present++; }
-        else if (st === "absent") absent++;
-        else if (st === "sick") totalSick++;
-        lateMins += (rec?.morning || 0) + (rec?.afternoon || 0);
+        const key = safeKey(emp);
+        const att = allAtt[dk]?.[key];
+        const check = allCheckins[dk]?.[key];
+        const status = att?.status;
+        if (status && NON_WORKING.includes(status)) {
+          if (status === "sick") totalSick++;
+          if (status === "vacation") totalVacation++;
+          return;
+        }
+        workDays++;
+        const hasSelfie = check && (check.morning || check.afternoon);
+        if (hasSelfie || status === "present" || status === "late") {
+          present++;
+          if (status === "late" || (att?.morning || 0) + (att?.afternoon || 0) > 0) late++;
+          lateMins += (att?.morning || 0) + (att?.afternoon || 0);
+        } else { absent++; }
       });
-      totalPresent += present;
-      totalLate += late;
-      totalAbsent += absent;
-      totalLateMins += lateMins;
-      const score = Math.max(0, 100 - Math.round(lateMins / Math.max(1, 5 * 480) * 100 * 8) - absent * 5 - late * 2);
+      totalPresent += present; totalLate += late; totalAbsent += absent; totalLateMins += lateMins;
+      const score = Math.max(0, 100 - Math.round(lateMins / Math.max(1, workDays * 480) * 100 * 8) - absent * 5 - late * 2);
       empResults.push({ name: emp, present, late, absent, lateMins, score });
     });
-
     empResults.sort((a, b) => b.score - a.score);
     const avgScore = Math.round(empResults.reduce((s, e) => s + e.score, 0) / Math.max(1, EMPLOYEES.length));
-    const attendPct = Math.round(totalPresent / Math.max(1, 5 * EMPLOYEES.length) * 100);
-
     const monDate = weekDates[0].split("-");
     const friDate = weekDates[4].split("-");
-
     let text = `📋 <b>Haftalik hisobot</b>\n`;
     text += `📅 ${monDate[2]}.${monDate[1]} — ${friDate[2]}.${friDate[1]}.${friDate[0]}\n`;
     text += `━━━━━━━━━━━━━━━━━━\n`;
-    text += `✅ Davomat: <b>${attendPct}%</b> (${totalPresent}/${5 * EMPLOYEES.length})\n`;
-    text += `⏰ Kechikishlar: <b>${totalLate}</b>\n`;
-    text += `❌ Sababsiz: <b>${totalAbsent}</b>\n`;
-    text += `🏥 Kasal: <b>${totalSick}</b>\n`;
+    text += `✅ Kelgan: <b>${totalPresent}</b>/${5 * EMPLOYEES.length}\n`;
+    text += `⏰ Kechikish: <b>${totalLate}</b>\n`;
+    text += `❌ Kelmagan: <b>${totalAbsent}</b>\n`;
+    if (totalSick > 0) text += `🏥 Bemor: <b>${totalSick}</b>\n`;
+    if (totalVacation > 0) text += `🌴 Ta'til: <b>${totalVacation}</b>\n`;
     text += `🕐 Jami kechikish: <b>${fmtMins(totalLateMins)}</b>\n`;
-    text += `🎯 O'rtacha intizom: <b>${avgScore}/100</b>\n`;
+    text += `🎯 Intizom: <b>${avgScore}/100</b>\n`;
     text += `━━━━━━━━━━━━━━━━━━\n\n`;
-
     text += `🏆 <b>Eng yaxshilar:</b>\n`;
-    const medals = ["🥇", "🥈", "🥉"];
-    empResults.slice(0, 3).forEach((e, i) => {
-      text += `${medals[i]} ${e.name} — <b>${e.score}</b> ball\n`;
+    ["🥇","🥈","🥉"].forEach((m, i) => {
+      if (empResults[i]) text += `${m} ${empResults[i].name} — <b>${empResults[i].score}</b>\n`;
     });
-
     const worst = empResults.filter(e => e.score < 100).slice(-3).reverse();
     if (worst.length > 0) {
       text += `\n⚠️ <b>Diqqatga muhtoj:</b>\n`;
       worst.forEach(e => {
-        const reasons = [];
-        if (e.late > 0) reasons.push(`${e.late} kechikish`);
-        if (e.absent > 0) reasons.push(`${e.absent} yo'qlik`);
-        if (e.lateMins > 0) reasons.push(fmtMins(e.lateMins));
-        text += `  ⚡ ${e.name} — ${e.score} ball (${reasons.join(", ")})\n`;
+        const r = [];
+        if (e.late > 0) r.push(`${e.late} kechikish`);
+        if (e.absent > 0) r.push(`${e.absent} yo'qlik`);
+        if (e.lateMins > 0) r.push(fmtMins(e.lateMins));
+        text += `  ⚡ ${e.name} — ${e.score} (${r.join(", ")})\n`;
       });
     }
-
     text += `\n📍 Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi`;
-
-    await sendMessage(cfg.botToken, cfg.chatId, text);
+    await sendMessage(chatId, text);
     return null;
   });

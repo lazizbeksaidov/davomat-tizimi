@@ -837,53 +837,76 @@
     }
     .pwa-banner {
       margin: 14px 28px 0;
-      padding: 14px 16px;
-      background: linear-gradient(135deg, var(--navy), var(--navy-lt));
+      padding: 16px 20px;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 50%, var(--navy-lt) 100%);
       border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
+      gap: 16px;
       color: white;
-      box-shadow: var(--s2);
+      box-shadow: var(--s3);
+      position: relative;
+      overflow: hidden;
+      animation: pwaBannerSlide .4s ease;
     }
-    .pwa-banner-main { min-width: 0; }
+    .pwa-banner::before {
+      content: '';
+      position: absolute;
+      top: -30px; right: -30px;
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,150,42,.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    @keyframes pwaBannerSlide { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+    .pwa-banner-main { min-width: 0; position: relative; z-index: 1; }
     .pwa-banner-title {
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 700;
-      letter-spacing: .2px;
+      letter-spacing: .3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
+    .pwa-banner-title::before { content: '📲'; font-size: 15px; }
     .pwa-banner-sub {
-      margin-top: 4px;
+      margin-top: 5px;
       font-size: 11.5px;
-      color: rgba(255,255,255,.74);
-      line-height: 1.5;
+      color: rgba(255,255,255,.7);
+      line-height: 1.55;
     }
     .pwa-banner-actions {
       display: flex;
       align-items: center;
       gap: 8px;
       flex-shrink: 0;
+      position: relative;
+      z-index: 1;
     }
     .pwa-install-btn, .pwa-dismiss-btn {
       border: none;
       border-radius: 10px;
-      padding: 10px 14px;
+      padding: 10px 16px;
       font-size: 12px;
       font-weight: 700;
       font-family: 'Outfit', sans-serif;
       cursor: pointer;
+      transition: all .2s ease;
     }
     .pwa-install-btn {
       background: linear-gradient(135deg, var(--gold), var(--gold-lt));
       color: var(--ink);
-      box-shadow: 0 6px 18px rgba(200,150,42,.22);
+      box-shadow: 0 4px 16px rgba(200,150,42,.3);
     }
+    .pwa-install-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(200,150,42,.4); }
+    .pwa-install-btn:active { transform: translateY(0); }
     .pwa-dismiss-btn {
-      background: rgba(255,255,255,.12);
-      color: rgba(255,255,255,.82);
-      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.1);
+      color: rgba(255,255,255,.8);
+      border: 1px solid rgba(255,255,255,.15);
     }
+    .pwa-dismiss-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
 
     /* ─── MODAL ─────────────────────────────────── */
     .modal-overlay {
@@ -2198,6 +2221,20 @@
     [data-theme="dark"] .gs-item:hover,[data-theme="dark"] .gs-item.gs-sel{background:var(--surface2);}
     [data-theme="dark"] .gs-esc{background:var(--surface2);border-color:var(--border);}
     [data-theme="dark"] .gs-btn{background:var(--surface);border-color:var(--border);}
+
+    /* ─── DASHBOARD CHARTS ────────────────────── */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+    .chart-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--rl); padding: 20px; box-shadow: var(--s1); }
+    .chart-title { font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 16px; }
+    .donut-center { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; }
+    .donut-center-label { font-size: 11px; color: var(--t4); }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--t2); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .trend-label { font-size: 10px; fill: var(--t4); font-family: inherit; }
+    .trend-value { font-size: 10px; fill: var(--t3); font-family: 'JetBrains Mono', monospace; }
+    @media(max-width:768px) { .charts-row { grid-template-columns: 1fr; } }
+    [data-theme="dark"] .chart-card { background: var(--surface); border-color: var(--border); }
   </style>
 </head>
 <body>
@@ -3045,6 +3082,127 @@ function BirthdaysView(){
   );
 }
 
+/* ═══ DASHBOARD CHARTS ═══ */
+function DashboardCharts({dateKey,attendanceData,checkinsData,counts}){
+  const total=EMPLOYEES.length;
+  const segments=[
+    {label:"Kelgan",value:counts.present-counts.late,color:"var(--emerald)"},
+    {label:"Kechikkan",value:counts.late,color:"var(--gold)"},
+    {label:"Sababsiz",value:counts.absent,color:"var(--ruby)"},
+    {label:"Boshqa",value:counts.other,color:"var(--cobalt)"}
+  ];
+  const pct=total>0?Math.round(((counts.present)/total)*100):0;
+
+  // Donut arcs
+  const R=54,CX=70,CY=70,CIRC=2*Math.PI*R;
+  let offset=0;
+  const arcs=segments.filter(s=>s.value>0).map(s=>{
+    const frac=s.value/total;
+    const dash=frac*CIRC;
+    const gap=CIRC-dash;
+    const o=offset;
+    offset+=frac*CIRC;
+    return{...s,dash,gap,offset:o};
+  });
+
+  // Weekly trend: last 5 workdays
+  const weekTrend=useMemo(()=>{
+    const days=[];
+    const dayNames=["Yak","Dush","Sesh","Chor","Pay","Jum","Shan"];
+    const d=new Date(dateKey+"T12:00:00");
+    let found=0,iter=0;
+    while(found<5&&iter<14){
+      const check=new Date(d);
+      check.setDate(check.getDate()-iter);
+      const dow=check.getDay();
+      if(dow>=1&&dow<=5){
+        const dk=fmtDate(check);
+        let presentCount=0;
+        EMPLOYEES.forEach(emp=>{
+          const ek=safeKey(emp);
+          const rec=attendanceData[dk]?.[ek];
+          const ci=checkinsData[dk]?.[ek];
+          const hasSelfie=ci&&(ci.morning||ci.afternoon);
+          const st=rec?.status||"present";
+          if(hasSelfie||st==="present"||st==="late") presentCount++;
+        });
+        days.unshift({name:dayNames[dow],pct:Math.round((presentCount/EMPLOYEES.length)*100),dk});
+        found++;
+      }
+      iter++;
+    }
+    return days;
+  },[dateKey,attendanceData,checkinsData]);
+
+  // SVG line chart dimensions
+  const W=280,H=120,PX=30,PY=14;
+  const chartW=W-PX*2,chartH=H-PY*2;
+  const points=weekTrend.map((d,i)=>{
+    const x=PX+(weekTrend.length>1?i*(chartW/(weekTrend.length-1)):chartW/2);
+    const y=PY+chartH-(d.pct/100)*chartH;
+    return{x,y,...d};
+  });
+  const linePath=points.map((p,i)=>(i===0?"M":"L")+p.x+","+p.y).join(" ");
+  const areaPath=linePath+" L"+points[points.length-1]?.x+","+(PY+chartH)+" L"+points[0]?.x+","+(PY+chartH)+" Z";
+
+  return(
+    <div className="charts-row">
+      <div className="chart-card">
+        <div className="chart-title">Bugungi davomat taqsimoti</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            {arcs.length>0?arcs.map((a,i)=>(
+              <circle key={i} cx={CX} cy={CY} r={R} fill="none" stroke={a.color} strokeWidth="16"
+                strokeDasharray={a.dash+" "+a.gap} strokeDashoffset={-a.offset}
+                transform={`rotate(-90 ${CX} ${CY})`} style={{transition:"all .4s ease"}}/>
+            )):(
+              <circle cx={CX} cy={CY} r={R} fill="none" stroke="var(--border)" strokeWidth="16"/>
+            )}
+            <text x={CX} y={CY-4} textAnchor="middle" className="donut-center" fill="var(--t1)">{pct}%</text>
+            <text x={CX} y={CY+14} textAnchor="middle" className="donut-center-label">davomat</text>
+          </svg>
+        </div>
+        <div className="chart-legend">
+          {segments.map(s=>(
+            <div key={s.label} className="legend-item">
+              <span className="legend-dot" style={{background:s.color}}/>
+              {s.label}: {s.value}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="chart-card">
+        <div className="chart-title">Haftalik davomat trendi</div>
+        {weekTrend.length>1?(
+          <svg width="100%" viewBox={`0 0 ${W} ${H+18}`} preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--emerald)" stopOpacity="0.25"/>
+                <stop offset="100%" stopColor="var(--emerald)" stopOpacity="0.02"/>
+              </linearGradient>
+            </defs>
+            {[0,25,50,75,100].map(v=>{
+              const y=PY+chartH-(v/100)*chartH;
+              return <line key={v} x1={PX} y1={y} x2={W-PX} y2={y} stroke="var(--border)" strokeWidth=".5"/>;
+            })}
+            <path d={areaPath} fill="url(#trendFill)"/>
+            <path d={linePath} fill="none" stroke="var(--emerald)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            {points.map((p,i)=>(
+              <g key={i}>
+                <circle cx={p.x} cy={p.y} r="4" fill="var(--white)" stroke="var(--emerald)" strokeWidth="2"/>
+                <text x={p.x} y={p.y-10} textAnchor="middle" className="trend-value">{p.pct}%</text>
+                <text x={p.x} y={H+12} textAnchor="middle" className="trend-label">{p.name}</text>
+              </g>
+            ))}
+          </svg>
+        ):(
+          <div style={{textAlign:"center",color:"var(--t4)",padding:"30px 0",fontSize:12}}>Ma'lumot yetarli emas</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ═══ DAILY VIEW ═══ */
 function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsData,updateRecord}){
   const isAdmin=user.role==="admin";
@@ -3202,6 +3360,8 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
           </div>
         </div>}
       </div>
+
+      {canView && <DashboardCharts dateKey={dateKey} attendanceData={attendanceData} checkinsData={checkinsData} counts={counts}/>}
 
       {statusDrill&&(
         <div className="table-card" style={{marginBottom:16}}>
@@ -5393,14 +5553,18 @@ function setupPWAAssets(){
     "</svg>";
   var iconUrl="data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(iconSvg);
   var manifest={
-    name:"Xodimlar Monitoring Tizimi",
+    name:"Xodimlar Monitoring Tizimi — Navoiy viloyati",
     short_name:"Xodimlar",
-    description:"Davomat, selfie nazorat va statistika tizimi",
+    description:"Davomat, selfie nazorat va statistika tizimi — Navoiy viloyati hokimligi",
     start_url:window.location.pathname+window.location.search,
     scope:"./",
     display:"standalone",
-    background_color:"#f3f6fb",
+    orientation:"portrait-primary",
+    background_color:"#0f1e3d",
     theme_color:"#0f1e3d",
+    categories:["business","productivity"],
+    lang:"uz",
+    dir:"ltr",
     icons:[
       {src:iconUrl,sizes:"192x192",type:"image/svg+xml",purpose:"any maskable"},
       {src:iconUrl,sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}
@@ -5807,8 +5971,24 @@ function App(){
     window.addEventListener("appinstalled",onAppInstalled);
     window.matchMedia("(display-mode: standalone)").addEventListener?.("change",onDisplayChange);
 
+    /* Inline service worker registration for offline support.
+       The SW is created as a Blob so no separate sw.js file is needed.
+       It caches the app shell (HTML, fonts, CDN scripts) on install,
+       and serves cached responses when offline (network-first strategy). */
     if("serviceWorker" in navigator&&secure){
-      navigator.serviceWorker.register("./sw.js").catch(function(err){console.error("SW register xato",err);});
+      var swCode='var CACHE="xodimlar-v2";'+
+        'var SHELL=[self.location.href.replace(/\\/sw-blob\\.js.*/,"/")];'+
+        'self.addEventListener("install",function(e){e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(SHELL)}));self.skipWaiting();});'+
+        'self.addEventListener("activate",function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==CACHE}).map(function(k){return caches.delete(k)}))}));self.clients.claim();});'+
+        'self.addEventListener("fetch",function(e){if(e.request.method!=="GET")return;'+
+        'e.respondWith(fetch(e.request).then(function(r){if(r&&r.status===200){var rc=r.clone();caches.open(CACHE).then(function(c){c.put(e.request,rc)})}return r}).catch(function(){return caches.match(e.request)}));});';
+      var swBlob=new Blob([swCode],{type:"application/javascript"});
+      var swUrl=URL.createObjectURL(swBlob);
+      navigator.serviceWorker.register(swUrl,{scope:"./"}).catch(function(err){
+        console.error("SW register xato",err);
+        /* Fallback: try external sw.js if blob registration fails */
+        navigator.serviceWorker.register("./sw.js").catch(function(){});
+      });
     }
 
     return()=>{
