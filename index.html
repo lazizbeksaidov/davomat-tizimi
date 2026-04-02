@@ -5847,6 +5847,64 @@ function App(){
     return()=>ref.off();
   },[user]);
 
+  const isAdmin=user?.role==="admin";
+  const isBoss=user?.role==="boss";
+  const canManage=isAdmin||isBoss;
+
+  const employeeSearchResults=useMemo(()=>{
+    if(!canManage) return [];
+    const normalizedQuery=normalizeSearchText(employeeSearch);
+    if(!normalizedQuery) return [];
+    const compactQuery=normalizedQuery.replace(/\s+/g,"");
+    return EMPLOYEES
+      .map(name=>{
+        const normalizedName=normalizeSearchText(name);
+        const compactName=normalizedName.replace(/\s+/g,"");
+        let rank=-1;
+        if(normalizedName.startsWith(normalizedQuery)||compactName.startsWith(compactQuery)) rank=0;
+        else if(normalizedName.includes(" "+normalizedQuery)) rank=1;
+        else if(normalizedName.includes(normalizedQuery)||compactName.includes(compactQuery)) rank=2;
+        if(rank===-1) return null;
+        return {
+          name,
+          rank,
+          position: EMPLOYEE_PROFILES[name]?.position || USERS_INFO[Object.keys(USERS_INFO).find(key=>USERS_INFO[key]?.name===name)]?.title || ""
+        };
+      })
+      .filter(Boolean)
+      .sort((a,b)=>a.rank-b.rank||a.name.localeCompare(b.name,"uz"))
+      .slice(0,8);
+  },[canManage,employeeSearch]);
+
+  useEffect(()=>{
+    if(!employeeSearchOpen) return;
+    const raf=requestAnimationFrame(()=>{
+      employeeSearchInputRef.current?.focus();
+      employeeSearchInputRef.current?.select();
+    });
+    return ()=>cancelAnimationFrame(raf);
+  },[employeeSearchOpen]);
+
+  useEffect(()=>{
+    if(!employeeSearchOpen) return;
+    function handleSearchOutside(e){
+      if(e.target?.closest?.("[data-employee-search]")) return;
+      closeEmployeeSearch();
+    }
+    function handleSearchEscape(e){
+      if(e.key!=="Escape") return;
+      closeEmployeeSearch();
+    }
+    document.addEventListener("mousedown",handleSearchOutside);
+    document.addEventListener("touchstart",handleSearchOutside,{passive:true});
+    document.addEventListener("keydown",handleSearchEscape);
+    return ()=>{
+      document.removeEventListener("mousedown",handleSearchOutside);
+      document.removeEventListener("touchstart",handleSearchOutside);
+      document.removeEventListener("keydown",handleSearchEscape);
+    };
+  },[employeeSearchOpen]);
+
   function showToast(msg){
     setToast(msg);
     if(toastRef.current)clearTimeout(toastRef.current);
@@ -5975,9 +6033,6 @@ function App(){
   );
 
   /* APP */
-  const isAdmin=user.role==="admin";
-  const isBoss=user.role==="boss";
-  const canManage=isAdmin||isBoss;
   const hrNav=[
     {k:"hrDashboard",icon:"🧭",label:"Kadrlar"},
     {k:"daily",icon:"📅",label:"Kunlik"},
@@ -6021,30 +6076,6 @@ function App(){
   const dotClass=!onlineStatus?"offline":syncTs?"":"cached";
   const statusText=!onlineStatus?(syncTs?"Offline snapshot":"Offline rejim"):syncTs?"Tizim faol":"Kesh tayyorlanmoqda";
   const footerText=!onlineStatus?"Offline snapshot faol":`Firebase Real-time · ${syncTs?"Offline snapshot tayyor":"Kesh tayyorlanmoqda"}`;
-  const employeeSearchResults=useMemo(()=>{
-    if(!canManage) return [];
-    const normalizedQuery=normalizeSearchText(employeeSearch);
-    if(!normalizedQuery) return [];
-    const compactQuery=normalizedQuery.replace(/\s+/g,"");
-    return EMPLOYEES
-      .map(name=>{
-        const normalizedName=normalizeSearchText(name);
-        const compactName=normalizedName.replace(/\s+/g,"");
-        let rank=-1;
-        if(normalizedName.startsWith(normalizedQuery)||compactName.startsWith(compactQuery)) rank=0;
-        else if(normalizedName.includes(" "+normalizedQuery)) rank=1;
-        else if(normalizedName.includes(normalizedQuery)||compactName.includes(compactQuery)) rank=2;
-        if(rank===-1) return null;
-        return {
-          name,
-          rank,
-          position: EMPLOYEE_PROFILES[name]?.position || USERS_INFO[Object.keys(USERS_INFO).find(key=>USERS_INFO[key]?.name===name)]?.title || ""
-        };
-      })
-      .filter(Boolean)
-      .sort((a,b)=>a.rank-b.rank||a.name.localeCompare(b.name,"uz"))
-      .slice(0,8);
-  },[canManage,employeeSearch]);
 
   function closeEmployeeSearch(){
     setEmployeeSearchOpen(false);
@@ -6076,35 +6107,6 @@ function App(){
       closeEmployeeSearch();
     }
   }
-
-  useEffect(()=>{
-    if(!employeeSearchOpen) return;
-    const raf=requestAnimationFrame(()=>{
-      employeeSearchInputRef.current?.focus();
-      employeeSearchInputRef.current?.select();
-    });
-    return ()=>cancelAnimationFrame(raf);
-  },[employeeSearchOpen]);
-
-  useEffect(()=>{
-    if(!employeeSearchOpen) return;
-    function handleSearchOutside(e){
-      if(e.target?.closest?.("[data-employee-search]")) return;
-      closeEmployeeSearch();
-    }
-    function handleSearchEscape(e){
-      if(e.key!=="Escape") return;
-      closeEmployeeSearch();
-    }
-    document.addEventListener("mousedown",handleSearchOutside);
-    document.addEventListener("touchstart",handleSearchOutside,{passive:true});
-    document.addEventListener("keydown",handleSearchEscape);
-    return ()=>{
-      document.removeEventListener("mousedown",handleSearchOutside);
-      document.removeEventListener("touchstart",handleSearchOutside);
-      document.removeEventListener("keydown",handleSearchEscape);
-    };
-  },[employeeSearchOpen]);
 
   return(
     <div className="app">
