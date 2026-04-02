@@ -6434,7 +6434,8 @@ function App(){
   const [loginU,setLoginU]=useState("");
   const [loginP,setLoginP]=useState("");
   const [loginErr,setLoginErr]=useState("");
-  const [view,setView]=useState("daily");
+  const [view,setView]=useState("davomat");
+  const [davomatTab,setDavomatTab]=useState("daily");
   const [selDate,setSelDate]=useState(new Date());
   const [data,setData]=useState({});
   const [checkinsData,setCheckinsData]=useState({});
@@ -6521,7 +6522,7 @@ function App(){
         if(!email){setUser(null);setLoading(false);return;}
         const info=USERS_INFO[email]||{role:"employee",name:email};
         setUser({email,...info});
-        setView(info.role==="employee"?"myStats":"daily");
+        setView(info.role==="employee"?"myStats":"davomat");
       }else{
         setUser(null);
         setData({});
@@ -6708,9 +6709,7 @@ function App(){
   const isBoss=user.role==="boss";
   const canManage=isAdmin||isBoss;
   const adminNav=[
-    {k:"daily",icon:"📅",label:"Kunlik"},
-    {k:"weekly",icon:"📆",label:"Haftalik"},
-    {k:"monthly",icon:"🗓",label:"Oylik"},
+    {k:"davomat",icon:"📅",label:"Davomat"},
     {k:"stats",icon:"📊",label:"Statistika"},
     {k:"announcements",icon:"📢",label:"E'lonlar"},
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
@@ -6727,7 +6726,7 @@ function App(){
     {k:"selfie",icon:"📸",label:"Selfie Davomat"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={davomat:"Davomat",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
 
   return(
@@ -6813,7 +6812,7 @@ function App(){
       {/* MOBILE BOTTOM NAV */}
       <div className="mobile-bottom-nav">
         {navItems.map(({k,icon,label})=>{
-          const shortLabels={daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfieHistory:"Tarix",selfie:"Selfie",myStats:"Kabinet",accounts:"Akkaunt"};
+          const shortLabels={davomat:"Davomat",daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfieHistory:"Tarix",selfie:"Selfie",myStats:"Kabinet",accounts:"Akkaunt"};
           return(
             <button key={k} className={`mob-nav-btn ${view===k?"active":""}`} onClick={()=>setView(k)}>
               <span className="mob-nav-icon">{icon}</span>
@@ -6869,9 +6868,26 @@ function App(){
             ? <div className="empty-state"><div className="empty-icon">⏳</div><div className="empty-title">Yuklanmoqda...</div><div className="empty-sub">Firebase bilan ulanish o'rnatilmoqda</div></div>
             : <>
                 {!canManage&&<SelfieReminder user={user} checkinsData={checkinsData} onGoSelfie={()=>setView("selfie")}/>}
-                {view==="daily"&&canManage&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} checkinsData={checkinsData} updateRecord={dispatch}/>}
-                {view==="weekly"&&canManage&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
-                {view==="monthly"&&canManage&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
+                {view==="davomat"&&canManage&&<>
+                  <div style={{display:"flex",gap:4,marginBottom:20,background:"var(--surface)",borderRadius:14,padding:4,border:"1px solid var(--border)",boxShadow:"var(--s1)"}}>
+                    {[["daily","Kunlik","M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"],["weekly","Haftalik","M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"],["monthly","Oylik","M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"]].map(function(arr){
+                      var t=arr[0],lb=arr[1],icon=arr[2],isAct=davomatTab===t;
+                      return React.createElement("button",{key:t,onClick:function(){setDavomatTab(t)},style:{
+                        flex:1,padding:"10px 12px",borderRadius:11,border:"none",
+                        background:isAct?"linear-gradient(135deg,var(--navy),var(--navy-mid))":"transparent",
+                        color:isAct?"#fff":"var(--t3)",cursor:"pointer",fontWeight:isAct?700:500,fontSize:13,
+                        boxShadow:isAct?"0 4px 16px rgba(0,0,0,.15)":"none",transition:"all .25s",
+                        display:"flex",alignItems:"center",justifyContent:"center",gap:8
+                      }},
+                        React.createElement("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:isAct?2.5:2,style:{opacity:isAct?1:.5}},React.createElement("path",{d:icon})),
+                        lb
+                      );
+                    })}
+                  </div>
+                  {davomatTab==="daily"&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} checkinsData={checkinsData} updateRecord={dispatch}/>}
+                  {davomatTab==="weekly"&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
+                  {davomatTab==="monthly"&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
+                </>}
                 {view==="stats"&&canManage&&<StatsView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="rankings"&&canManage&&<RankingsView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="announcements"&&<AnnouncementsView user={user} isAdmin={isAdmin}/>}
