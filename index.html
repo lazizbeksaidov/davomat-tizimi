@@ -3411,6 +3411,117 @@ function BirthdayStatCard({empName}){
 }
 
 /* ═══ EMPLOYEE STATS ═══ */
+function AccountsManager({showToast}){
+  const [accEmp,setAccEmp]=useState("");
+  const [accPass,setAccPass]=useState("");
+  const [accLoading,setAccLoading]=useState(false);
+  const [accResults,setAccResults]=useState([]);
+
+  function getEmpEmail(name){
+    const p=name.split(" ");
+    return normalizeUz((p[1]+"."+p[0]).toLowerCase())+"@boshqarma.uz";
+  }
+
+  async function createAccount(){
+    if(!accEmp||!accPass.trim()){showToast("⚠ Xodim va parolni tanlang");return;}
+    if(accPass.trim().length<6){showToast("⚠ Parol kamida 6 belgi bo'lishi kerak");return;}
+    setAccLoading(true);
+    const email=getEmpEmail(accEmp);
+    const adminEmail=auth.currentUser.email;
+    const adminPass=prompt("Admin parolini kiriting (qayta tizimga kirish uchun):");
+    if(!adminPass){setAccLoading(false);return;}
+    try{
+      await auth.createUserWithEmailAndPassword(email,accPass.trim());
+      await auth.signOut();
+      await auth.signInWithEmailAndPassword(adminEmail,adminPass);
+      setAccResults(prev=>[{emp:accEmp,email,status:"success",time:new Date().toLocaleTimeString()},...prev]);
+      showToast("✓ "+accEmp+" uchun akkaunt yaratildi");
+      setAccPass("");
+    }catch(err){
+      if(err.code==="auth/email-already-in-use"){
+        try{
+          await auth.signInWithEmailAndPassword(adminEmail,adminPass);
+        }catch(e){}
+        setAccResults(prev=>[{emp:accEmp,email,status:"exists",time:new Date().toLocaleTimeString()},...prev]);
+        showToast("ℹ "+accEmp+" uchun akkaunt allaqachon mavjud");
+      }else{
+        try{
+          await auth.signInWithEmailAndPassword(adminEmail,adminPass);
+        }catch(e){}
+        setAccResults(prev=>[{emp:accEmp,email,status:"error",time:new Date().toLocaleTimeString(),error:err.message},...prev]);
+        showToast("⚠ Xatolik: "+err.message);
+      }
+    }
+    setAccLoading(false);
+  }
+
+  async function resetPassword(){
+    if(!accEmp){showToast("⚠ Xodimni tanlang");return;}
+    const email=getEmpEmail(accEmp);
+    try{
+      await auth.sendPasswordResetEmail(email);
+      showToast("✓ Parol tiklash havolasi "+email+" ga yuborildi");
+    }catch(err){
+      showToast("⚠ Xatolik: "+(err.code==="auth/user-not-found"?"Akkaunt topilmadi. Avval yarating.":err.message));
+    }
+  }
+
+  const statusColors={success:"var(--emerald)",exists:"var(--amber)",error:"var(--ruby)"};
+  const statusLabels={success:"Yaratildi ✓",exists:"Allaqachon mavjud",error:"Xatolik"};
+
+  return(
+    <div>
+      <div style={{background:"var(--surface)",borderRadius:"var(--rl)",border:"1px solid var(--border)",padding:28,marginBottom:16}}>
+        <h3 style={{fontSize:16,fontWeight:700,marginBottom:6,color:"var(--t1)"}}>🔑 Xodim akkauntini yaratish</h3>
+        <p style={{fontSize:13,color:"var(--t3)",marginBottom:20}}>Firebase Auth'da yangi akkaunt yaratish yoki mavjudini boshqarish</p>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div>
+            <label style={{fontSize:12,fontWeight:600,color:"var(--t2)",display:"block",marginBottom:6}}>Xodimni tanlang</label>
+            <select value={accEmp} onChange={e=>setAccEmp(e.target.value)}
+              style={{width:"100%",padding:"10px 12px",borderRadius:"var(--r)",border:"1px solid var(--border)",fontSize:14,background:"var(--surface2)",color:"var(--t1)"}}>
+              <option value="">-- Xodim tanlang --</option>
+              {EMPLOYEES.map(emp=><option key={emp} value={emp}>{emp} ({getEmpEmail(emp)})</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:12,fontWeight:600,color:"var(--t2)",display:"block",marginBottom:6}}>Parol (kamida 6 belgi)</label>
+            <input type="text" value={accPass} onChange={e=>setAccPass(e.target.value)} placeholder="Masalan: Shahzod2001"
+              style={{width:"100%",padding:"10px 12px",borderRadius:"var(--r)",border:"1px solid var(--border)",fontSize:14,background:"var(--surface2)",color:"var(--t1)"}}/>
+          </div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <button onClick={createAccount} disabled={accLoading}
+              style={{padding:"10px 22px",borderRadius:"var(--r)",border:"none",background:"var(--navy)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",opacity:accLoading?.6:1}}>
+              {accLoading?"⏳ Yaratilmoqda...":"➕ Akkaunt yaratish"}
+            </button>
+            <button onClick={resetPassword}
+              style={{padding:"10px 22px",borderRadius:"var(--r)",border:"1px solid var(--border)",background:"var(--surface)",color:"var(--t2)",fontSize:14,fontWeight:500,cursor:"pointer"}}>
+              📧 Parol tiklash
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {accResults.length>0&&(
+        <div style={{background:"var(--surface)",borderRadius:"var(--rl)",border:"1px solid var(--border)",padding:28}}>
+          <h3 style={{fontSize:14,fontWeight:700,marginBottom:14,color:"var(--t2)"}}>📋 Natijalar</h3>
+          {accResults.map((r,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:"var(--r)",background:r.status==="success"?"var(--emerald-bg)":r.status==="exists"?"var(--amber-bg)":"var(--ruby-bg)",marginBottom:6}}>
+              <div>
+                <span style={{fontWeight:600,fontSize:13,color:"var(--t1)"}}>{r.emp}</span>
+                <span style={{fontSize:12,color:"var(--t3)",marginLeft:8}}>{r.email}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:12,color:"var(--t4)"}}>{r.time}</span>
+                <span style={{fontSize:12,fontWeight:600,color:statusColors[r.status]}}>{statusLabels[r.status]}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
   const today=new Date();
   const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
@@ -4960,7 +5071,8 @@ function App(){
   useEffect(()=>{
     const unsub=auth.onAuthStateChanged((fUser)=>{
       if(fUser){
-        const email=fUser.email.toLowerCase();
+        const email=(fUser.email||"").toLowerCase();
+        if(!email){setUser(null);setLoading(false);return;}
         const info=USERS_INFO[email]||{role:"employee",name:email};
         setUser({email,...info});
         setView(info.role==="employee"?"myStats":"daily");
@@ -5016,7 +5128,12 @@ function App(){
     const fullEmail=loginU.trim().toLowerCase().includes("@")?loginU.trim().toLowerCase():loginU.trim().toLowerCase()+"@boshqarma.uz";
     auth.signInWithEmailAndPassword(fullEmail,loginP)
       .then(()=>{setLoginErr("");setLoginU("");setLoginP("");})
-      .catch(()=>{setAuthLoading(false);setLoginErr("Login yoki parol noto'g'ri!");});
+      .catch((err)=>{setAuthLoading(false);
+        if(err.code==="auth/user-not-found")setLoginErr("Bu email uchun akkaunt topilmadi. Admin bilan bog'laning.");
+        else if(err.code==="auth/wrong-password"||err.code==="auth/invalid-credential")setLoginErr("Parol noto'g'ri! Qayta urinib ko'ring.");
+        else if(err.code==="auth/too-many-requests")setLoginErr("Juda ko'p urinish. Biroz kutib, qayta urinib ko'ring.");
+        else setLoginErr("Login yoki parol noto'g'ri!");
+      });
   }
 
   function handleLogout(){auth.signOut();}
@@ -5121,7 +5238,8 @@ function App(){
     {k:"announcements",icon:"📢",label:"E'lonlar"},
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
-    {k:"selfie",icon:"📸",label:"Selfie Davomat"}
+    {k:"selfie",icon:"📸",label:"Selfie Davomat"},
+    ...(isAdmin?[{k:"accounts",icon:"🔑",label:"Akkauntlar"}]:[])
   ];
   const empNav=[
     {k:"myStats",icon:"👤",label:"Shaxsiy Kabinet"},
@@ -5130,7 +5248,7 @@ function App(){
     {k:"selfie",icon:"📸",label:"Selfie Davomat"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat"};
+  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
 
   return(
@@ -5216,7 +5334,7 @@ function App(){
       {/* MOBILE BOTTOM NAV */}
       <div className="mobile-bottom-nav">
         {navItems.map(({k,icon,label})=>{
-          const shortLabels={daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfieHistory:"Tarix",selfie:"Selfie",myStats:"Kabinet"};
+          const shortLabels={daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfieHistory:"Tarix",selfie:"Selfie",myStats:"Kabinet",accounts:"Akkaunt"};
           return(
             <button key={k} className={`mob-nav-btn ${view===k?"active":""}`} onClick={()=>setView(k)}>
               <span className="mob-nav-icon">{icon}</span>
@@ -5282,6 +5400,7 @@ function App(){
                 {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>}
                 {view==="birthdays"&&<BirthdaysView/>}
                 {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
+                {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
               </>
           }
         </main>
