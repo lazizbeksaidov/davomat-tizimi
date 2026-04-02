@@ -1361,118 +1361,6 @@
     .mobile-bottom-nav { display: none !important; }
     .mobile-header { display: none !important; }
 
-    /* ─── GLOBAL SEARCH ──────────────────────────── */
-    .gsearch-wrap {
-      position: relative;
-    }
-    .gsearch-trigger {
-      display: flex; align-items: center; gap: 7px;
-      padding: 6px 14px;
-      background: var(--cloud);
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      font-size: 12px; font-weight: 500; font-family: 'Outfit', sans-serif;
-      color: var(--t3); cursor: pointer;
-      transition: all .18s;
-    }
-    .gsearch-trigger:hover { border-color: var(--gold); color: var(--t1); background: var(--white); }
-    .gsearch-trigger kbd {
-      font-size: 10px; background: var(--border); color: var(--t4);
-      padding: 1px 5px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
-      border: 1px solid var(--border2);
-    }
-    .gsearch-modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(6,8,16,.55);
-      backdrop-filter: blur(4px);
-      z-index: 1100;
-      display: flex; align-items: flex-start; justify-content: center;
-      padding-top: 80px;
-      animation: fadeIn .15s ease;
-    }
-    .gsearch-modal {
-      width: 100%; max-width: 520px;
-      background: var(--white);
-      border-radius: var(--rl);
-      box-shadow: var(--s4);
-      border: 1px solid var(--border);
-      overflow: hidden;
-      animation: slideUp .18s cubic-bezier(.4,0,.2,1);
-    }
-    .gsearch-input-row {
-      display: flex; align-items: center; gap: 10px;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .gsearch-icon { color: var(--t4); flex-shrink: 0; }
-    .gsearch-input {
-      flex: 1;
-      border: none; outline: none;
-      font-size: 15px; font-family: 'Outfit', sans-serif;
-      color: var(--t1); background: transparent;
-    }
-    .gsearch-input::placeholder { color: var(--t5); }
-    .gsearch-esc {
-      font-size: 10px; background: var(--cloud); color: var(--t4);
-      padding: 3px 8px; border-radius: 5px; cursor: pointer;
-      border: 1px solid var(--border2); font-family: 'JetBrains Mono', monospace;
-      flex-shrink: 0; white-space: nowrap;
-    }
-    .gsearch-results {
-      max-height: 360px; overflow-y: auto;
-      padding: 6px 0;
-    }
-    .gsearch-empty {
-      padding: 32px 20px; text-align: center;
-      color: var(--t4); font-size: 13px;
-    }
-    .gsearch-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: .5; }
-    .gsearch-hint {
-      padding: 10px 16px 14px;
-      text-align: center; color: var(--t5);
-      font-size: 11px; border-top: 1px solid var(--border);
-    }
-    .gsearch-result-item {
-      display: flex; align-items: center; gap: 12px;
-      padding: 10px 16px; cursor: pointer;
-      transition: background .1s;
-    }
-    .gsearch-result-item:hover, .gsearch-result-item.selected {
-      background: var(--cloud);
-    }
-    .gsearch-avatar {
-      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg, var(--navy), var(--navy-lt));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 700; color: #fff;
-    }
-    .gsearch-result-name {
-      font-size: 13.5px; font-weight: 600; color: var(--navy);
-    }
-    .gsearch-result-sub {
-      font-size: 11px; color: var(--t4); margin-top: 2px;
-    }
-    .gsearch-result-arrow {
-      margin-left: auto; color: var(--t5); flex-shrink: 0;
-    }
-    .gsearch-section-label {
-      font-size: 9.5px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1px; color: var(--t4);
-      padding: 8px 16px 4px;
-    }
-    /* Mobile search button */
-    .mobile-search-btn {
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 8px;
-      width: 34px; height: 34px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; color: rgba(255,255,255,.7);
-      transition: all .15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .mobile-search-btn:active { background: rgba(255,255,255,.16); }
-
     /* ─── RESPONSIVE ──────────────────────────── */
     @media(max-width:900px) {
       .login-wrap { grid-template-columns: 1fr; }
@@ -2083,14 +1971,6 @@
     [data-theme="dark"] .bar-track { background: var(--surface2); }
     [data-theme="dark"] .kpi-track { background: var(--border); }
     [data-theme="dark"] .weekday-track { background: var(--border); }
-    [data-theme="dark"] .gsearch-modal { background: var(--surface); border-color: var(--border); }
-    [data-theme="dark"] .gsearch-input-row { border-color: var(--border); }
-    [data-theme="dark"] .gsearch-input { color: var(--t1); }
-    [data-theme="dark"] .gsearch-result-item:hover, [data-theme="dark"] .gsearch-result-item.selected { background: var(--surface2); }
-    [data-theme="dark"] .gsearch-esc { background: var(--surface2); border-color: var(--border); color: var(--t3); }
-    [data-theme="dark"] .gsearch-hint { border-color: var(--border); color: var(--t4); }
-    [data-theme="dark"] .gsearch-trigger { background: var(--surface); border-color: var(--border); color: var(--t3); }
-    [data-theme="dark"] .gsearch-trigger kbd { background: var(--surface2); border-color: var(--border); }
 
     /* ─── ANNOUNCEMENTS ───────────────────────── */
     .ann-list { display:flex; flex-direction:column; gap:12px; }
@@ -2156,6 +2036,34 @@
       .rank-podium { flex-wrap:wrap; }
       .rank-pod { min-width:100px; }
     }
+
+    /* ─── GLOBAL SEARCH ─── */
+    .gs-btn{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--cloud);border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:500;font-family:'Outfit',sans-serif;color:var(--t3);cursor:pointer;transition:all .18s;}
+    .gs-btn:hover{border-color:var(--gold);color:var(--t1);background:var(--white);}
+    .gs-kbd{font-size:10px;background:var(--border);color:var(--t4);padding:1px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;border:1px solid var(--border2);}
+    .gs-overlay{position:fixed;inset:0;background:rgba(6,8,16,.55);backdrop-filter:blur(4px);z-index:1100;display:flex;align-items:flex-start;justify-content:center;padding-top:80px;animation:fadeIn .15s ease;}
+    .gs-modal{width:100%;max-width:520px;background:var(--white);border-radius:14px;box-shadow:var(--s4);border:1px solid var(--border);overflow:hidden;animation:slideUp .18s cubic-bezier(.4,0,.2,1);}
+    .gs-row{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);}
+    .gs-input{flex:1;border:none;outline:none;font-size:15px;font-family:'Outfit',sans-serif;color:var(--t1);background:transparent;}
+    .gs-input::placeholder{color:var(--t5);}
+    .gs-esc{font-size:10px;background:var(--cloud);color:var(--t4);padding:3px 8px;border-radius:5px;cursor:pointer;border:1px solid var(--border2);font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+    .gs-results{max-height:360px;overflow-y:auto;}
+    .gs-empty{padding:32px 20px;text-align:center;color:var(--t4);font-size:13px;}
+    .gs-empty-ico{font-size:32px;margin-bottom:10px;opacity:.5;}
+    .gs-hint{padding:8px 16px 12px;text-align:center;color:var(--t5);font-size:11px;border-top:1px solid var(--border);}
+    .gs-item{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;transition:background .1s;}
+    .gs-item:hover,.gs-item.gs-sel{background:var(--cloud);}
+    .gs-av{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--navy),var(--navy-lt));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;}
+    .gs-name{font-size:13.5px;font-weight:600;color:var(--navy);}
+    .gs-sub{font-size:11px;color:var(--t4);margin-top:2px;}
+    .gs-sec{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--t4);padding:8px 16px 4px;}
+    .mob-gs-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.7);-webkit-tap-highlight-color:transparent;}
+    [data-theme="dark"] .gs-modal{background:var(--surface);border-color:var(--border);}
+    [data-theme="dark"] .gs-row{border-color:var(--border);}
+    [data-theme="dark"] .gs-input{color:var(--t1);}
+    [data-theme="dark"] .gs-item:hover,[data-theme="dark"] .gs-item.gs-sel{background:var(--surface2);}
+    [data-theme="dark"] .gs-esc{background:var(--surface2);border-color:var(--border);}
+    [data-theme="dark"] .gs-btn{background:var(--surface);border-color:var(--border);}
   </style>
 </head>
 <body>
@@ -4800,6 +4708,147 @@ function RankingsView({attendanceData,onEmpClick}){
 }
 
 /* ═══ OB-HAVO WIDGET ═══ */
+function GlobalSearch({data, onPick}){
+  var _s=React.useState(false), open=_s[0], setOpen=_s[1];
+  var _q=React.useState(""), q=_q[0], setQ=_q[1];
+  var _i=React.useState(0), sel=_i[0], setSel=_i[1];
+  var inp=useRef(null);
+
+  var results=useMemo(function(){
+    var s=q.trim().toLowerCase();
+    if(!s) return [];
+    return EMPLOYEES.filter(function(e){return normalizeUz(e.toLowerCase()).includes(normalizeUz(s));}).slice(0,8);
+  },[q]);
+
+  useEffect(function(){
+    function h(e){if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();setOpen(true);}}
+    window.addEventListener("keydown",h);
+    return function(){window.removeEventListener("keydown",h);};
+  },[]);
+
+  useEffect(function(){
+    if(open){setQ("");setSel(0);setTimeout(function(){inp.current&&inp.current.focus();},50);}
+  },[open]);
+
+  function stat(emp){
+    var dates=Object.keys(data||{});
+    if(!dates.length) return "Ma'lumot yo'q";
+    var k=safeKey(emp),p=0,l=0,t=0;
+    dates.forEach(function(d){var r=(data[d]||{})[k];if(!r)return;t++;if(r.status==="present")p++;else if(r.status==="late")l++;});
+    if(!t) return "Ma'lumot yo'q";
+    return t+" kun · "+Math.round((p+l)/t*100)+"% davomat";
+  }
+
+  function pick(e){setOpen(false);onPick(e);}
+
+  function onKey(e){
+    if(e.key==="ArrowDown"){setSel(function(s){return Math.min(s+1,results.length-1);});}
+    else if(e.key==="ArrowUp"){setSel(function(s){return Math.max(s-1,0);});}
+    else if(e.key==="Enter"&&results[sel]){pick(results[sel]);}
+    else if(e.key==="Escape"){setOpen(false);}
+  }
+
+  return (
+    <>
+      <button className="gs-btn" onClick={()=>setOpen(true)}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Xodim qidirish
+        <span className="gs-kbd">Ctrl+K</span>
+      </button>
+      {open&&(
+        <div className="gs-overlay" onClick={()=>setOpen(false)}>
+          <div className="gs-modal" onClick={e=>e.stopPropagation()}>
+            <div className="gs-row">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input ref={inp} className="gs-input" placeholder="Xodim ismini yozing..." value={q} onChange={e=>{setQ(e.target.value);setSel(0);}} onKeyDown={onKey} autoFocus/>
+              <span className="gs-esc" onClick={()=>setOpen(false)}>ESC</span>
+            </div>
+            <div className="gs-results">
+              {q.trim()===""&&<div className="gs-empty"><div className="gs-empty-ico">&#128269;</div><div>Xodim ismini kiriting...</div></div>}
+              {q.trim()!==""&&results.length===0&&<div className="gs-empty"><div className="gs-empty-ico">&#128532;</div><div>Topilmadi</div></div>}
+              {results.length>0&&<>
+                <div className="gs-sec">Xodimlar &mdash; {results.length} ta natija</div>
+                {results.map((emp,i)=>(
+                  <div key={emp} className={"gs-item"+(i===sel?" gs-sel":"")} onClick={()=>pick(emp)} onMouseEnter={()=>setSel(i)}>
+                    <div className="gs-av">{emp.charAt(0)}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div className="gs-name">{emp}</div>
+                      <div className="gs-sub">{stat(emp)}</div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t5)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+                  </div>
+                ))}
+              </>}
+            </div>
+            <div className="gs-hint">&#8593;&#8595; navigatsiya &middot; Enter tanlash &middot; Esc yopish</div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function MobSearch({data, onPick}){
+  var _s=React.useState(false), open=_s[0], setOpen=_s[1];
+  var _q=React.useState(""), q=_q[0], setQ=_q[1];
+  var inp=useRef(null);
+
+  var results=useMemo(function(){
+    var s=q.trim().toLowerCase();
+    if(!s) return [];
+    return EMPLOYEES.filter(function(e){return normalizeUz(e.toLowerCase()).includes(normalizeUz(s));}).slice(0,8);
+  },[q]);
+
+  useEffect(function(){
+    if(open){setQ("");setTimeout(function(){inp.current&&inp.current.focus();},80);}
+  },[open]);
+
+  function stat(emp){
+    var dates=Object.keys(data||{});
+    if(!dates.length) return "Ma'lumot yo'q";
+    var k=safeKey(emp),p=0,l=0,t=0;
+    dates.forEach(function(d){var r=(data[d]||{})[k];if(!r)return;t++;if(r.status==="present")p++;else if(r.status==="late")l++;});
+    if(!t) return "Ma'lumot yo'q";
+    return t+" kun · "+Math.round((p+l)/t*100)+"%";
+  }
+
+  function pick(e){setOpen(false);onPick(e);}
+
+  return (
+    <>
+      <button className="mob-gs-btn" onClick={()=>setOpen(true)}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </button>
+      {open&&(
+        <div className="gs-overlay" onClick={()=>setOpen(false)} style={{paddingTop:16,alignItems:"flex-start"}}>
+          <div className="gs-modal" style={{maxWidth:"calc(100% - 24px)",margin:"0 12px",borderRadius:16}} onClick={e=>e.stopPropagation()}>
+            <div className="gs-row">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input ref={inp} className="gs-input" placeholder="Xodim ismini yozing..." value={q} onChange={e=>setQ(e.target.value)} autoFocus/>
+              <span className="gs-esc" onClick={()=>setOpen(false)}>&#x2715;</span>
+            </div>
+            <div className="gs-results">
+              {q.trim()===""&&<div className="gs-empty"><div className="gs-empty-ico">&#128269;</div><div>Xodim ismini kiriting...</div></div>}
+              {q.trim()!==""&&results.length===0&&<div className="gs-empty"><div className="gs-empty-ico">&#128532;</div><div>Topilmadi</div></div>}
+              {results.map((emp,i)=>(
+                <div key={emp} className="gs-item" onClick={()=>pick(emp)}>
+                  <div className="gs-av">{emp.charAt(0)}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div className="gs-name">{emp}</div>
+                    <div className="gs-sub">{stat(emp)}</div>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--t5)" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+
 function WeatherWidget(){
   const[w,setW]=useState(null);
   useEffect(()=>{
@@ -4832,183 +4881,7 @@ function WeatherWidget(){
   );
 }
 
-/* ═══ GLOBAL SEARCH ═══ */
-function GlobalSearch({attendanceData, onSelectEmployee}){
-  const [open,setOpen]=React.useState(false);
-  const [query,setQuery]=React.useState("");
-  const [sel,setSel]=React.useState(0);
-  const inputRef=useRef(null);
-
-  const results=useMemo(()=>{
-    const q=normalizeUz(query.trim().toLowerCase());
-    if(!q) return [];
-    return EMPLOYEES.filter(e=>normalizeUz(e.toLowerCase()).includes(q)).slice(0,8);
-  },[query]);
-
-  useEffect(()=>{
-    function onKey(e){if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();setOpen(true);}}
-    window.addEventListener("keydown",onKey);
-    return()=>window.removeEventListener("keydown",onKey);
-  },[]);
-
-  useEffect(()=>{
-    if(open){setQuery("");setSel(0);setTimeout(()=>inputRef.current&&inputRef.current.focus(),50);}
-  },[open]);
-
-  function handleKey(e){
-    if(e.key==="ArrowDown") setSel(s=>Math.min(s+1,results.length-1));
-    else if(e.key==="ArrowUp") setSel(s=>Math.max(s-1,0));
-    else if(e.key==="Enter"&&results[sel]) pick(results[sel]);
-    else if(e.key==="Escape") setOpen(false);
-  }
-
-  function pick(emp){setOpen(false);onSelectEmployee(emp);}
-
-  function empStat(emp){
-    const dates=Object.keys(attendanceData||{});
-    if(!dates.length) return "Ma'lumot yo'q";
-    const k=safeKey(emp);
-    let p=0,a=0,l=0;
-    dates.forEach(d=>{
-      const r=(attendanceData[d]||{})[k];
-      if(!r) return;
-      if(r.status==="present") p++;
-      else if(r.status==="absent") a++;
-      else if(r.status==="late") l++;
-    });
-    const t=p+a+l;
-    if(!t) return "Ma'lumot yo'q";
-    return t+" kun \u00B7 "+Math.round((p+l)/t*100)+"% davomat";
-  }
-
-  return(
-    React.createElement(React.Fragment, null,
-      React.createElement("button",{className:"gsearch-trigger",onClick:()=>setOpen(true),title:"Ctrl+K"},
-        React.createElement("svg",{width:"13",height:"13",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
-          React.createElement("circle",{cx:"11",cy:"11",r:"8"}),
-          React.createElement("path",{d:"m21 21-4.35-4.35"})
-        ),
-        " Xodim qidirish ",
-        React.createElement("kbd",null,"Ctrl+K")
-      ),
-      open&&React.createElement("div",{className:"gsearch-modal-overlay",onClick:()=>setOpen(false)},
-        React.createElement("div",{className:"gsearch-modal",onClick:e=>e.stopPropagation()},
-          React.createElement("div",{className:"gsearch-input-row"},
-            React.createElement("svg",{className:"gsearch-icon",width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
-              React.createElement("circle",{cx:"11",cy:"11",r:"8"}),
-              React.createElement("path",{d:"m21 21-4.35-4.35"})
-            ),
-            React.createElement("input",{ref:inputRef,className:"gsearch-input",placeholder:"Xodim ismini yozing...",value:query,onChange:e=>{setQuery(e.target.value);setSel(0);},onKeyDown:handleKey}),
-            React.createElement("span",{className:"gsearch-esc",onClick:()=>setOpen(false)},"ESC")
-          ),
-          React.createElement("div",{className:"gsearch-results"},
-            query.trim()===""&&React.createElement("div",{className:"gsearch-empty"},
-              React.createElement("div",{className:"gsearch-empty-icon"},"\uD83D\uDD0D"),
-              React.createElement("div",null,"Xodim ismini kiriting...")
-            ),
-            query.trim()!==""&&results.length===0&&React.createElement("div",{className:"gsearch-empty"},
-              React.createElement("div",{className:"gsearch-empty-icon"},"\uD83D\uDE14"),
-              React.createElement("div",null,query+" — topilmadi")
-            ),
-            results.length>0&&React.createElement(React.Fragment,null,
-              React.createElement("div",{className:"gsearch-section-label"},"Xodimlar — "+results.length+" ta natija"),
-              results.map((emp,i)=>React.createElement("div",{key:emp,className:"gsearch-result-item"+(i===sel?" selected":""),onClick:()=>pick(emp),onMouseEnter:()=>setSel(i)},
-                React.createElement("div",{className:"gsearch-avatar"},emp.charAt(0)),
-                React.createElement("div",{style:{flex:1,minWidth:0}},
-                  React.createElement("div",{className:"gsearch-result-name"},emp),
-                  React.createElement("div",{className:"gsearch-result-sub"},empStat(emp))
-                ),
-                React.createElement("svg",{className:"gsearch-result-arrow",width:"14",height:"14",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
-                  React.createElement("path",{d:"M9 18l6-6-6-6"})
-                )
-              ))
-            )
-          ),
-          React.createElement("div",{className:"gsearch-hint"},"\u2191\u2193 navigatsiya \u00B7 Enter tanlash \u00B7 Esc yopish")
-        )
-      )
-    )
-  );
-}
-
-function MobileSearchBtn({attendanceData, onSelectEmployee}){
-  const [open,setOpen]=React.useState(false);
-  const [query,setQuery]=React.useState("");
-  const inputRef=useRef(null);
-
-  const results=useMemo(()=>{
-    const q=normalizeUz(query.trim().toLowerCase());
-    if(!q) return [];
-    return EMPLOYEES.filter(e=>normalizeUz(e.toLowerCase()).includes(q)).slice(0,8);
-  },[query]);
-
-  useEffect(()=>{
-    if(open){setQuery("");setTimeout(()=>inputRef.current&&inputRef.current.focus(),80);}
-  },[open]);
-
-  function pick(emp){setOpen(false);onSelectEmployee(emp);}
-
-  function empStat(emp){
-    const dates=Object.keys(attendanceData||{});
-    if(!dates.length) return "Ma'lumot yo'q";
-    const k=safeKey(emp);
-    let p=0,a=0,l=0;
-    dates.forEach(d=>{
-      const r=(attendanceData[d]||{})[k];
-      if(!r) return;
-      if(r.status==="present") p++;
-      else if(r.status==="absent") a++;
-      else if(r.status==="late") l++;
-    });
-    const t=p+a+l;
-    if(!t) return "Ma'lumot yo'q";
-    return t+" kun \u00B7 "+Math.round((p+l)/t*100)+"%";
-  }
-
-  return(
-    React.createElement(React.Fragment,null,
-      React.createElement("button",{className:"mobile-search-btn",onClick:()=>setOpen(true),title:"Qidirish"},
-        React.createElement("svg",{width:"15",height:"15",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},
-          React.createElement("circle",{cx:"11",cy:"11",r:"8"}),
-          React.createElement("path",{d:"m21 21-4.35-4.35"})
-        )
-      ),
-      open&&React.createElement("div",{className:"gsearch-modal-overlay",onClick:()=>setOpen(false),style:{paddingTop:20}},
-        React.createElement("div",{className:"gsearch-modal",style:{maxWidth:"100%",margin:"0 12px",borderRadius:16},onClick:e=>e.stopPropagation()},
-          React.createElement("div",{className:"gsearch-input-row"},
-            React.createElement("svg",{className:"gsearch-icon",width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
-              React.createElement("circle",{cx:"11",cy:"11",r:"8"}),
-              React.createElement("path",{d:"m21 21-4.35-4.35"})
-            ),
-            React.createElement("input",{ref:inputRef,className:"gsearch-input",placeholder:"Xodim ismini yozing...",value:query,onChange:e=>{setQuery(e.target.value);}}),
-            React.createElement("span",{className:"gsearch-esc",onClick:()=>setOpen(false)},"\u2715")
-          ),
-          React.createElement("div",{className:"gsearch-results"},
-            query.trim()===""&&React.createElement("div",{className:"gsearch-empty"},
-              React.createElement("div",{className:"gsearch-empty-icon"},"\uD83D\uDD0D"),
-              React.createElement("div",null,"Xodim ismini kiriting...")
-            ),
-            query.trim()!==""&&results.length===0&&React.createElement("div",{className:"gsearch-empty"},
-              React.createElement("div",{className:"gsearch-empty-icon"},"\uD83D\uDE14"),
-              React.createElement("div",null,query+" — topilmadi")
-            ),
-            results.map((emp,i)=>React.createElement("div",{key:emp,className:"gsearch-result-item",onClick:()=>pick(emp)},
-              React.createElement("div",{className:"gsearch-avatar"},emp.charAt(0)),
-              React.createElement("div",{style:{flex:1,minWidth:0}},
-                React.createElement("div",{className:"gsearch-result-name"},emp),
-                React.createElement("div",{className:"gsearch-result-sub"},empStat(emp))
-              ),
-              React.createElement("svg",{className:"gsearch-result-arrow",width:"14",height:"14",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
-                React.createElement("path",{d:"M9 18l6-6-6-6"})
-              )
-            ))
-          )
-        )
-      )
-    )
-  );
-}
-
+/* ═══ MAIN APP ═══ */
 function App(){
   const [user,setUser]=useState(null);
   const [loginU,setLoginU]=useState("");
@@ -5031,8 +4904,6 @@ function App(){
   const toastRef=useRef(null);
   const [darkMode,setDarkMode]=useState(()=>{try{return localStorage.getItem("xodimlar-dark")==="true"}catch(e){return false}});
   useEffect(()=>{document.documentElement.setAttribute("data-theme",darkMode?"dark":"light");try{localStorage.setItem("xodimlar-dark",darkMode)}catch(e){}},[darkMode]);
-
-  function handleSearchSelect(empName){setModalEmp(empName);}
 
   useEffect(()=>{const t=setInterval(()=>setClock(new Date()),30000);return()=>clearInterval(t)},[]);
 
@@ -5321,7 +5192,7 @@ function App(){
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          {canManage&&<MobileSearchBtn attendanceData={data} onSelectEmployee={handleSearchSelect}/>}
+          {canManage&&<MobSearch data={data} onPick={emp=>setModalEmp(emp)}/>}
           <button className="mobile-dark-toggle" onClick={()=>setDarkMode(p=>!p)} title={darkMode?"Kunduzgi rejim":"Tungi rejim"}>
             {darkMode?"☀️":"🌙"}
           </button>
@@ -5361,7 +5232,7 @@ function App(){
             </div>
           </div>
           <div className="topbar-right">
-            {canManage&&<GlobalSearch attendanceData={data} onSelectEmployee={handleSearchSelect}/>}
+            {canManage&&<GlobalSearch data={data} onPick={emp=>setModalEmp(emp)}/>}
             <div className="topbar-status">
               <div className="topbar-dot"/>
               <span>Tizim faol</span>
