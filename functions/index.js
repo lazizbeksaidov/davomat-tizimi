@@ -571,16 +571,16 @@ exports.aiAnalysis = functions.https.onRequest(async (req, res) => {
   if (req.method === "OPTIONS") { res.status(204).send(""); return; }
   if (req.method !== "POST") { res.status(405).json({error:"POST only"}); return; }
 
-  // Auth check — faqat login qilgan user
+  // Auth check — faqat admin/boss
   const authHeader = req.headers.authorization || "";
   const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!idToken) { res.status(401).json({error:"Unauthorized"}); return; }
+  const ADMIN_EMAILS = ["kadr@boshqarma.uz"];
+  const BOSS_EMAILS = ["ravshan.azimov@boshqarma.uz", "elbek.gafforov@boshqarma.uz"];
   try {
     const decoded = await admin.auth().verifyIdToken(idToken);
-    // Faqat admin/boss ruxsat
-    const userSnap = await db.ref(`users/${decoded.uid}`).once("value");
-    const userData = userSnap.val();
-    if (!userData || (userData.role !== "admin" && userData.role !== "boss")) {
+    const email = (decoded.email || "").toLowerCase();
+    if (!ADMIN_EMAILS.includes(email) && !BOSS_EMAILS.includes(email)) {
       res.status(403).json({error:"Ruxsat yo'q"}); return;
     }
   } catch (e) {
