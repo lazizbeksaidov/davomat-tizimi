@@ -105,9 +105,9 @@
       background: var(--ink);
       display: flex; align-items: center; justify-content: center;
       flex-direction: column; gap: 20px; z-index: 9999;
-      transition: opacity .4s ease;
+      animation: loaderFade 0.3s ease 1.2s forwards;
     }
-    .fullscreen-loader.loaded { opacity: 0; pointer-events: none; }
+    @keyframes loaderFade { to { opacity: 0; pointer-events: none; } }
     .loader-logo {
       width: 56px; height: 56px;
       background: linear-gradient(135deg, var(--gold), var(--gold-lt));
@@ -1889,42 +1889,6 @@
     /* Mobile dark toggle — hidden on desktop, shown inside mobile header */
     .mobile-dark-toggle { display: none; }
 
-    /* ─── CRASH SCREEN ─────────────────────────── */
-    .crash-screen {
-      min-height:100vh; display:flex; align-items:center; justify-content:center;
-      background:var(--cloud); padding:20px;
-    }
-    .crash-box {
-      max-width:380px; width:100%; text-align:center;
-      background:var(--white); border:1px solid var(--border);
-      border-radius:var(--rxl); padding:40px 30px;
-      box-shadow:var(--s3);
-    }
-    .crash-icon { font-size:48px; margin-bottom:16px; }
-    .crash-title { font-size:20px; font-weight:700; color:var(--navy); margin-bottom:8px; }
-    .crash-sub { font-size:13px; color:var(--t3); line-height:1.7; margin-bottom:24px; }
-    .crash-btn {
-      padding:12px 28px; background:linear-gradient(135deg,var(--navy),var(--navy-lt));
-      color:#fff; border:none; border-radius:var(--r);
-      font-size:14px; font-weight:600; font-family:'Outfit',sans-serif;
-      cursor:pointer; box-shadow:0 2px 10px rgba(10,14,26,.2);
-      transition:all .15s;
-    }
-    .crash-btn:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(10,14,26,.3); }
-    .crash-detail {
-      margin-top:16px; padding:10px 14px; background:var(--ruby-bg);
-      border-radius:var(--r); font-size:11px; color:var(--ruby);
-      font-family:'JetBrains Mono',monospace; text-align:left;
-      max-height:60px; overflow:auto; word-break:break-all;
-    }
-    .conn-bar {
-      padding:6px 14px; font-size:11px; font-weight:600; text-align:center;
-      background:var(--ruby-bg); color:var(--ruby); border-bottom:1px solid rgba(192,57,43,.12);
-      display:flex; align-items:center; justify-content:center; gap:6px;
-      animation:connPulse 2s ease infinite;
-    }
-    @keyframes connPulse { 0%,100%{opacity:1} 50%{opacity:.7} }
-
     /* ─── SELFIE REMINDER ─────────────────────── */
     .selfie-reminder { margin-bottom:18px; animation:reminderSlide .4s ease; }
     @keyframes reminderSlide { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
@@ -2104,48 +2068,6 @@
 </head>
 <body>
 <div id="root"></div>
-
-<!-- Global error handler — catches crashes BEFORE and DURING React -->
-<script>
-(function(){
-  var crashed=false;
-  function showCrash(msg){
-    if(crashed)return;
-    crashed=true;
-    var root=document.getElementById("root");
-    if(root)root.innerHTML=
-      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f3f6fb;padding:20px;">'+
-      '<div style="max-width:380px;width:100%;text-align:center;background:#fff;border:1px solid #e4e9f2;border-radius:20px;padding:40px 30px;box-shadow:0 12px 40px rgba(10,14,26,.12);">'+
-      '<div style="font-size:48px;margin-bottom:16px;">⚠️</div>'+
-      '<div style="font-size:20px;font-weight:700;color:#0f1e3d;margin-bottom:8px;">Xatolik yuz berdi</div>'+
-      '<div style="font-size:13px;color:#6b7896;line-height:1.7;margin-bottom:24px;">Sahifani yangilab qayta urinib ko\'ring. Agar muammo davom etsa, brauzerni yoping va qayta oching.</div>'+
-      '<button onclick="location.reload()" style="padding:12px 28px;background:linear-gradient(135deg,#0f1e3d,#1d3468);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:Outfit,sans-serif;">🔄 Sahifani yangilash</button>'+
-      (msg?'<div style="margin-top:16px;padding:10px 14px;background:#fdecea;border-radius:10px;font-size:11px;color:#c0392b;font-family:monospace;text-align:left;max-height:60px;overflow:auto;word-break:break-all;">'+msg+'</div>':'')+
-      '</div></div>';
-    var loader=document.querySelector(".fullscreen-loader");
-    if(loader)loader.style.display="none";
-  }
-  window.onerror=function(msg,src,line){
-    console.error("Global:",msg,src,line);
-    showCrash(msg);
-  };
-  window.onunhandledrejection=function(e){
-    console.error("Promise:",e.reason);
-    showCrash(e.reason&&e.reason.message||String(e.reason));
-  };
-  // Firebase ulanish timeout — 12 sekund
-  window.__appReady=false;
-  setTimeout(function(){
-    if(!window.__appReady){
-      var loader=document.querySelector(".fullscreen-loader");
-      if(loader&&loader.style.opacity!=="0"){
-        showCrash("Internet aloqasi sekin yoki Firebase ulanmadi. WiFi yoki mobil internet tekshiring.");
-      }
-    }
-  },12000);
-})();
-</script>
-
 <script type="text/babel">
 const {useState, useMemo, useEffect, useRef, useCallback} = React;
 
@@ -2171,7 +2093,8 @@ const EMPLOYEES = [
   "Xolmurodov Dostonjon","Qurbonov Shavkat","Narzullayev Rustam",
   "Islomov G\u2018ulomjon","Ibrohimov Shuhrat","Barnoqulov Shahzod",
   "Axadov Izzatullo","Jo\u2018raqulov Jahongirbek","Jaynakov Temur",
-  "Saidov Lazizbek","Pirbayev Berdiyor","Husainova Klara"
+  "Saidov Lazizbek","Pirbayev Berdiyor","Husainova Klara",
+  "Ne\u2018matov Shahzodbek","Muhammadov Jaloliddin"
 ];
 function normalizeUz(s){return s.replace(/[\u2018\u2019\u02BC\u0060\u2018\u2019'`]/g,"")}
 
@@ -2195,7 +2118,9 @@ const BIRTHDAYS = {
   "Jaynakov Temur":           "21.08.1988",
   "Saidov Lazizbek":          "31.10.2002",
   "Pirbayev Berdiyor":        "23.12.1989",
-  "Husainova Klara":          "30.11.1987"
+  "Husainova Klara":          "30.11.1987",
+  "Ne\u2018matov Shahzodbek": "22.07.1999",
+  "Muhammadov Jaloliddin":    "22.01.1994"
 };
 
 function parseBD(str){
@@ -2236,6 +2161,9 @@ EMPLOYEES.forEach(emp=>{
   const email=normalizeUz((p[1]+"."+p[0]).toLowerCase())+"@boshqarma.uz";
   USERS_INFO[email]={role:"employee",name:emp};
 });
+// Qo'lda qo'shilgan emaillar (avto-generatsiya bilan mos kelmasa)
+USERS_INFO["nematov@boshqarma.uz"]={role:"employee",name:"Ne\u2018matov Shahzodbek"};
+USERS_INFO["muhammadov@boshqarma.uz"]={role:"employee",name:"Muhammadov Jaloliddin"};
 
 const STATUSES = {
   present:{label:"Ish joyida",color:"var(--emerald)",bg:"var(--emerald-bg)",icon:"✓",short:"IJ"},
@@ -4959,34 +4887,6 @@ function WeatherWidget(){
   );
 }
 
-/* ═══ ERROR BOUNDARY ═══ */
-class ErrorBoundary extends React.Component {
-  constructor(props){
-    super(props);
-    this.state={hasError:false,error:null};
-  }
-  static getDerivedStateFromError(error){
-    return{hasError:true,error};
-  }
-  componentDidCatch(error,info){
-    console.error("React Error Boundary:",error,info);
-  }
-  render(){
-    if(this.state.hasError){
-      return React.createElement("div",{className:"crash-screen"},
-        React.createElement("div",{className:"crash-box"},
-          React.createElement("div",{className:"crash-icon"},"⚠️"),
-          React.createElement("div",{className:"crash-title"},"Xatolik yuz berdi"),
-          React.createElement("div",{className:"crash-sub"},"Sahifani yangilab qayta urinib ko'ring. Agar muammo davom etsa, brauzerni yoping va qayta oching."),
-          React.createElement("button",{className:"crash-btn",onClick:function(){location.reload();}},"🔄 Sahifani yangilash"),
-          this.state.error&&React.createElement("div",{className:"crash-detail"},String(this.state.error.message||this.state.error))
-        )
-      );
-    }
-    return this.props.children;
-  }
-}
-
 /* ═══ MAIN APP ═══ */
 function App(){
   const [user,setUser]=useState(null);
@@ -4999,7 +4899,6 @@ function App(){
   const [checkinsData,setCheckinsData]=useState({});
   const [loading,setLoading]=useState(true);
   const [authLoading,setAuthLoading]=useState(false);
-  const [fbOffline,setFbOffline]=useState(false);
   const [toast,setToast]=useState(null);
   const [modalEmp,setModalEmp]=useState(null);
   const [clock,setClock]=useState(new Date());
@@ -5071,31 +4970,21 @@ function App(){
         setCheckinsData({});
       }
       setLoading(false);
-      window.__appReady=true;
-      // Loader yashirish
-      try{var ld=document.querySelector(".fullscreen-loader");if(ld)ld.classList.add("loaded");}catch(e){}
     });
     return()=>unsub();
-  },[]);
-
-  // Firebase connection tracking
-  useEffect(()=>{
-    const connRef=db.ref(".info/connected");
-    connRef.on("value",snap=>{setFbOffline(snap.val()===false);});
-    return()=>connRef.off();
   },[]);
 
   useEffect(()=>{
     if(!user)return;
     const ref=db.ref("attendance");
-    ref.on("value",(snap)=>{setData(snap.val()||{});setFbOffline(false);},(err)=>{console.error("attendance err:",err);setFbOffline(true);});
+    ref.on("value",(snap)=>setData(snap.val()||{}),(err)=>console.error(err));
     return()=>ref.off();
   },[user]);
 
   useEffect(()=>{
     if(!user)return;
     const ref=db.ref("checkins");
-    ref.on("value",(snap)=>{setCheckinsData(snap.val()||{});setFbOffline(false);},(err)=>{console.error("checkins err:",err);setFbOffline(true);});
+    ref.on("value",(snap)=>setCheckinsData(snap.val()||{}),(err)=>console.error(err));
     return()=>ref.off();
   },[user]);
 
@@ -5351,16 +5240,14 @@ function App(){
           <div className="topbar-right">
             {canManage&&<GlobalSearch data={data} onPick={emp=>setModalEmp(emp)}/>}
             <div className="topbar-status">
-              <div className="topbar-dot" style={fbOffline?{background:"var(--ruby)",boxShadow:"0 0 6px rgba(192,57,43,.5)"}:{}}/>
-              <span>{fbOffline?"Oflayn":"Tizim faol"}</span>
+              <div className="topbar-dot"/>
+              <span>Tizim faol</span>
             </div>
             <div className="topbar-clock">
               {clock.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"})}
             </div>
           </div>
         </div>
-
-        {fbOffline&&<div className="conn-bar">⚠️ Internet aloqasi yo'q yoki sekin. Ma'lumotlar yangilanmayapti.</div>}
 
         {!isStandalone&&!hideInstallBanner&&(showInstallBanner||iosInstallHint)&&(
           <div className="pwa-banner">
@@ -5425,7 +5312,7 @@ function App(){
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App/></ErrorBoundary>);
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
