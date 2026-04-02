@@ -2318,6 +2318,84 @@ const OFFICE_LOCATION = {
   name: "Investitsiyalar, sanoat va savdo boshqarmasi",
   address: "Navoiy sh., Amir Temur ko'chasi, 77A"
 };
+/* ═══ TELEGRAM BOT INTEGRATION ═══ */
+var _telegramConfig={botToken:"",chatId:"",enabled:false,notifyLate:true,notifyAbsent:true,notifySelfie:true};
+function loadTelegramConfig(){
+  return db.ref("telegram_config").once("value").then(function(snap){
+    var v=snap.val();if(v){_telegramConfig=Object.assign(_telegramConfig,v)}return _telegramConfig;
+  }).catch(function(){return _telegramConfig});
+}
+function saveTelegramConfig(cfg){
+  _telegramConfig=Object.assign(_telegramConfig,cfg);
+  return db.ref("telegram_config").set(_telegramConfig);
+}
+function sendTelegram(text,parseMode){
+  if(!_telegramConfig.enabled||!_telegramConfig.botToken||!_telegramConfig.chatId)return Promise.resolve(null);
+  var url="https://api.telegram.org/bot"+_telegramConfig.botToken+"/sendMessage";
+  return fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({chat_id:_telegramConfig.chatId,text:text,parse_mode:parseMode||"HTML",disable_web_page_preview:true})
+  }).then(function(r){return r.json()}).catch(function(e){console.warn("Telegram xato:",e);return null});
+}
+function notifyTelegramLate(empName,lateMins,session,dateStr){
+  if(!_telegramConfig.enabled||!_telegramConfig.notifyLate)return;
+  var sessionLabel=session==="morning"?"Ertalabki":"Tushlik";
+  var text="⏰ <b>Kechikish qayd etildi</b>\n\n"
+    +"👤 <b>"+empName+"</b>\n"
+    +"📅 "+dateStr+"\n"
+    +"🕐 "+sessionLabel+" seans: <b>"+lateMins+" daqiqa</b> kechikdi\n"
+    +"📍 "+OFFICE_LOCATION.name;
+  sendTelegram(text);
+}
+function notifyTelegramAbsent(empName,dateStr){
+  if(!_telegramConfig.enabled||!_telegramConfig.notifyAbsent)return;
+  var text="❌ <b>Sababsiz yo'qlik</b>\n\n"
+    +"👤 <b>"+empName+"</b>\n"
+    +"📅 "+dateStr+"\n"
+    +"📍 "+OFFICE_LOCATION.name;
+  sendTelegram(text);
+}
+function notifyTelegramSelfie(empName,session,lateMins,dist){
+  if(!_telegramConfig.enabled||!_telegramConfig.notifySelfie)return;
+  var sessionLabel=session==="morning"?"Ertalabki":"Tushlik";
+  var icon=lateMins>0?"⏰":"✅";
+  var text=icon+" <b>Selfie davomat</b>\n\n"
+    +"👤 <b>"+empName+"</b>\n"
+    +"🕐 "+sessionLabel+": "+(lateMins>0?lateMins+" daqiqa kechikdi":"Vaqtida keldi")+"\n"
+    +"📍 Masofa: "+(dist||"—")+"m\n"
+    +"🕰 "+new Date().toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"});
+  sendTelegram(text);
+}
+function sendTelegramDavomat(dateKey){
+  var dk=dateKey||fmtDate(new Date());
+  var ref=db.ref("attendance/"+dk);
+  return ref.once("value").then(function(snap){
+    var dayData=snap.val()||{};
+    var present=0,late=0,absent=0,sick=0,trip=0;var lateList=[];
+    EMPLOYEES.forEach(function(emp){
+      var rec=dayData[safeKey(emp)];var st=rec?.status||"present";
+      if(st==="present")present++;
+      else if(st==="late"){late++;present++;var mins=(rec?.morning||0)+(rec?.afternoon||0);lateList.push(emp.split(" ")[0]+" ("+mins+"d)")}
+      else if(st==="absent")absent++;
+      else if(st==="sick")sick++;
+      else if(st==="trip")trip++;
+    });
+    var d=dk.split("-");var dateDisp=d[2]+"."+d[1]+"."+d[0];
+    var text="📊 <b>Kunlik davomat — "+dateDisp+"</b>\n"
+      +"━━━━━━━━━━━━━━━━━━\n"
+      +"✅ Ish joyida: <b>"+present+"</b>/"+EMPLOYEES.length+"\n"
+      +"⏰ Kechikdi: <b>"+late+"</b>\n"
+      +"❌ Sababsiz: <b>"+absent+"</b>\n"
+      +"🏥 Kasal: <b>"+sick+"</b>\n"
+      +"✈️ Safari: <b>"+trip+"</b>\n"
+      +"━━━━━━━━━━━━━━━━━━\n"
+      +"📈 Davomat: <b>"+Math.round(present/Math.max(1,EMPLOYEES.length)*100)+"%</b>";
+    if(lateList.length>0)text+="\n\n⏰ <b>Kechikkanlar:</b>\n"+lateList.join("\n");
+    text+="\n\n📍 "+OFFICE_LOCATION.name;
+    return sendTelegram(text);
+  });
+}
+loadTelegramConfig();
+
 const WDAYS=["Dushanba","Seshanba","Chorshanba","Payshanba","Juma"];
 const WSHORT=["Dush","Sesh","Chor","Pay","Jum"];
 const MONTHS=["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
@@ -3851,6 +3929,224 @@ function BirthdayStatCard({empName}){
   );
 }
 
+/* ═══ TELEGRAM SETTINGS ═══ */
+function TelegramSettings({showToast}){
+  const [cfg,setCfg]=useState({botToken:"",chatId:"",enabled:false,notifyLate:true,notifyAbsent:true,notifySelfie:true});
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [testing,setTesting]=useState(false);
+  const [testResult,setTestResult]=useState(null);
+  const [showToken,setShowToken]=useState(false);
+  const [dailySchedule,setDailySchedule]=useState("18:00");
+
+  useEffect(()=>{
+    loadTelegramConfig().then(c=>{setCfg(c);setLoading(false)});
+    db.ref("telegram_config/dailySchedule").once("value").then(s=>{if(s.val())setDailySchedule(s.val())});
+  },[]);
+
+  function handleSave(){
+    setSaving(true);setTestResult(null);
+    saveTelegramConfig(cfg).then(()=>{
+      db.ref("telegram_config/dailySchedule").set(dailySchedule);
+      showToast("✓ Telegram sozlamalari saqlandi");setSaving(false);
+    }).catch(()=>{showToast("⚠ Xatolik");setSaving(false)});
+  }
+
+  function handleTest(){
+    if(!cfg.botToken||!cfg.chatId){setTestResult({ok:false,msg:"Bot token va Chat ID kiriting"});return}
+    setTesting(true);setTestResult(null);
+    var url="https://api.telegram.org/bot"+cfg.botToken+"/sendMessage";
+    fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({chat_id:cfg.chatId,text:"✅ <b>Xodimlar Monitoring Tizimi</b>\n\nTelegram bot muvaffaqiyatli ulandi!\n📍 "+OFFICE_LOCATION.name+"\n🕰 "+new Date().toLocaleString("uz-UZ"),parse_mode:"HTML"})
+    }).then(r=>r.json()).then(j=>{
+      if(j.ok)setTestResult({ok:true,msg:"Xabar yuborildi! Telegram guruhni tekshiring."});
+      else setTestResult({ok:false,msg:"Xato: "+(j.description||"Noma'lum")});
+      setTesting(false);
+    }).catch(e=>{setTestResult({ok:false,msg:"Tarmoq xatosi: "+e.message});setTesting(false)});
+  }
+
+  function handleSendDavomat(){
+    if(!cfg.botToken||!cfg.chatId){showToast("⚠ Avval bot token va chat ID kiriting");return}
+    setTesting(true);
+    var origEnabled=_telegramConfig.enabled;
+    _telegramConfig.enabled=true;_telegramConfig.botToken=cfg.botToken;_telegramConfig.chatId=cfg.chatId;
+    sendTelegramDavomat().then(r=>{
+      _telegramConfig.enabled=origEnabled;
+      if(r&&r.ok)showToast("✓ Kunlik davomat yuborildi!");else showToast("⚠ Yuborishda xatolik");
+      setTesting(false);
+    });
+  }
+
+  if(loading)return React.createElement("div",{style:{padding:40,textAlign:"center"}},"Yuklanmoqda...");
+
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div><div className="page-title">Telegram Bot Sozlamalari</div><div className="page-subtitle">Kechikish va davomat haqida avtomatik xabar</div></div>
+      </div>
+
+      {/* Setup Guide */}
+      <div className="table-card" style={{marginBottom:16}}>
+        <div className="table-header">
+          <div><div className="table-title">📖 Bot yaratish yo'riqnomasi</div><div className="table-meta">3 qadam bilan sozlash</div></div>
+        </div>
+        <div style={{padding:"18px 22px",fontSize:13,lineHeight:2,color:"var(--t2)"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20}}>
+            <div style={{padding:16,background:"var(--surface)",borderRadius:12,border:"1px solid var(--border)"}}>
+              <div style={{fontSize:20,marginBottom:6}}>1️⃣</div>
+              <div style={{fontWeight:700,color:"var(--navy)",marginBottom:6}}>Bot yaratish</div>
+              <div style={{fontSize:12,color:"var(--t3)",lineHeight:1.7}}>
+                Telegramda <b>@BotFather</b> ga yozing<br/>
+                <code style={{background:"var(--cloud)",padding:"2px 6px",borderRadius:4,fontSize:11}}>/newbot</code> buyrug'ini yuboring<br/>
+                Bot nomini kiriting (masalan: "Monitoring Bot")<br/>
+                <b>Bot Token</b>ni nusxalang
+              </div>
+            </div>
+            <div style={{padding:16,background:"var(--surface)",borderRadius:12,border:"1px solid var(--border)"}}>
+              <div style={{fontSize:20,marginBottom:6}}>2️⃣</div>
+              <div style={{fontWeight:700,color:"var(--navy)",marginBottom:6}}>Guruhga qo'shish</div>
+              <div style={{fontSize:12,color:"var(--t3)",lineHeight:1.7}}>
+                Botni Telegram guruhga qo'shing<br/>
+                Guruhda biror xabar yozing<br/>
+                Brauzerda oching:<br/>
+                <code style={{background:"var(--cloud)",padding:"2px 6px",borderRadius:4,fontSize:10,wordBreak:"break-all"}}>api.telegram.org/bot[TOKEN]/getUpdates</code><br/>
+                <b>"chat":{"id":-100...}</b> — bu Chat ID
+              </div>
+            </div>
+            <div style={{padding:16,background:"var(--surface)",borderRadius:12,border:"1px solid var(--border)"}}>
+              <div style={{fontSize:20,marginBottom:6}}>3️⃣</div>
+              <div style={{fontWeight:700,color:"var(--navy)",marginBottom:6}}>Sozlash</div>
+              <div style={{fontSize:12,color:"var(--t3)",lineHeight:1.7}}>
+                Quyida Bot Token va Chat ID kiriting<br/>
+                "Test xabar" tugmasini bosing<br/>
+                Guruhda xabar kelganini tekshiring<br/>
+                "Saqlash" tugmasini bosing — <b>Tayyor!</b>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Config */}
+      <div className="table-card" style={{marginBottom:16}}>
+        <div className="table-header">
+          <div><div className="table-title">⚙️ Bot sozlamalari</div><div className="table-meta">Token va guruh sozlamalari</div></div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:12,fontWeight:600,color:cfg.enabled?"var(--emerald)":"var(--t4)"}}>{cfg.enabled?"Yoniq":"O'chiq"}</span>
+            <div onClick={()=>setCfg(p=>({...p,enabled:!p.enabled}))} style={{
+              width:44,height:24,borderRadius:12,background:cfg.enabled?"var(--emerald)":"var(--border)",
+              position:"relative",cursor:"pointer",transition:"all .2s"}}>
+              <div style={{width:20,height:20,borderRadius:10,background:"#fff",position:"absolute",top:2,
+                left:cfg.enabled?22:2,transition:"all .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+            </div>
+          </div>
+        </div>
+        <div style={{padding:"20px 22px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
+            <div>
+              <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Bot Token</label>
+              <div style={{position:"relative"}}>
+                <input type={showToken?"text":"password"} value={cfg.botToken} onChange={e=>setCfg(p=>({...p,botToken:e.target.value.trim()}))}
+                  placeholder="123456789:ABCdef..." className="text-input" style={{paddingRight:40,fontFamily:"JetBrains Mono,monospace",fontSize:12}}/>
+                <button onClick={()=>setShowToken(p=>!p)} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",
+                  background:"none",border:"none",cursor:"pointer",fontSize:14}}>{showToken?"🙈":"👁"}</button>
+              </div>
+            </div>
+            <div>
+              <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Chat ID (guruh)</label>
+              <input type="text" value={cfg.chatId} onChange={e=>setCfg(p=>({...p,chatId:e.target.value.trim()}))}
+                placeholder="-1001234567890" className="text-input" style={{fontFamily:"JetBrains Mono,monospace",fontSize:12}}/>
+            </div>
+          </div>
+
+          <div style={{marginTop:20,paddingTop:18,borderTop:"1px solid var(--border)"}}>
+            <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Xabar turlari</label>
+            <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+              {[
+                {key:"notifyLate",label:"⏰ Kechikish",desc:"Selfie orqali kechikish aniqlanganda"},
+                {key:"notifyAbsent",label:"❌ Sababsiz yo'qlik",desc:"Admin tomonidan yo'q belgilanganda"},
+                {key:"notifySelfie",label:"📸 Selfie davomat",desc:"Har bir selfie qayd etilganda"}
+              ].map(item=>(
+                <div key={item.key} onClick={()=>setCfg(p=>({...p,[item.key]:!p[item.key]}))}
+                  style={{padding:"10px 14px",borderRadius:10,border:"1.5px solid "+(cfg[item.key]?"var(--emerald)":"var(--border)"),
+                    background:cfg[item.key]?"var(--emerald-bg)":"var(--surface)",cursor:"pointer",transition:"all .2s",flex:"1",minWidth:160}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:14}}>{cfg[item.key]?"✅":"⬜"}</span>
+                    <span style={{fontSize:12.5,fontWeight:600,color:"var(--navy)"}}>{item.label}</span>
+                  </div>
+                  <div style={{fontSize:10.5,color:"var(--t4)",marginTop:3,marginLeft:22}}>{item.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{marginTop:20,display:"flex",gap:10,flexWrap:"wrap"}}>
+            <button className="action-btn primary" onClick={handleSave} disabled={saving}>{saving?"Saqlanmoqda...":"💾 Saqlash"}</button>
+            <button className="action-btn" onClick={handleTest} disabled={testing}>{testing?"Yuborilmoqda...":"📨 Test xabar"}</button>
+            <button className="action-btn" onClick={handleSendDavomat} disabled={testing}>📊 Kunlik davomat yuborish</button>
+          </div>
+
+          {testResult&&(
+            <div style={{marginTop:14,padding:"10px 14px",borderRadius:8,fontSize:12,fontWeight:600,
+              background:testResult.ok?"var(--emerald-bg)":"var(--ruby-bg)",color:testResult.ok?"var(--emerald)":"var(--ruby)",
+              border:"1px solid "+(testResult.ok?"var(--emerald)":"var(--ruby)")}}>
+              {testResult.ok?"✅ ":"⚠️ "}{testResult.msg}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bot commands */}
+      <div className="table-card" style={{marginBottom:16}}>
+        <div className="table-header">
+          <div><div className="table-title">🤖 Telegram bot buyruqlari</div><div className="table-meta">Guruhda ishlatish mumkin bo'lgan buyruqlar</div></div>
+        </div>
+        <div style={{padding:"18px 22px"}}>
+          <div style={{fontSize:12,color:"var(--t3)",marginBottom:14,lineHeight:1.6}}>
+            Quyidagi buyruqlarni Telegram guruhda ishlatishingiz mumkin. Buyruqlarni <b>@BotFather</b> da <code style={{background:"var(--cloud)",padding:"2px 6px",borderRadius:4,fontSize:11}}>/setcommands</code> orqali ro'yxatga qo'shing:
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {[
+              {cmd:"/davomat",desc:"Bugungi kunlik davomat holatini ko'rish",status:"✅ Tayyor"},
+              {cmd:"/kechikkanlar",desc:"Bugungi kechikkan xodimlar ro'yxati",status:"✅ Tayyor"},
+              {cmd:"/statistika",desc:"Oylik umumiy statistika",status:"✅ Tayyor"},
+              {cmd:"/yordam",desc:"Bot buyruqlari haqida ma'lumot",status:"✅ Tayyor"}
+            ].map(item=>(
+              <div key={item.cmd} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",
+                background:"var(--surface)",borderRadius:10,border:"1px solid var(--border)"}}>
+                <code style={{fontFamily:"JetBrains Mono,monospace",fontSize:13,fontWeight:700,color:"var(--cobalt)",minWidth:110}}>{item.cmd}</code>
+                <span style={{flex:1,fontSize:12,color:"var(--t2)"}}>{item.desc}</span>
+                <span style={{fontSize:11,fontWeight:600,color:"var(--emerald)"}}>{item.status}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:16,padding:"12px 16px",background:"rgba(26,66,176,.05)",borderRadius:10,border:"1px solid rgba(26,66,176,.1)",fontSize:12,color:"var(--t2)",lineHeight:1.7}}>
+            <b>💡 Cloud Function o'rnatish:</b> Telegram buyruqlarini avtomatik ishlashi uchun Firebase Cloud Function kerak. Quyidagi faylni <code style={{background:"var(--cloud)",padding:"2px 4px",borderRadius:3}}>functions/index.js</code> ga joylang va <code style={{background:"var(--cloud)",padding:"2px 4px",borderRadius:3}}>firebase deploy --only functions</code> bilan deploy qiling.
+          </div>
+        </div>
+      </div>
+
+      {/* Kunlik avtomatik yuborish */}
+      <div className="table-card">
+        <div className="table-header">
+          <div><div className="table-title">🕐 Avtomatik kunlik hisobot</div><div className="table-meta">Har kuni belgilangan vaqtda davomat yuborilsin</div></div>
+        </div>
+        <div style={{padding:"18px 22px",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+          <div>
+            <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Yuborish vaqti</label>
+            <input type="time" value={dailySchedule} onChange={e=>setDailySchedule(e.target.value)}
+              className="text-input" style={{width:120,fontFamily:"JetBrains Mono,monospace",fontSize:13}}/>
+          </div>
+          <div style={{fontSize:12,color:"var(--t3)",lineHeight:1.7,maxWidth:400}}>
+            Cloud Function o'rnatilganda har kuni shu vaqtda Telegram guruhga kunlik davomat hisoboti avtomatik yuboriladi.
+            Hozircha "📊 Kunlik davomat yuborish" tugmasi orqali qo'lda yuborishingiz mumkin.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══ EMPLOYEE STATS ═══ */
 function AccountsManager({showToast}){
   const [accEmp,setAccEmp]=useState("");
@@ -4800,6 +5096,12 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     .then(function(){return db.ref("attendance/"+todayKey+"/"+empKey).update(u);})
     .then(function(){
       showToast("\u2713 "+(uiSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!");
+      try{
+        var _lateMins=(u.morning||0)+(u.afternoon||0);
+        var _dist=gpsData?gpsData.distance:null;
+        if(_lateMins>0)notifyTelegramLate(user.name,uiSession==="morning"?u.morning:u.afternoon,uiSession,todayKey.split("-").reverse().join("."));
+        notifyTelegramSelfie(user.name,uiSession,_lateMins,_dist);
+      }catch(tgErr){console.warn("TG:",tgErr)}
       lockedSessionRef.current=null;
       setCapturedPhoto(null);setSubmitting(false);setEmpNote("");
     })
@@ -5596,7 +5898,16 @@ function App(){
     if(field==="morning"&&value>0&&rec.status==="present")rec.status="late";
     if(field==="morning"&&value===0&&rec.afternoon===0&&rec.status==="late")rec.status="present";
     db.ref(`attendance/${dateKey}/${empKey}`).set(rec)
-      .then(()=>showToast("✓ Muvaffaqiyatli saqlandi"))
+      .then(()=>{
+        showToast("✓ Muvaffaqiyatli saqlandi");
+        try{
+          var _dateDisp=dateKey.split("-").reverse().join(".");
+          if(field==="status"&&value==="absent")notifyTelegramAbsent(emp,_dateDisp);
+          if(field==="status"&&value==="late")notifyTelegramLate(emp,0,"",_dateDisp);
+          if(field==="morning"&&value>0)notifyTelegramLate(emp,value,"morning",_dateDisp);
+          if(field==="afternoon"&&value>0)notifyTelegramLate(emp,value,"afternoon",_dateDisp);
+        }catch(tgE){console.warn("TG dispatch:",tgE)}
+      })
       .catch(()=>showToast("⚠ Tarmoqda xatolik yuz berdi"));
   }
 
@@ -5687,6 +5998,7 @@ function App(){
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
     {k:"selfie",icon:"📸",label:"Selfie Davomat"},
+    ...(isAdmin?[{k:"telegram",icon:"📨",label:"Telegram Bot"}]:[]),
     ...(isAdmin?[{k:"accounts",icon:"🔑",label:"Akkauntlar"}]:[])
   ];
   const empNav=[
@@ -5696,7 +6008,7 @@ function App(){
     {k:"selfie",icon:"📸",label:"Selfie Davomat"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
 
   return(
@@ -5848,6 +6160,7 @@ function App(){
                 {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>}
                 {view==="birthdays"&&<BirthdaysView/>}
                 {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
+                {view==="telegram"&&isAdmin&&<TelegramSettings showToast={showToast}/>}
                 {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
               </>
           }

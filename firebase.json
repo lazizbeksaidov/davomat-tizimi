@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs18"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": ["firebase.json", "functions", "node_modules", "database.rules.json"]
+  }
+}
