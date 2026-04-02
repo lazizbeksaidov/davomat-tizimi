@@ -4147,197 +4147,454 @@ function BirthdayStatCard({empName}){
   );
 }
 
-/* ═══ AI TAHLIL (GEMINI) ═══ */
+/* ═══ AI TAHLIL (GEMINI) — PROFESSIONAL ═══ */
+
+/* AI Mini Donut Chart */
+function AIDonut({value,max,color,label,size}){
+  const sz=size||80,r=sz/2-6,circ=2*Math.PI*r,pct=Math.min(value/Math.max(max,1),1);
+  return React.createElement("div",{style:{textAlign:"center"}},
+    React.createElement("svg",{width:sz,height:sz,style:{transform:"rotate(-90deg)"}},
+      React.createElement("circle",{cx:sz/2,cy:sz/2,r:r,fill:"none",stroke:"var(--border)",strokeWidth:5}),
+      React.createElement("circle",{cx:sz/2,cy:sz/2,r:r,fill:"none",stroke:color,strokeWidth:5,strokeDasharray:circ,strokeDashoffset:circ*(1-pct),strokeLinecap:"round",style:{transition:"stroke-dashoffset 1s ease"}})
+    ),
+    React.createElement("div",{style:{marginTop:-sz/2-8,fontSize:16,fontWeight:800,color:color}},Math.round(pct*100)+"%"),
+    React.createElement("div",{style:{marginTop:sz/2-8,fontSize:10,color:"var(--t3)",fontWeight:600}},label)
+  );
+}
+
+/* AI Bar Chart */
+function AIBarChart({data,maxVal,height}){
+  const h=height||120,barW=Math.max(12,Math.min(32,Math.floor(280/Math.max(data.length,1))));
+  return React.createElement("svg",{width:"100%",height:h,viewBox:"0 0 "+Math.max(data.length*barW+40,100)+" "+h,preserveAspectRatio:"xMidYMid meet"},
+    data.map(function(d,i){
+      var bh=Math.max(2,(d.value/Math.max(maxVal,1))*(h-30));
+      return React.createElement("g",{key:i},
+        React.createElement("rect",{x:i*barW+20,y:h-bh-20,width:barW-4,height:bh,rx:3,fill:d.color||"var(--gold)",opacity:.85,style:{transition:"height .6s ease, y .6s ease"}}),
+        React.createElement("text",{x:i*barW+20+barW/2-2,y:h-bh-24,fontSize:8,fill:"var(--t2)",textAnchor:"middle",fontWeight:700},d.value||""),
+        React.createElement("text",{x:i*barW+20+barW/2-2,y:h-6,fontSize:7,fill:"var(--t4)",textAnchor:"middle"},d.label||"")
+      );
+    })
+  );
+}
+
 function AIAnalysisView({showToast}){
   const [messages,setMessages]=useState([]);
   const [input,setInput]=useState("");
   const [loading,setLoading]=useState(false);
   const [selEmp,setSelEmp]=useState("");
-  const [mode,setMode]=useState("chat"); // chat | employee | monthly
+  const [mode,setMode]=useState("chat");
+  const [empData,setEmpData]=useState(null);
+  const [allData,setAllData]=useState(null);
+  const [empSearch,setEmpSearch]=useState("");
   const chatEndRef=React.useRef(null);
+  const inputRef=React.useRef(null);
   const AI_URL="https://us-central1-xodimlar-7c13c.cloudfunctions.net/aiAnalysis";
 
-  React.useEffect(()=>{chatEndRef.current?.scrollIntoView({behavior:"smooth"})},[messages]);
+  React.useEffect(function(){chatEndRef.current?.scrollIntoView({behavior:"smooth"})},[messages]);
 
-  async function getToken(){
-    const u=firebase.auth().currentUser;
-    if(!u)return null;
-    return await u.getIdToken();
-  }
+  // Firebase'dan real ma'lumot olish
+  React.useEffect(function(){
+    var now=new Date(),yr=now.getFullYear(),mon=now.getMonth();
+    var dates=[],d=new Date(yr,mon,1);
+    var todayStr=yr+"-"+String(mon+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+    while(d.getMonth()===mon){
+      var ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+      if(d.getDay()>=1&&d.getDay()<=5&&ds<=todayStr) dates.push(ds);
+      d.setDate(d.getDate()+1);
+    }
+    Promise.all([
+      firebase.database().ref("attendance").once("value"),
+      firebase.database().ref("checkins").once("value")
+    ]).then(function(snaps){
+      var allAtt=snaps[0].val()||{},allCheck=snaps[1].val()||{};
+      var stats=EMPLOYEES.map(function(emp){
+        var key=safeKey(emp),present=0,late=0,absent=0,sick=0,vacation=0,trip=0,lateMins=0,dailyArr=[];
+        dates.forEach(function(dk){
+          var att=(allAtt[dk]||{})[key],check=(allCheck[dk]||{})[key];
+          var status=att?.status,hasSelfie=check&&(check.morning||check.afternoon);
+          var mornMin=att?.morning||0,aftMin=att?.afternoon||0;
+          if(status==="sick"){sick++;dailyArr.push({d:dk,s:"sick"});return}
+          if(status==="vacation"){vacation++;dailyArr.push({d:dk,s:"vacation"});return}
+          if(status==="trip"){trip++;dailyArr.push({d:dk,s:"trip"});return}
+          if(status==="excused"){dailyArr.push({d:dk,s:"excused"});return}
+          if(hasSelfie||status==="present"||status==="late"){
+            present++;
+            if(status==="late"||mornMin+aftMin>0){late++;lateMins+=mornMin+aftMin;dailyArr.push({d:dk,s:"late",m:mornMin+aftMin})}
+            else dailyArr.push({d:dk,s:"present"});
+          }else{absent++;dailyArr.push({d:dk,s:"absent"})}
+        });
+        var workDays=present+late+absent;
+        var score=Math.max(0,100-Math.round(lateMins/Math.max(1,workDays*480)*100*8)-absent*5-late*2);
+        return{name:emp,present:present,late:late,absent:absent,sick:sick,vacation:vacation,trip:trip,lateMins:lateMins,score:score,daily:dailyArr,workDays:dates.length};
+      });
+      setAllData({stats:stats,dates:dates,month:mon,year:yr});
+    });
+  },[]);
+
+  async function getToken(){var u=firebase.auth().currentUser;return u?await u.getIdToken():null}
 
   async function sendAI(q,empName,m){
-    const token=await getToken();
+    var token=await getToken();
     if(!token){showToast("Avval tizimga kiring");return}
     setLoading(true);
-    const userMsg={role:"user",text:q||(m==="monthly"?"Oylik umumiy tahlil":""),time:new Date()};
-    setMessages(prev=>[...prev,userMsg]);
+    var userMsg={role:"user",text:q||(m==="monthly"?"Oylik umumiy tahlil":empName?empName+" tahlili":""),time:new Date()};
+    setMessages(function(prev){return[...prev,userMsg]});
     try{
-      const res=await fetch(AI_URL,{
-        method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
-        body:JSON.stringify({question:q||"",employeeName:empName||"",mode:m||"chat"})
-      });
-      const data=await res.json();
-      if(data.error){setMessages(prev=>[...prev,{role:"ai",text:"Xatolik: "+data.error,time:new Date()}]);return}
-      setMessages(prev=>[...prev,{role:"ai",text:data.answer,time:new Date()}]);
-    }catch(err){
-      setMessages(prev=>[...prev,{role:"ai",text:"Tarmoq xatosi: "+err.message,time:new Date()}]);
-    }finally{setLoading(false)}
+      var res=await fetch(AI_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({question:q||"",employeeName:empName||"",mode:m||"chat"})});
+      var data=await res.json();
+      if(data.error){setMessages(function(prev){return[...prev,{role:"ai",text:"Xatolik: "+data.error,time:new Date()}]});return}
+      setMessages(function(prev){return[...prev,{role:"ai",text:data.answer,time:new Date()}]});
+    }catch(err){setMessages(function(prev){return[...prev,{role:"ai",text:"Tarmoq xatosi: "+err.message,time:new Date()}]})}
+    finally{setLoading(false)}
   }
 
   function handleSend(){
-    if(!input.trim()&&mode==="chat")return;
-    if(mode==="employee"){sendAI(input,selEmp,"employee")}
-    else if(mode==="monthly"){sendAI("","","monthly")}
+    if(mode==="employee"&&selEmp&&!input.trim()){sendAI("",selEmp,"employee");return}
+    if(!input.trim())return;
+    if(mode==="employee"&&selEmp){sendAI(input,selEmp,"employee")}
     else{sendAI(input,"","chat")}
     setInput("");
   }
-
   function handleKeyDown(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSend()}}
 
   function formatAI(text){
-    return text.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
-      .replace(/\n/g,"<br/>")
-      .replace(/(\d+)\./g,"<br/>$1.");
+    return text
+      .replace(/\*\*(.*?)\*\*/g,"<strong style='color:var(--t1)'>$1</strong>")
+      .replace(/#{1,3}\s*(.*?)(\n|$)/g,"<div style='font-size:15px;font-weight:700;color:var(--navy);margin:12px 0 6px'>$1</div>")
+      .replace(/\n- /g,"<br/><span style='color:var(--gold);margin-right:4px'>&#9679;</span> ")
+      .replace(/\n\d+\.\s/g,function(m){return"<br/><span style='color:var(--gold);font-weight:700;margin-right:4px'>"+m.trim()+"</span> "})
+      .replace(/\n/g,"<br/>");
   }
 
+  function selectEmployee(emp){
+    setSelEmp(emp);setEmpSearch("");
+    if(allData){
+      var found=allData.stats.find(function(s){return s.name===emp});
+      setEmpData(found||null);
+    }
+  }
+
+  // Tanlangan xodim statistikasi
+  var selStats=selEmp&&allData?allData.stats.find(function(s){return s.name===selEmp}):null;
+  var MONTHS=["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+  var filteredEmps=empSearch?EMPLOYEES.filter(function(e){return e.toLowerCase().includes(empSearch.toLowerCase())}):EMPLOYEES;
+
+  // Umumiy statistika
+  var totalPresent=0,totalLate=0,totalAbsent=0;
+  if(allData){allData.stats.forEach(function(s){totalPresent+=s.present;totalLate+=s.late;totalAbsent+=s.absent})}
+
   return(
-    <div style={{maxWidth:900,margin:"0 auto"}}>
-      <div className="page-title" style={{display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontSize:28}}>🤖</span> AI Tahlil
-        <span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:"var(--emerald-bg)",color:"var(--emerald)",fontWeight:600}}>Gemini</span>
+    <div style={{maxWidth:1000,margin:"0 auto"}}>
+      {/* HEADER */}
+      <div style={{background:"linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 50%,var(--slate) 100%)",borderRadius:20,padding:"28px 32px",marginBottom:24,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:-30,right:-30,width:120,height:120,borderRadius:"50%",background:"rgba(200,150,42,.12)"}}/>
+        <div style={{position:"absolute",bottom:-20,left:"40%",width:80,height:80,borderRadius:"50%",background:"rgba(200,150,42,.08)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:14,position:"relative",zIndex:1}}>
+          <div style={{width:52,height:52,borderRadius:16,background:"linear-gradient(135deg,var(--gold),var(--gold-lt))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,boxShadow:"0 8px 24px rgba(200,150,42,.35)"}}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 2a4 4 0 0 1 4 4c0 2-1 3-2 4l-1 1v1h-2v-1l-1-1c-1-1-2-2-2-4a4 4 0 0 1 4-4z"/><path d="M9 16h6"/><path d="M10 20h4"/><circle cx="12" cy="6" r="1" fill="#fff"/></svg>
+          </div>
+          <div>
+            <div style={{fontSize:22,fontWeight:800,color:"#fff",letterSpacing:-.3}}>AI Tahlil Markazi</div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,.55)",marginTop:2,display:"flex",alignItems:"center",gap:6}}>
+              <span style={{width:6,height:6,borderRadius:"50%",background:"#4ade80",display:"inline-block"}}/>
+              Gemini 2.5 Flash &middot; Real-time ma'lumot
+            </div>
+          </div>
+        </div>
+        {allData&&<div style={{display:"flex",gap:16,marginTop:20,position:"relative",zIndex:1}}>
+          {[[totalPresent,"Kelgan","#4ade80"],[totalLate,"Kechikkan","#fbbf24"],[totalAbsent,"Kelmagan","#f87171"]].map(function(arr,i){
+            return React.createElement("div",{key:i,style:{background:"rgba(255,255,255,.08)",borderRadius:12,padding:"10px 16px",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,.1)"}},
+              React.createElement("div",{style:{fontSize:20,fontWeight:800,color:arr[2]}},arr[0]),
+              React.createElement("div",{style:{fontSize:10,color:"rgba(255,255,255,.5)",marginTop:2}},arr[1])
+            );
+          })}
+          <div style={{background:"rgba(255,255,255,.08)",borderRadius:12,padding:"10px 16px",backdropFilter:"blur(10px)",border:"1px solid rgba(255,255,255,.1)"}}>
+            <div style={{fontSize:20,fontWeight:800,color:"var(--gold-lt)"}}>{allData?allData.dates.length:0}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,.5)",marginTop:2}}>Ish kunlari</div>
+          </div>
+        </div>}
       </div>
-      <div className="page-subtitle">Sun'iy intellekt yordamida xodimlar intizomini tahlil qiling</div>
 
       {/* MODE TABS */}
-      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-        {[["chat","💬","Erkin savol"],["employee","👤","Xodim tahlili"],["monthly","📊","Oylik hisobot"]].map(([m,ic,lb])=>(
-          <button key={m} onClick={()=>{setMode(m);setMessages([])}} style={{
-            padding:"8px 16px",borderRadius:10,border:mode===m?"2px solid var(--gold)":"1px solid var(--border)",
-            background:mode===m?"var(--gold-pale,#fdf3de)":"var(--card-bg)",color:mode===m?"var(--gold)":"var(--text1)",
-            cursor:"pointer",fontWeight:mode===m?700:500,fontSize:13,display:"flex",alignItems:"center",gap:6,
-            transition:"all .2s"
-          }}>{ic} {lb}</button>
-        ))}
+      <div style={{display:"flex",gap:6,marginBottom:24,background:"var(--surface3)",borderRadius:14,padding:4}}>
+        {[["chat","💬","AI Chat"],["employee","👤","Xodim Tahlili"],["monthly","📊","Oylik Hisobot"]].map(function(arr){
+          var m=arr[0],ic=arr[1],lb=arr[2],isAct=mode===m;
+          return React.createElement("button",{key:m,onClick:function(){setMode(m);setMessages([]);setSelEmp("");setEmpData(null)},style:{
+            flex:1,padding:"10px 12px",borderRadius:10,border:"none",
+            background:isAct?"var(--surface)":"transparent",color:isAct?"var(--t1)":"var(--t3)",
+            cursor:"pointer",fontWeight:isAct?700:500,fontSize:13,
+            boxShadow:isAct?"var(--s2)":"none",transition:"all .25s",display:"flex",alignItems:"center",justifyContent:"center",gap:6
+          }},ic," ",lb);
+        })}
       </div>
 
-      {/* EMPLOYEE SELECT */}
-      {mode==="employee"&&(
-        <div style={{marginBottom:16}}>
-          <select value={selEmp} onChange={e=>setSelEmp(e.target.value)} style={{
-            width:"100%",padding:"10px 14px",borderRadius:10,border:"1px solid var(--border)",
-            background:"var(--card-bg)",color:"var(--text1)",fontSize:14
-          }}>
-            <option value="">Xodimni tanlang...</option>
-            {EMPLOYEES.map(e=><option key={e} value={e}>{e}</option>)}
-          </select>
-        </div>
-      )}
-
-      {/* MONTHLY BUTTON */}
-      {mode==="monthly"&&messages.length===0&&(
-        <div style={{textAlign:"center",padding:40}}>
-          <div style={{fontSize:48,marginBottom:16}}>📊</div>
-          <div style={{fontSize:16,fontWeight:600,color:"var(--text1)",marginBottom:8}}>Oylik umumiy tahlil</div>
-          <div style={{fontSize:13,color:"var(--text3)",marginBottom:20}}>Barcha xodimlar bo'yicha {new Date().toLocaleString("uz",{month:"long"})} oyi uchun AI tahlil</div>
-          <button onClick={()=>sendAI("","","monthly")} disabled={loading} style={{
-            padding:"12px 32px",borderRadius:12,background:"linear-gradient(135deg,var(--gold),var(--gold-lt))",
-            color:"#fff",border:"none",cursor:"pointer",fontSize:14,fontWeight:700,
-            boxShadow:"0 4px 15px var(--gold-glow)"
-          }}>
-            {loading?"Tahlil qilinmoqda...":"🤖 Tahlilni boshlash"}
-          </button>
-        </div>
-      )}
-
-      {/* CHAT */}
-      <div style={{
-        background:"var(--card-bg)",borderRadius:16,border:"1px solid var(--border)",
-        minHeight:400,maxHeight:500,overflowY:"auto",padding:20,marginBottom:16,
-        display:mode==="monthly"&&messages.length===0?"none":"block"
-      }}>
-        {messages.length===0&&mode!=="monthly"&&(
-          <div style={{textAlign:"center",padding:40,color:"var(--text3)"}}>
-            <div style={{fontSize:40,marginBottom:12}}>🤖</div>
-            <div style={{fontSize:14}}>
-              {mode==="chat"?"Xodimlar haqida savol bering...":"Xodimni tanlang va savol yozing"}
-            </div>
-            <div style={{fontSize:12,marginTop:8,color:"var(--text4)"}}>
-              Masalan: "Kim eng ko'p kechikadi?", "Bugungi holat qanday?"
-            </div>
+      {/* ═══ EMPLOYEE MODE ═══ */}
+      {mode==="employee"&&<div>
+        {/* Employee search/select */}
+        {!selEmp&&<div>
+          <div style={{position:"relative",marginBottom:16}}>
+            <svg style={{position:"absolute",left:14,top:13,opacity:.4}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input value={empSearch} onChange={function(e){setEmpSearch(e.target.value)}} placeholder="Xodim ismini qidiring..." style={{width:"100%",padding:"12px 16px 12px 40px",borderRadius:12,border:"1px solid var(--border)",background:"var(--surface)",color:"var(--t1)",fontSize:14,outline:"none"}}/>
           </div>
-        )}
-        {messages.map((msg,i)=>(
-          <div key={i} style={{
-            display:"flex",justifyContent:msg.role==="user"?"flex-end":"flex-start",
-            marginBottom:12
-          }}>
-            <div style={{
-              maxWidth:"85%",padding:"12px 16px",borderRadius:msg.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",
-              background:msg.role==="user"?"linear-gradient(135deg,var(--navy),var(--navy-mid))":"var(--bg2,#f5f5f5)",
-              color:msg.role==="user"?"#fff":"var(--text1)",
-              fontSize:13,lineHeight:1.6,
-              boxShadow:"0 2px 8px rgba(0,0,0,.06)"
-            }}>
-              {msg.role==="ai"?<div dangerouslySetInnerHTML={{__html:formatAI(msg.text)}}/>:msg.text}
-              <div style={{fontSize:10,marginTop:6,opacity:.5,textAlign:"right"}}>
-                {msg.time.toLocaleTimeString("uz",{hour:"2-digit",minute:"2-digit"})}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+            {filteredEmps.map(function(emp){
+              var st=allData?allData.stats.find(function(s){return s.name===emp}):null;
+              var sc=st?st.score:0;
+              var scColor=sc>=80?"var(--emerald)":sc>=60?"var(--amber)":"var(--ruby)";
+              return React.createElement("div",{key:emp,onClick:function(){selectEmployee(emp)},style:{
+                background:"var(--surface)",border:"1px solid var(--border)",borderRadius:14,padding:"14px 16px",
+                cursor:"pointer",transition:"all .2s",display:"flex",alignItems:"center",gap:12
+              }},
+                React.createElement("div",{style:{width:40,height:40,borderRadius:12,background:"linear-gradient(135deg,var(--navy),var(--slate))",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:15}},emp.charAt(0)),
+                React.createElement("div",{style:{flex:1,minWidth:0}},
+                  React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},emp),
+                  st?React.createElement("div",{style:{fontSize:11,color:"var(--t4)",marginTop:2}},"Kelgan: "+st.present+" | Kechikkan: "+st.late):null
+                ),
+                st?React.createElement("div",{style:{fontSize:16,fontWeight:800,color:scColor}},sc):null
+              );
+            })}
+          </div>
+        </div>}
+
+        {/* Employee detail + analysis */}
+        {selEmp&&selStats&&<div>
+          <button onClick={function(){setSelEmp("");setEmpData(null);setMessages([])}} style={{background:"none",border:"none",color:"var(--t3)",cursor:"pointer",fontSize:13,marginBottom:12,display:"flex",alignItems:"center",gap:4}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg> Orqaga
+          </button>
+
+          {/* Employee card */}
+          <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:18,padding:24,marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
+              <div style={{width:56,height:56,borderRadius:16,background:"linear-gradient(135deg,var(--navy),var(--slate))",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:22}}>{selEmp.charAt(0)}</div>
+              <div>
+                <div style={{fontSize:18,fontWeight:700,color:"var(--t1)"}}>{selEmp}</div>
+                <div style={{fontSize:12,color:"var(--t3)",marginTop:2}}>{MONTHS[allData.month]} {allData.year} &middot; {allData.dates.length} ish kuni</div>
+              </div>
+              <div style={{marginLeft:"auto",textAlign:"center"}}>
+                <div style={{fontSize:32,fontWeight:800,color:selStats.score>=80?"var(--emerald)":selStats.score>=60?"var(--amber)":"var(--ruby)"}}>{selStats.score}</div>
+                <div style={{fontSize:10,color:"var(--t4)",fontWeight:600}}>BALL</div>
               </div>
             </div>
-          </div>
-        ))}
-        {loading&&(
-          <div style={{display:"flex",gap:8,padding:16,alignItems:"center"}}>
-            <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,var(--gold),var(--gold-lt))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🤖</div>
-            <div style={{padding:"10px 16px",borderRadius:12,background:"var(--bg2,#f5f5f5)",fontSize:13,color:"var(--text3)"}}>
-              <span className="typing-dots">Tahlil qilinmoqda</span>
-              <style>{"@keyframes tdots{0%,80%,100%{opacity:.2}40%{opacity:1}}.typing-dots::after{content:'...';animation:tdots 1.4s infinite}"}</style>
+
+            {/* Stats grid */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:10,marginBottom:20}}>
+              {[[selStats.present,"Kelgan","var(--emerald)","var(--emerald-bg)"],[selStats.late,"Kechikkan","var(--amber)","var(--amber-bg)"],[selStats.absent,"Kelmagan","var(--ruby)","var(--ruby-bg)"],[selStats.sick,"Bemor","var(--cobalt)","var(--cobalt-bg)"],[selStats.vacation,"Ta'til","var(--teal)","var(--teal-bg)"],[selStats.lateMins,"Kechikish (daq)","var(--violet)","var(--violet-bg)"]].map(function(arr,i){
+                return React.createElement("div",{key:i,style:{background:arr[3],borderRadius:12,padding:"12px 14px",textAlign:"center"}},
+                  React.createElement("div",{style:{fontSize:22,fontWeight:800,color:arr[2]}},arr[0]),
+                  React.createElement("div",{style:{fontSize:10,color:arr[2],opacity:.7,marginTop:2,fontWeight:600}},arr[1])
+                );
+              })}
             </div>
-          </div>
-        )}
-        <div ref={chatEndRef}/>
-      </div>
 
-      {/* INPUT */}
-      {mode!=="monthly"&&(
-        <div style={{display:"flex",gap:8}}>
-          <input
-            value={input}
-            onChange={e=>setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={mode==="employee"?(selEmp?"\""+selEmp+" nima uchun kechikadi?\"":"Avval xodimni tanlang..."):"Savol yozing... (masalan: \"Kim eng intizomli?\")"}
-            disabled={loading||(mode==="employee"&&!selEmp)}
-            style={{
-              flex:1,padding:"12px 16px",borderRadius:12,border:"1px solid var(--border)",
-              background:"var(--card-bg)",color:"var(--text1)",fontSize:14,outline:"none"
-            }}
-          />
-          <button onClick={handleSend} disabled={loading||(!input.trim()&&mode==="chat")||(mode==="employee"&&!selEmp)} style={{
-            padding:"12px 20px",borderRadius:12,border:"none",cursor:"pointer",fontWeight:700,fontSize:14,
-            background:loading?"var(--border)":"linear-gradient(135deg,var(--gold),var(--gold-lt))",
-            color:"#fff",boxShadow:"0 4px 15px var(--gold-glow)",transition:"all .2s",
-            opacity:(loading||(!input.trim()&&mode==="chat"))?0.5:1
-          }}>
-            {loading?"⏳":"📤"} Yuborish
-          </button>
-        </div>
-      )}
+            {/* Donut charts */}
+            <div style={{display:"flex",justifyContent:"center",gap:24,marginBottom:20,flexWrap:"wrap"}}>
+              {React.createElement(AIDonut,{value:selStats.present,max:allData.dates.length,color:"var(--emerald)",label:"Kelganlik",size:90})}
+              {React.createElement(AIDonut,{value:selStats.late,max:selStats.present||1,color:"var(--amber)",label:"Kechikish",size:90})}
+              {React.createElement(AIDonut,{value:selStats.score,max:100,color:selStats.score>=80?"var(--emerald)":selStats.score>=60?"var(--amber)":"var(--ruby)",label:"Intizom",size:90})}
+            </div>
 
-      {/* QUICK QUESTIONS */}
-      {mode==="chat"&&messages.length===0&&(
-        <div style={{marginTop:16}}>
-          <div style={{fontSize:12,fontWeight:600,color:"var(--text3)",marginBottom:8}}>Tez savollar:</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {["Kim eng ko'p kechikadi?","Bugungi davomat qanday?","Eng intizomli xodim kim?","Kechikish tendensiyasi qanday?","Qaysi kunlarda ko'p kechikishlar bo'ladi?"].map(q=>(
-              <button key={q} onClick={()=>{setInput(q);setTimeout(()=>{sendAI(q,"","chat")},100)}} style={{
-                padding:"6px 12px",borderRadius:20,border:"1px solid var(--border)",
-                background:"var(--card-bg)",color:"var(--text2)",fontSize:12,cursor:"pointer",
-                transition:"all .2s"
-              }}>{q}</button>
-            ))}
+            {/* Daily bar chart */}
+            {selStats.daily&&selStats.daily.length>0&&<div>
+              <div style={{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:8}}>Kunlik holat</div>
+              <div style={{overflowX:"auto",paddingBottom:8}}>
+                {React.createElement(AIBarChart,{
+                  data:selStats.daily.map(function(dd){
+                    var colors={present:"var(--emerald)",late:"var(--amber)",absent:"var(--ruby)",sick:"var(--cobalt)",vacation:"var(--teal)",trip:"#8b5cf6",excused:"var(--ash)"};
+                    return{value:dd.s==="present"?1:dd.s==="late"?(dd.m||5)/10:dd.s==="absent"?0.5:0.3,color:colors[dd.s]||"var(--ash)",label:dd.d.slice(8)};
+                  }),
+                  maxVal:1.5,height:100
+                })}
+              </div>
+              <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
+                {[["var(--emerald)","Kelgan"],["var(--amber)","Kechikkan"],["var(--ruby)","Kelmagan"],["var(--cobalt)","Bemor"],["var(--teal)","Ta'til"]].map(function(arr,i){
+                  return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:4,fontSize:10,color:"var(--t3)"}},
+                    React.createElement("div",{style:{width:8,height:8,borderRadius:2,background:arr[0]}}),arr[1]
+                  );
+                })}
+              </div>
+            </div>}
+
+            {/* AI Analysis button */}
+            <button onClick={function(){sendAI("",selEmp,"employee")}} disabled={loading} style={{
+              width:"100%",marginTop:20,padding:"14px 24px",borderRadius:14,border:"none",cursor:"pointer",
+              background:loading?"var(--border)":"linear-gradient(135deg,var(--gold) 0%,var(--gold-lt) 100%)",
+              color:"#fff",fontWeight:700,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+              boxShadow:"0 8px 24px var(--gold-glow)",transition:"all .3s"
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 2a4 4 0 0 1 4 4c0 2-1 3-2 4l-1 1v1h-2v-1l-1-1c-1-1-2-2-2-4a4 4 0 0 1 4-4z"/><path d="M9 16h6"/><path d="M10 20h4"/></svg>
+              {loading?"AI tahlil qilinmoqda...":"AI bilan chuqur tahlil qilish"}
+            </button>
+          </div>
+        </div>}
+      </div>}
+
+      {/* ═══ MONTHLY MODE ═══ */}
+      {mode==="monthly"&&messages.length===0&&allData&&<div>
+        {/* Overview cards */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:20}}>
+          {[
+            ["Umumiy kelganlik",totalPresent+"/"+(allData.dates.length*EMPLOYEES.length),Math.round(totalPresent/(allData.dates.length*EMPLOYEES.length)*100)+"%","var(--emerald)","var(--emerald-bg)"],
+            ["Kechikishlar",totalLate+" marta","O'rtacha "+Math.round(totalLate/Math.max(EMPLOYEES.length,1)*10)/10+"/xodim","var(--amber)","var(--amber-bg)"],
+            ["Sababsiz yo'qlik",totalAbsent+" kun","Diqqatga muhtoj","var(--ruby)","var(--ruby-bg)"]
+          ].map(function(arr,i){
+            return React.createElement("div",{key:i,style:{background:arr[4],borderRadius:16,padding:"18px 20px",border:"1px solid "+arr[3]+"22"}},
+              React.createElement("div",{style:{fontSize:11,fontWeight:600,color:arr[3],marginBottom:6,textTransform:"uppercase",letterSpacing:.5}},arr[0]),
+              React.createElement("div",{style:{fontSize:24,fontWeight:800,color:arr[3]}},arr[1]),
+              React.createElement("div",{style:{fontSize:11,color:arr[3],opacity:.7,marginTop:2}},arr[2])
+            );
+          })}
+        </div>
+
+        {/* Top/Bottom employees */}
+        {allData&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+          <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:16,padding:18}}>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--emerald)",marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:16}}>&#127942;</span> Eng yaxshilar
+            </div>
+            {allData.stats.slice().sort(function(a,b){return b.score-a.score}).slice(0,5).map(function(s,i){
+              var medals=["&#129351;","&#129352;","&#129353;","4","5"];
+              return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<4?"1px solid var(--border)":"none"}},
+                React.createElement("span",{style:{fontSize:14,width:24,textAlign:"center"},dangerouslySetInnerHTML:{__html:medals[i]}}),
+                React.createElement("span",{style:{flex:1,fontSize:12,fontWeight:500,color:"var(--t1)"}},s.name),
+                React.createElement("span",{style:{fontSize:13,fontWeight:800,color:"var(--emerald)"}},s.score)
+              );
+            })}
+          </div>
+          <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:16,padding:18}}>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--ruby)",marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:16}}>&#9888;&#65039;</span> Diqqatga muhtoj
+            </div>
+            {allData.stats.slice().sort(function(a,b){return a.score-b.score}).slice(0,5).map(function(s,i){
+              return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<4?"1px solid var(--border)":"none"}},
+                React.createElement("span",{style:{fontSize:12,width:24,textAlign:"center",color:"var(--ruby)",fontWeight:700}},i+1),
+                React.createElement("span",{style:{flex:1,fontSize:12,fontWeight:500,color:"var(--t1)"}},s.name),
+                React.createElement("span",{style:{fontSize:12,color:"var(--t4)"}},s.absent>0?s.absent+" yo'q":""),
+                React.createElement("span",{style:{fontSize:13,fontWeight:800,color:s.score>=80?"var(--emerald)":s.score>=60?"var(--amber)":"var(--ruby)"}},s.score)
+              );
+            })}
+          </div>
+        </div>}
+
+        <button onClick={function(){sendAI("","","monthly")}} disabled={loading} style={{
+          width:"100%",padding:"16px 24px",borderRadius:16,border:"none",cursor:"pointer",
+          background:loading?"var(--border)":"linear-gradient(135deg,var(--navy) 0%,var(--slate) 50%,var(--gold) 100%)",
+          color:"#fff",fontWeight:700,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:10,
+          boxShadow:"0 8px 32px rgba(15,30,61,.3)",transition:"all .3s"
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 2a4 4 0 0 1 4 4c0 2-1 3-2 4l-1 1v1h-2v-1l-1-1c-1-1-2-2-2-4a4 4 0 0 1 4-4z"/><path d="M9 16h6"/><path d="M10 20h4"/></svg>
+          {loading?"AI tahlil qilinmoqda...":"AI bilan oylik chuqur tahlil"}
+        </button>
+      </div>}
+
+      {/* ═══ CHAT AREA ═══ */}
+      {(mode==="chat"||(mode==="employee"&&selEmp&&messages.length>0)||(mode==="monthly"&&messages.length>0))&&<div style={{
+        background:"var(--surface)",borderRadius:18,border:"1px solid var(--border)",
+        marginTop:mode!=="chat"?20:0,overflow:"hidden",boxShadow:"var(--s2)"
+      }}>
+        {/* Chat header */}
+        <div style={{padding:"14px 20px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:10,background:"var(--surface2)"}}>
+          <div style={{width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,var(--gold),var(--gold-lt))",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M12 2a4 4 0 0 1 4 4c0 2-1 3-2 4l-1 1v1h-2v-1l-1-1c-1-1-2-2-2-4a4 4 0 0 1 4-4z"/><path d="M9 16h6"/><path d="M10 20h4"/></svg>
+          </div>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--t1)"}}>AI Yordamchi</div>
+            <div style={{fontSize:10,color:"var(--t4)"}}>{loading?"Yozmoqda...":"Online"}</div>
+          </div>
+          {messages.length>0&&<button onClick={function(){setMessages([])}} style={{marginLeft:"auto",background:"none",border:"none",color:"var(--t4)",cursor:"pointer",fontSize:11}}>Tozalash</button>}
+        </div>
+
+        {/* Messages */}
+        <div style={{minHeight:350,maxHeight:450,overflowY:"auto",padding:20}}>
+          {messages.length===0&&mode==="chat"&&(
+            <div style={{textAlign:"center",padding:"40px 20px"}}>
+              <div style={{width:64,height:64,borderRadius:20,background:"linear-gradient(135deg,var(--gold-pale),var(--surface3))",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:28}}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.5"><path d="M12 2a4 4 0 0 1 4 4c0 2-1 3-2 4l-1 1v1h-2v-1l-1-1c-1-1-2-2-2-4a4 4 0 0 1 4-4z"/><path d="M9 16h6"/><path d="M10 20h4"/></svg>
+              </div>
+              <div style={{fontSize:16,fontWeight:700,color:"var(--t1)",marginBottom:4}}>Xush kelibsiz!</div>
+              <div style={{fontSize:13,color:"var(--t3)",marginBottom:24}}>Xodimlar intizomi haqida istalgan savolni bering</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,maxWidth:500,margin:"0 auto"}}>
+                {[
+                  ["Kim eng ko'p kechikadi?","&#128336;"],
+                  ["Bugungi davomat qanday?","&#128202;"],
+                  ["Eng intizomli xodim kim?","&#127942;"],
+                  ["Kechikish tendensiyasi","&#128200;"],
+                  ["Qaysi kunlarda muammo ko'p?","&#128197;"],
+                  ["Umumiy intizom baho","&#127919;"]
+                ].map(function(arr){
+                  return React.createElement("button",{key:arr[0],onClick:function(){setInput(arr[0]);sendAI(arr[0],"","chat")},style:{
+                    padding:"10px 14px",borderRadius:12,border:"1px solid var(--border)",background:"var(--surface2)",
+                    color:"var(--t2)",fontSize:12,cursor:"pointer",transition:"all .2s",textAlign:"left",
+                    display:"flex",alignItems:"center",gap:8
+                  }},React.createElement("span",{dangerouslySetInnerHTML:{__html:arr[1]}}),arr[0]);
+                })}
+              </div>
+            </div>
+          )}
+
+          {messages.map(function(msg,i){
+            return React.createElement("div",{key:i,style:{display:"flex",gap:10,marginBottom:16,flexDirection:msg.role==="user"?"row-reverse":"row"}},
+              React.createElement("div",{style:{
+                width:32,height:32,borderRadius:10,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,
+                background:msg.role==="user"?"linear-gradient(135deg,var(--navy),var(--slate))":"linear-gradient(135deg,var(--gold),var(--gold-lt))",
+                color:"#fff",fontWeight:700
+              }},msg.role==="user"?"S":React.createElement("svg",{width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"#fff",strokeWidth:"2"},React.createElement("path",{d:"M12 2a4 4 0 0 1 4 4c0 2-1 3-2 4l-1 1v1h-2v-1l-1-1c-1-1-2-2-2-4a4 4 0 0 1 4-4z"}),React.createElement("path",{d:"M9 16h6"}),React.createElement("path",{d:"M10 20h4"}))),
+              React.createElement("div",{style:{
+                maxWidth:"78%",padding:"14px 18px",
+                borderRadius:msg.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",
+                background:msg.role==="user"?"linear-gradient(135deg,var(--navy),var(--navy-mid))":"var(--surface2)",
+                color:msg.role==="user"?"#fff":"var(--t1)",
+                fontSize:13,lineHeight:1.7,boxShadow:"var(--s1)"
+              }},
+                msg.role==="ai"?React.createElement("div",{dangerouslySetInnerHTML:{__html:formatAI(msg.text)}}):msg.text,
+                React.createElement("div",{style:{fontSize:9,marginTop:8,opacity:.4,textAlign:msg.role==="user"?"right":"left"}},
+                  msg.time.toLocaleTimeString("uz",{hour:"2-digit",minute:"2-digit"})
+                )
+              )
+            );
+          })}
+
+          {loading&&React.createElement("div",{style:{display:"flex",gap:10,marginBottom:16}},
+            React.createElement("div",{style:{width:32,height:32,borderRadius:10,background:"linear-gradient(135deg,var(--gold),var(--gold-lt))",display:"flex",alignItems:"center",justifyContent:"center"}},
+              React.createElement("svg",{width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"#fff",strokeWidth:"2"},React.createElement("path",{d:"M12 2a4 4 0 0 1 4 4c0 2-1 3-2 4l-1 1v1h-2v-1l-1-1c-1-1-2-2-2-4a4 4 0 0 1 4-4z"}))
+            ),
+            React.createElement("div",{style:{padding:"14px 18px",borderRadius:"18px 18px 18px 4px",background:"var(--surface2)",boxShadow:"var(--s1)"}},
+              React.createElement("div",{style:{display:"flex",gap:4,alignItems:"center"}},
+                [0,1,2].map(function(j){return React.createElement("div",{key:j,style:{width:6,height:6,borderRadius:"50%",background:"var(--gold)",animation:"aiPulse 1.4s ease-in-out "+j*0.2+"s infinite"}})})
+              ),
+              React.createElement("style",null,"@keyframes aiPulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}")
+            )
+          )}
+          <div ref={chatEndRef}/>
+        </div>
+
+        {/* Input area */}
+        <div style={{padding:"14px 20px",borderTop:"1px solid var(--border)",background:"var(--surface2)"}}>
+          {mode==="employee"&&selEmp&&<div style={{fontSize:11,color:"var(--t4)",marginBottom:6}}>
+            <span style={{background:"var(--gold-pale)",color:"var(--gold)",padding:"2px 8px",borderRadius:6,fontWeight:600}}>{selEmp}</span> haqida savol yozing yoki qo'shimcha so'rang
+          </div>}
+          <div style={{display:"flex",gap:8}}>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={function(e){setInput(e.target.value)}}
+              onKeyDown={handleKeyDown}
+              placeholder={mode==="employee"?"Qo'shimcha savol yozing...":"Savol yozing..."}
+              disabled={loading}
+              style={{flex:1,padding:"12px 16px",borderRadius:12,border:"1px solid var(--border)",background:"var(--surface)",color:"var(--t1)",fontSize:14,outline:"none",transition:"border-color .2s"}}
+            />
+            <button onClick={handleSend} disabled={loading||(!input.trim()&&mode==="chat")} style={{
+              padding:"12px 20px",borderRadius:12,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,
+              background:loading?"var(--border)":"linear-gradient(135deg,var(--gold),var(--gold-lt))",
+              color:"#fff",boxShadow:"0 4px 12px var(--gold-glow)",transition:"all .2s",
+              display:"flex",alignItems:"center",gap:6,
+              opacity:loading?0.5:1
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Yuborish
+            </button>
           </div>
         </div>
-      )}
+      </div>}
     </div>
   );
 }
