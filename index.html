@@ -4147,6 +4147,201 @@ function BirthdayStatCard({empName}){
   );
 }
 
+/* ═══ AI TAHLIL (GEMINI) ═══ */
+function AIAnalysisView({showToast}){
+  const [messages,setMessages]=useState([]);
+  const [input,setInput]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [selEmp,setSelEmp]=useState("");
+  const [mode,setMode]=useState("chat"); // chat | employee | monthly
+  const chatEndRef=React.useRef(null);
+  const AI_URL="https://us-central1-xodimlar-7c13c.cloudfunctions.net/aiAnalysis";
+
+  React.useEffect(()=>{chatEndRef.current?.scrollIntoView({behavior:"smooth"})},[messages]);
+
+  async function getToken(){
+    const u=firebase.auth().currentUser;
+    if(!u)return null;
+    return await u.getIdToken();
+  }
+
+  async function sendAI(q,empName,m){
+    const token=await getToken();
+    if(!token){showToast("Avval tizimga kiring");return}
+    setLoading(true);
+    const userMsg={role:"user",text:q||(m==="monthly"?"Oylik umumiy tahlil":""),time:new Date()};
+    setMessages(prev=>[...prev,userMsg]);
+    try{
+      const res=await fetch(AI_URL,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},
+        body:JSON.stringify({question:q||"",employeeName:empName||"",mode:m||"chat"})
+      });
+      const data=await res.json();
+      if(data.error){setMessages(prev=>[...prev,{role:"ai",text:"Xatolik: "+data.error,time:new Date()}]);return}
+      setMessages(prev=>[...prev,{role:"ai",text:data.answer,time:new Date()}]);
+    }catch(err){
+      setMessages(prev=>[...prev,{role:"ai",text:"Tarmoq xatosi: "+err.message,time:new Date()}]);
+    }finally{setLoading(false)}
+  }
+
+  function handleSend(){
+    if(!input.trim()&&mode==="chat")return;
+    if(mode==="employee"){sendAI(input,selEmp,"employee")}
+    else if(mode==="monthly"){sendAI("","","monthly")}
+    else{sendAI(input,"","chat")}
+    setInput("");
+  }
+
+  function handleKeyDown(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSend()}}
+
+  function formatAI(text){
+    return text.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+      .replace(/\n/g,"<br/>")
+      .replace(/(\d+)\./g,"<br/>$1.");
+  }
+
+  return(
+    <div style={{maxWidth:900,margin:"0 auto"}}>
+      <div className="page-title" style={{display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:28}}>🤖</span> AI Tahlil
+        <span style={{fontSize:12,padding:"2px 8px",borderRadius:20,background:"var(--emerald-bg)",color:"var(--emerald)",fontWeight:600}}>Gemini</span>
+      </div>
+      <div className="page-subtitle">Sun'iy intellekt yordamida xodimlar intizomini tahlil qiling</div>
+
+      {/* MODE TABS */}
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+        {[["chat","💬","Erkin savol"],["employee","👤","Xodim tahlili"],["monthly","📊","Oylik hisobot"]].map(([m,ic,lb])=>(
+          <button key={m} onClick={()=>{setMode(m);setMessages([])}} style={{
+            padding:"8px 16px",borderRadius:10,border:mode===m?"2px solid var(--gold)":"1px solid var(--border)",
+            background:mode===m?"var(--gold-pale,#fdf3de)":"var(--card-bg)",color:mode===m?"var(--gold)":"var(--text1)",
+            cursor:"pointer",fontWeight:mode===m?700:500,fontSize:13,display:"flex",alignItems:"center",gap:6,
+            transition:"all .2s"
+          }}>{ic} {lb}</button>
+        ))}
+      </div>
+
+      {/* EMPLOYEE SELECT */}
+      {mode==="employee"&&(
+        <div style={{marginBottom:16}}>
+          <select value={selEmp} onChange={e=>setSelEmp(e.target.value)} style={{
+            width:"100%",padding:"10px 14px",borderRadius:10,border:"1px solid var(--border)",
+            background:"var(--card-bg)",color:"var(--text1)",fontSize:14
+          }}>
+            <option value="">Xodimni tanlang...</option>
+            {EMPLOYEES.map(e=><option key={e} value={e}>{e}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* MONTHLY BUTTON */}
+      {mode==="monthly"&&messages.length===0&&(
+        <div style={{textAlign:"center",padding:40}}>
+          <div style={{fontSize:48,marginBottom:16}}>📊</div>
+          <div style={{fontSize:16,fontWeight:600,color:"var(--text1)",marginBottom:8}}>Oylik umumiy tahlil</div>
+          <div style={{fontSize:13,color:"var(--text3)",marginBottom:20}}>Barcha xodimlar bo'yicha {new Date().toLocaleString("uz",{month:"long"})} oyi uchun AI tahlil</div>
+          <button onClick={()=>sendAI("","","monthly")} disabled={loading} style={{
+            padding:"12px 32px",borderRadius:12,background:"linear-gradient(135deg,var(--gold),var(--gold-lt))",
+            color:"#fff",border:"none",cursor:"pointer",fontSize:14,fontWeight:700,
+            boxShadow:"0 4px 15px var(--gold-glow)"
+          }}>
+            {loading?"Tahlil qilinmoqda...":"🤖 Tahlilni boshlash"}
+          </button>
+        </div>
+      )}
+
+      {/* CHAT */}
+      <div style={{
+        background:"var(--card-bg)",borderRadius:16,border:"1px solid var(--border)",
+        minHeight:400,maxHeight:500,overflowY:"auto",padding:20,marginBottom:16,
+        display:mode==="monthly"&&messages.length===0?"none":"block"
+      }}>
+        {messages.length===0&&mode!=="monthly"&&(
+          <div style={{textAlign:"center",padding:40,color:"var(--text3)"}}>
+            <div style={{fontSize:40,marginBottom:12}}>🤖</div>
+            <div style={{fontSize:14}}>
+              {mode==="chat"?"Xodimlar haqida savol bering...":"Xodimni tanlang va savol yozing"}
+            </div>
+            <div style={{fontSize:12,marginTop:8,color:"var(--text4)"}}>
+              Masalan: "Kim eng ko'p kechikadi?", "Bugungi holat qanday?"
+            </div>
+          </div>
+        )}
+        {messages.map((msg,i)=>(
+          <div key={i} style={{
+            display:"flex",justifyContent:msg.role==="user"?"flex-end":"flex-start",
+            marginBottom:12
+          }}>
+            <div style={{
+              maxWidth:"85%",padding:"12px 16px",borderRadius:msg.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",
+              background:msg.role==="user"?"linear-gradient(135deg,var(--navy),var(--navy-mid))":"var(--bg2,#f5f5f5)",
+              color:msg.role==="user"?"#fff":"var(--text1)",
+              fontSize:13,lineHeight:1.6,
+              boxShadow:"0 2px 8px rgba(0,0,0,.06)"
+            }}>
+              {msg.role==="ai"?<div dangerouslySetInnerHTML={{__html:formatAI(msg.text)}}/>:msg.text}
+              <div style={{fontSize:10,marginTop:6,opacity:.5,textAlign:"right"}}>
+                {msg.time.toLocaleTimeString("uz",{hour:"2-digit",minute:"2-digit"})}
+              </div>
+            </div>
+          </div>
+        ))}
+        {loading&&(
+          <div style={{display:"flex",gap:8,padding:16,alignItems:"center"}}>
+            <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,var(--gold),var(--gold-lt))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🤖</div>
+            <div style={{padding:"10px 16px",borderRadius:12,background:"var(--bg2,#f5f5f5)",fontSize:13,color:"var(--text3)"}}>
+              <span className="typing-dots">Tahlil qilinmoqda</span>
+              <style>{"@keyframes tdots{0%,80%,100%{opacity:.2}40%{opacity:1}}.typing-dots::after{content:'...';animation:tdots 1.4s infinite}"}</style>
+            </div>
+          </div>
+        )}
+        <div ref={chatEndRef}/>
+      </div>
+
+      {/* INPUT */}
+      {mode!=="monthly"&&(
+        <div style={{display:"flex",gap:8}}>
+          <input
+            value={input}
+            onChange={e=>setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={mode==="employee"?(selEmp?"\""+selEmp+" nima uchun kechikadi?\"":"Avval xodimni tanlang..."):"Savol yozing... (masalan: \"Kim eng intizomli?\")"}
+            disabled={loading||(mode==="employee"&&!selEmp)}
+            style={{
+              flex:1,padding:"12px 16px",borderRadius:12,border:"1px solid var(--border)",
+              background:"var(--card-bg)",color:"var(--text1)",fontSize:14,outline:"none"
+            }}
+          />
+          <button onClick={handleSend} disabled={loading||(!input.trim()&&mode==="chat")||(mode==="employee"&&!selEmp)} style={{
+            padding:"12px 20px",borderRadius:12,border:"none",cursor:"pointer",fontWeight:700,fontSize:14,
+            background:loading?"var(--border)":"linear-gradient(135deg,var(--gold),var(--gold-lt))",
+            color:"#fff",boxShadow:"0 4px 15px var(--gold-glow)",transition:"all .2s",
+            opacity:(loading||(!input.trim()&&mode==="chat"))?0.5:1
+          }}>
+            {loading?"⏳":"📤"} Yuborish
+          </button>
+        </div>
+      )}
+
+      {/* QUICK QUESTIONS */}
+      {mode==="chat"&&messages.length===0&&(
+        <div style={{marginTop:16}}>
+          <div style={{fontSize:12,fontWeight:600,color:"var(--text3)",marginBottom:8}}>Tez savollar:</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {["Kim eng ko'p kechikadi?","Bugungi davomat qanday?","Eng intizomli xodim kim?","Kechikish tendensiyasi qanday?","Qaysi kunlarda ko'p kechikishlar bo'ladi?"].map(q=>(
+              <button key={q} onClick={()=>{setInput(q);setTimeout(()=>{sendAI(q,"","chat")},100)}} style={{
+                padding:"6px 12px",borderRadius:20,border:"1px solid var(--border)",
+                background:"var(--card-bg)",color:"var(--text2)",fontSize:12,cursor:"pointer",
+                transition:"all .2s"
+              }}>{q}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ═══ TELEGRAM SETTINGS ═══ */
 function TelegramSettings({showToast}){
   const [cfg,setCfg]=useState({botToken:"",chatId:"",enabled:false,notifyLate:true,notifyAbsent:true,notifySelfie:true});
@@ -6259,6 +6454,7 @@ function App(){
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
     {k:"selfie",icon:"📸",label:"Selfie Davomat"},
+    ...(isAdmin?[{k:"aiAnalysis",icon:"🤖",label:"AI Tahlil"}]:[]),
     ...(isAdmin?[{k:"telegram",icon:"📨",label:"Telegram Bot"}]:[]),
     ...(isAdmin?[{k:"accounts",icon:"🔑",label:"Akkauntlar"}]:[])
   ];
@@ -6269,7 +6465,7 @@ function App(){
     {k:"selfie",icon:"📸",label:"Selfie Davomat"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
 
   return(
@@ -6421,6 +6617,7 @@ function App(){
                 {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>}
                 {view==="birthdays"&&<BirthdaysView/>}
                 {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
+                {view==="aiAnalysis"&&isAdmin&&<AIAnalysisView showToast={showToast}/>}
                 {view==="telegram"&&isAdmin&&<TelegramSettings showToast={showToast}/>}
                 {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
               </>

@@ -559,3 +559,166 @@ exports.weeklyReport = functions.pubsub
     await sendMessage(chatId, text);
     return null;
   });
+
+// ═══ AI TAHLIL (GEMINI) ═══
+const GEMINI_KEY = "AIzaSyB1zEK93rvpanajzXa8AlwRmNbOGgzYK90";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+
+exports.aiAnalysis = functions.https.onRequest(async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+  if (req.method !== "POST") { res.status(405).json({error:"POST only"}); return; }
+
+  // Auth check — faqat login qilgan user
+  const authHeader = req.headers.authorization || "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!idToken) { res.status(401).json({error:"Unauthorized"}); return; }
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    // Faqat admin/boss ruxsat
+    const userSnap = await db.ref(`users/${decoded.uid}`).once("value");
+    const userData = userSnap.val();
+    if (!userData || (userData.role !== "admin" && userData.role !== "boss")) {
+      res.status(403).json({error:"Ruxsat yo'q"}); return;
+    }
+  } catch (e) {
+    res.status(401).json({error:"Invalid token"}); return;
+  }
+
+  const { question, employeeName, mode } = req.body;
+  if (!question && !employeeName) { res.status(400).json({error:"question yoki employeeName kerak"}); return; }
+
+  try {
+    // Ma'lumotlarni Firebase'dan olish
+    const now = new Date();
+    const yr = now.getFullYear();
+    const mon = now.getMonth();
+    const dates = [];
+    const d = new Date(yr, mon, 1);
+    while (d.getMonth() === mon && fmtDate(d) <= fmtDate(now)) {
+      if (d.getDay() >= 1 && d.getDay() <= 5) dates.push(fmtDate(new Date(d)));
+      d.setDate(d.getDate() + 1);
+    }
+
+    const [attSnap, checkSnap] = await Promise.all([
+      db.ref("attendance").once("value"),
+      db.ref("checkins").once("value")
+    ]);
+    const allAtt = attSnap.val() || {};
+    const allCheckins = checkSnap.val() || {};
+
+    // Xodimlar statistikasini yig'ish
+    const empStats = [];
+    const targetEmps = employeeName ? EMPLOYEES.filter(e => e.toLowerCase().includes(employeeName.toLowerCase())) : EMPLOYEES;
+
+    targetEmps.forEach(emp => {
+      const key = safeKey(emp);
+      let present = 0, late = 0, absent = 0, sick = 0, vacation = 0, trip = 0, lateMins = 0;
+      const dailyDetails = [];
+      dates.forEach(dk => {
+        const att = allAtt[dk]?.[key];
+        const check = allCheckins[dk]?.[key];
+        const status = att?.status;
+        const hasMorning = check?.morning ? true : false;
+        const hasAfternoon = check?.afternoon ? true : false;
+        const hasSelfie = hasMorning || hasAfternoon;
+        const morningMin = att?.morning || 0;
+        const afternoonMin = att?.afternoon || 0;
+
+        let dayStatus = "noaniq";
+        if (status && NON_WORKING.includes(status)) {
+          if (status === "sick") { sick++; dayStatus = "bemor"; }
+          else if (status === "vacation") { vacation++; dayStatus = "ta'til"; }
+          else if (status === "trip") { trip++; dayStatus = "xizmat safari"; }
+          else { dayStatus = status; }
+        } else if (hasSelfie || status === "present" || status === "late") {
+          present++;
+          if (status === "late" || morningMin + afternoonMin > 0) {
+            late++;
+            lateMins += morningMin + afternoonMin;
+            dayStatus = `kechikkan (${morningMin + afternoonMin} daq)`;
+          } else { dayStatus = "kelgan"; }
+        } else { absent++; dayStatus = "kelmagan"; }
+        dailyDetails.push({ sana: dk, holat: dayStatus, ertalab_selfie: hasMorning, tushlik_selfie: hasAfternoon });
+      });
+      empStats.push({ ism: emp, kelgan: present, kechikkan: late, kelmagan: absent, bemor: sick, tatil: vacation, safar: trip, kechikish_daqiqa: lateMins, kunlik: dailyDetails });
+    });
+
+    const months = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+
+    // Gemini uchun prompt
+    let prompt = "";
+    if (mode === "monthly") {
+      prompt = `Sen — Navoiy viloyati Investitsiyalar boshqarmasi xodimlar intizomi bo'yicha mutaxassissan. ${months[mon]} ${yr} oyi uchun umumiy oylik tahlil ber.
+
+Xodimlar soni: ${EMPLOYEES.length}
+O'tgan ish kunlari: ${dates.length}
+
+Xodimlar ma'lumoti:
+${JSON.stringify(empStats, null, 1)}
+
+Quyidagilarni o'zbek tilida tahlil qil:
+1. Umumiy intizom holati (foizlarda)
+2. Eng intizomli 3 xodim va sababi
+3. Eng ko'p muammo ko'rilgan 3 xodim va sababi
+4. Kechikish tendensiyasi (qaysi kunlarda ko'p?)
+5. Aniq tavsiyalar (rahbariyat uchun)
+
+Professional, qisqa va aniq yoz. Raqamlar bilan asosla.`;
+    } else if (employeeName && targetEmps.length > 0) {
+      prompt = `Sen — Navoiy viloyati Investitsiyalar boshqarmasi xodimlar intizomi bo'yicha mutaxassissan.
+
+"${targetEmps[0]}" xodimi haqida ${months[mon]} ${yr} oyi uchun tahlil ber.
+
+Ma'lumot:
+${JSON.stringify(empStats[0], null, 1)}
+
+Quyidagilarni o'zbek tilida tahlil qil:
+1. Umumiy davomat holati
+2. Kechikish sabablari tahlili (qaysi kunlarda ko'p kechikadi?)
+3. Selfie intizomi (ertalab va tushlik)
+4. Kuchli tomonlari
+5. Yaxshilash uchun aniq tavsiyalar
+
+${question ? "Qo'shimcha savol: " + question : ""}
+
+Professional, qisqa va aniq yoz. Raqamlar bilan asosla.`;
+    } else {
+      prompt = `Sen — Navoiy viloyati Investitsiyalar boshqarmasi xodimlar intizomi bo'yicha AI yordamchisan. ${months[mon]} ${yr} oyidagi ma'lumotlar asosida javob ber.
+
+Xodimlar: ${EMPLOYEES.join(", ")}
+Ish kunlari: ${dates.length}
+
+Ma'lumot:
+${JSON.stringify(empStats.slice(0, 5), null, 1)}
+... (jami ${empStats.length} xodim)
+
+Savol: ${question}
+
+O'zbek tilida, professional va aniq javob ber. Raqamlar bilan asosla.`;
+    }
+
+    // Gemini API call
+    const geminiRes = await fetch(GEMINI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+      })
+    });
+
+    const geminiData = await geminiRes.json();
+    if (geminiData.error) {
+      res.status(500).json({ error: geminiData.error.message }); return;
+    }
+
+    const answer = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "Javob olinmadi";
+    res.json({ answer, model: "gemini-2.0-flash" });
+  } catch (err) {
+    console.error("AI Analysis error:", err);
+    res.status(500).json({ error: "AI tahlilda xatolik: " + err.message });
+  }
+});
