@@ -143,16 +143,27 @@
       position: absolute;
       width: 900px; height: 900px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(200,150,42,.06) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(200,150,42,.08) 0%, transparent 70%);
       top: -300px; left: -200px;
+      animation: loginOrb1 12s ease-in-out infinite;
     }
     .login-canvas::after {
       content: '';
       position: absolute;
       width: 600px; height: 600px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(29,52,104,.4) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(29,52,104,.45) 0%, transparent 70%);
       bottom: -100px; left: 30%;
+      animation: loginOrb2 10s ease-in-out infinite;
+    }
+    @keyframes loginOrb1 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(60px,40px) scale(1.08); }
+      66% { transform: translate(-30px,60px) scale(.95); }
+    }
+    @keyframes loginOrb2 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50% { transform: translate(-50px,-40px) scale(1.12); }
     }
     .login-grid-bg {
       position: absolute; inset: 0;
@@ -161,6 +172,44 @@
         linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
       background-size: 56px 56px;
     }
+    .login-particles {
+      position: absolute; inset: 0; overflow: hidden;
+    }
+    .login-particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0;
+      animation: particleFloat linear infinite;
+    }
+    @keyframes particleFloat {
+      0% { opacity: 0; transform: translateY(100vh) scale(0); }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-20vh) scale(1); }
+    }
+    .login-glow-line {
+      position: absolute;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(200,150,42,.15), transparent);
+      animation: glowSweep 8s ease-in-out infinite;
+      left: 0; right: 0;
+    }
+    @keyframes glowSweep {
+      0%,100% { opacity: 0; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(200px); }
+    }
+    .login-time {
+      position: absolute; top: 28px; right: 32px; z-index: 10;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; color: rgba(255,255,255,.25);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .login-time-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--emerald);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 
     .login-left {
       display: flex; flex-direction: column; justify-content: center;
@@ -257,12 +306,21 @@
       background: linear-gradient(135deg, var(--navy) 0%, var(--navy-lt) 100%);
       color: #fff; border: none; border-radius: var(--r);
       font-size: 14.5px; font-weight: 600; font-family: 'Outfit', sans-serif;
-      cursor: pointer; transition: all .2s; margin-top: 6px;
+      cursor: pointer; transition: all .25s; margin-top: 6px;
       display: flex; align-items: center; justify-content: center; gap: 9px;
       box-shadow: 0 4px 20px rgba(10,14,26,.22);
       letter-spacing: .2px;
+      position: relative; overflow: hidden;
     }
-    .login-btn:hover:not(:disabled) { box-shadow: 0 8px 28px rgba(10,14,26,.3); transform: translateY(-1px); }
+    .login-btn::after {
+      content: '';
+      position: absolute; top: -50%; left: -60%; width: 40%; height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);
+      transform: skewX(-20deg);
+      transition: left .6s ease;
+    }
+    .login-btn:hover:not(:disabled)::after { left: 120%; }
+    .login-btn:hover:not(:disabled) { box-shadow: 0 8px 32px rgba(10,14,26,.35); transform: translateY(-2px); }
     .login-btn:active { transform: translateY(0); }
     .login-btn:disabled { opacity: .7; cursor: not-allowed; }
     .login-divider { height: 1px; background: var(--border); margin: 28px 0; }
@@ -6107,7 +6165,30 @@ function App(){
 
   if(!user)return(
     <div className="login-wrap">
-      <div className="login-canvas"><div className="login-grid-bg"/></div>
+      <div className="login-canvas">
+        <div className="login-grid-bg"/>
+        <div className="login-particles">
+          {[...Array(18)].map((_,i)=>{
+            const size=Math.random()*3+1.5;
+            const left=Math.random()*100;
+            const dur=Math.random()*12+8;
+            const delay=Math.random()*10;
+            const isGold=Math.random()>0.6;
+            return <div key={i} className="login-particle" style={{
+              width:size,height:size,left:`${left}%`,
+              background:isGold?'rgba(200,150,42,.4)':'rgba(255,255,255,.15)',
+              animationDuration:`${dur}s`,animationDelay:`${delay}s`,
+              boxShadow:isGold?'0 0 6px rgba(200,150,42,.3)':'none'
+            }}/>;
+          })}
+        </div>
+        <div className="login-glow-line" style={{top:'30%'}}/>
+        <div className="login-glow-line" style={{top:'65%',animationDelay:'4s'}}/>
+      </div>
+      <div className="login-time">
+        <div className="login-time-dot"/>
+        {new Date().toLocaleDateString("uz-UZ",{day:"2-digit",month:"long",year:"numeric"})}
+      </div>
       <div className="login-left">
         <div className="login-emblem">
           <div className="login-emblem-mark">
