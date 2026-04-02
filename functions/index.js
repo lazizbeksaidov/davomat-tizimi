@@ -295,24 +295,56 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
     await db.ref("telegram_config/chatId").set(chatId).catch(() => {});
   }
 
+  const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
+
   try {
     let reply = "";
-    switch (cmd) {
-      case "/davomat": case "/start":
-        reply = await buildDavomatReport(todayKey); break;
-      case "/kechikkanlar":
-        reply = await buildKechikkanlarReport(todayKey); break;
-      case "/statistika":
-        reply = await buildStatistikaReport(); break;
-      case "/yordam": case "/help":
-        reply = "🤖 <b>Xodimlar Monitoring Bot</b>\n\n"
-          + "📊 /davomat — Bugungi davomat\n"
-          + "⏰ /kechikkanlar — Kechikkan xodimlar\n"
-          + "📈 /statistika — Oylik statistika\n"
-          + "❓ /yordam — Yordam\n\n"
-          + "📍 Navoiy viloyati Investitsiyalar,\nsanoat va savdo boshqarmasi";
-        break;
-      default: res.status(200).send("OK"); return;
+
+    if (!isGroup) {
+      // Shaxsiy chat — faqat salomlashish va ma'lumot
+      switch (cmd) {
+        case "/start":
+          reply = "👋 <b>Assalomu alaykum!</b>\n\n"
+            + "🏢 Bu bot — Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi "
+            + "xodimlarining davomatini kuzatish uchun yaratilgan.\n\n"
+            + "📊 Davomat ma'lumotlarini ko'rish uchun botni <b>guruhga</b> qo'shing "
+            + "va u yerda quyidagi buyruqlarni ishlating:\n\n"
+            + "📊 /davomat — Bugungi davomat\n"
+            + "⏰ /kechikkanlar — Kechikkan xodimlar\n"
+            + "📈 /statistika — Oylik statistika\n\n"
+            + "🌐 <b>Veb tizim:</b>\n"
+            + "https://lazizbeksaidov.github.io/davomat-tizimi/";
+          break;
+        case "/yordam": case "/help":
+          reply = "🤖 <b>Xodimlar Monitoring Bot</b>\n\n"
+            + "📊 Davomat buyruqlari faqat <b>guruh chatida</b> ishlaydi.\n\n"
+            + "🌐 <b>Veb tizim:</b>\n"
+            + "https://lazizbeksaidov.github.io/davomat-tizimi/";
+          break;
+        default:
+          reply = "ℹ️ Bu bot faqat guruh chatida davomat ma'lumotlarini ko'rsatadi.\n"
+            + "Batafsil: /start";
+          break;
+      }
+    } else {
+      // Guruh chat — davomat buyruqlari ishlaydi
+      switch (cmd) {
+        case "/davomat": case "/start":
+          reply = await buildDavomatReport(todayKey); break;
+        case "/kechikkanlar":
+          reply = await buildKechikkanlarReport(todayKey); break;
+        case "/statistika":
+          reply = await buildStatistikaReport(); break;
+        case "/yordam": case "/help":
+          reply = "🤖 <b>Xodimlar Monitoring Bot</b>\n\n"
+            + "📊 /davomat — Bugungi davomat\n"
+            + "⏰ /kechikkanlar — Kechikkan xodimlar\n"
+            + "📈 /statistika — Oylik statistika\n"
+            + "❓ /yordam — Yordam\n\n"
+            + "📍 Navoiy viloyati Investitsiyalar,\nsanoat va savdo boshqarmasi";
+          break;
+        default: res.status(200).send("OK"); return;
+      }
     }
     await sendMessage(chatId, reply);
   } catch (err) {
