@@ -694,6 +694,133 @@
       transition: width .5s cubic-bezier(.4,0,.2,1);
     }
 
+    /* ─── PROFESSIONAL STATS ENHANCEMENTS ────── */
+    .stats-summary-bar {
+      display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+      padding: 14px 20px; background: linear-gradient(135deg, var(--navy) 0%, #1a3a6b 100%);
+      border-radius: var(--rl); margin-bottom: 18px; color: #fff;
+    }
+    .stats-summary-item {
+      display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 500;
+    }
+    .stats-summary-item .sum-val {
+      font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 16px;
+    }
+    .stats-summary-item .sum-label { opacity: .75; font-size: 11px; }
+    .stats-summary-divider { width: 1px; height: 28px; background: rgba(255,255,255,.15); }
+
+    .stat-trend-up { color: #16a85e; background: rgba(22,168,94,.1); }
+    .stat-trend-down { color: #e74c3c; background: rgba(231,76,60,.1); }
+    .stat-trend-neutral { color: var(--t4); background: var(--surface); }
+
+    .stat-sparkline { display: flex; align-items: flex-end; gap: 2px; height: 28px; margin-top: 8px; }
+    .stat-spark-bar {
+      flex: 1; min-width: 3px; background: var(--emerald); border-radius: 2px 2px 0 0;
+      opacity: .6; transition: all .3s ease;
+    }
+    .stat-spark-bar:last-child { opacity: 1; }
+    .stat-spark-bar:hover { opacity: 1; transform: scaleY(1.1); transform-origin: bottom; }
+
+    .heatmap-wrap { padding: 18px 20px; }
+    .heatmap-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+      gap: 3px;
+    }
+    .heatmap-cell {
+      aspect-ratio: 1; border-radius: 4px; position: relative; cursor: pointer;
+      transition: transform .15s, box-shadow .15s; font-size: 0;
+    }
+    .heatmap-cell:hover { transform: scale(1.2); box-shadow: 0 2px 8px rgba(0,0,0,.15); z-index: 2; }
+    .heatmap-legend {
+      display: flex; align-items: center; gap: 12px; margin-top: 12px;
+      flex-wrap: wrap; font-size: 10.5px; color: var(--t3);
+    }
+    .heatmap-legend-item {
+      display: flex; align-items: center; gap: 5px;
+    }
+    .heatmap-legend-dot {
+      width: 12px; height: 12px; border-radius: 3px;
+    }
+    .heatmap-month-label {
+      font-size: 10px; color: var(--t4); font-weight: 600;
+      text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px;
+    }
+    .heatmap-tooltip {
+      position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+      background: var(--navy); color: #fff; padding: 5px 9px; border-radius: 6px;
+      font-size: 10px; white-space: nowrap; pointer-events: none; z-index: 10;
+      opacity: 0; transition: opacity .15s;
+    }
+    .heatmap-cell:hover .heatmap-tooltip { opacity: 1; }
+
+    .donut-segment { transition: all .4s ease; cursor: pointer; }
+    .donut-segment:hover { opacity: .85; filter: brightness(1.1); }
+
+    .stats-search-wrap {
+      position: relative; display: inline-flex; align-items: center;
+    }
+    .stats-search {
+      padding: 7px 12px 7px 32px;
+      background: var(--cloud); border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 12px; font-family: 'Outfit', sans-serif;
+      color: var(--t1); outline: none; width: 180px; transition: all .18s;
+    }
+    .stats-search:focus { border-color: var(--gold); width: 220px; background: var(--white); }
+    .stats-search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      font-size: 13px; color: var(--t4); pointer-events: none;
+    }
+
+    .stats-pagination {
+      display: flex; align-items: center; justify-content: center;
+      gap: 4px; padding: 14px 20px; border-top: 1px solid var(--border);
+    }
+    .stats-page-btn {
+      min-width: 32px; height: 32px; border: 1px solid var(--border);
+      background: var(--white); border-radius: 7px; font-size: 12px;
+      font-weight: 600; cursor: pointer; color: var(--t2); transition: all .15s;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stats-page-btn:hover { background: var(--cloud); border-color: var(--navy); }
+    .stats-page-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .stats-page-btn:disabled { opacity: .4; cursor: default; }
+    .stats-page-info { font-size: 11px; color: var(--t4); margin: 0 8px; }
+
+    .top-performers {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      padding: 14px 18px;
+    }
+    .top-performer-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      transition: transform .15s;
+    }
+    .top-performer-card:hover { transform: translateY(-1px); }
+    .top-performer-rank {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; flex-shrink: 0;
+    }
+    .top-performer-info { min-width: 0; flex: 1; }
+    .top-performer-name {
+      font-size: 12px; font-weight: 600; color: var(--navy);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .top-performer-score {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 700; margin-top: 2px;
+    }
+
+    @media(max-width:600px){
+      .top-performers { grid-template-columns: 1fr; }
+      .stats-summary-bar { padding: 10px 14px; gap: 10px; }
+      .stats-summary-item .sum-val { font-size: 14px; }
+      .stats-summary-divider { display: none; }
+      .heatmap-grid { gap: 2px; }
+    }
+
     /* ─── FOOTER ───────────────────────────────── */
     .footer {
       padding: 14px 28px;
@@ -1971,6 +2098,13 @@
     [data-theme="dark"] .bar-track { background: var(--surface2); }
     [data-theme="dark"] .kpi-track { background: var(--border); }
     [data-theme="dark"] .weekday-track { background: var(--border); }
+    [data-theme="dark"] .stats-summary-bar { background: linear-gradient(135deg, #1a2744 0%, #0f1d33 100%); }
+    [data-theme="dark"] .heatmap-tooltip { background: var(--surface); color: var(--t1); border: 1px solid var(--border); }
+    [data-theme="dark"] .top-performer-card { background: var(--surface); border-color: var(--border); }
+    [data-theme="dark"] .stats-search { background: var(--surface); border-color: var(--border); color: var(--t1); }
+    [data-theme="dark"] .stats-page-btn { background: var(--surface); border-color: var(--border); color: var(--t2); }
+    [data-theme="dark"] .stats-page-btn.active { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+    [data-theme="dark"] .donut-segment circle { fill: var(--surface); }
 
     /* ─── ANNOUNCEMENTS ───────────────────────── */
     .ann-list { display:flex; flex-direction:column; gap:12px; }
@@ -3244,166 +3378,449 @@ function StatsView({attendanceData,checkinsData,onEmpClick}){
   const today=new Date();
   const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
   const [period,setPeriod]=useState("monthly");const [sortBy,setSortBy]=useState("lateMins");
-  function getDates(){
-    if(period==="weekly")return getWeekDates(today);
-    if(period==="monthly")return getMonthDates(yr,mon);
-    if(period==="quarterly"){const q=Math.floor(mon/3);return[q*3,q*3+1,q*3+2].flatMap(m=>getMonthDates(yr,m))}
-    return Array.from({length:12},(_,i)=>i).flatMap(m=>getMonthDates(yr,m));
+  const [searchQ,setSearchQ]=useState("");const [page,setPage]=useState(0);
+  const [hoveredPie,setHoveredPie]=useState(-1);
+  const PER_PAGE=10;
+
+  function getDatesForPeriod(y,m,p){
+    if(p==="weekly")return getWeekDates(new Date(y,m,today.getDate()));
+    if(p==="monthly")return getMonthDates(y,m);
+    if(p==="quarterly"){const q=Math.floor(m/3);return[q*3,q*3+1,q*3+2].flatMap(mm=>getMonthDates(y,mm))}
+    return Array.from({length:12},(_,i)=>i).flatMap(mm=>getMonthDates(y,mm));
   }
-  const dates=useMemo(getDates,[yr,mon,period]);const totalDays=dates.length;
-  function prevMon(){if(mon===0){setMon(11);setYr(y=>y-1)}else setMon(m=>m-1)}
-  function nextMon(){if(mon===11){setMon(0);setYr(y=>y+1)}else setMon(m=>m+1)}
-  const empStats=useMemo(()=>EMPLOYEES.map(emp=>{
-    let present=0,late=0,absent=0,sick=0,trip=0,training=0,vacation=0,excused=0,lateMins=0;
-    dates.forEach(d=>{const rec=attendanceData[fmtDate(d)]?.[safeKey(emp)];const st=rec?.status||"present";
-      if(st==="present")present++;else if(st==="late"){late++;present++}else if(st==="absent")absent++;
-      else if(st==="sick")sick++;else if(st==="trip")trip++;else if(st==="training")training++;
-      else if(st==="vacation")vacation++;else if(st==="excused")excused++;
-      lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
-    const score=Math.max(0,100-Math.round(lateMins/Math.max(1,totalDays*480)*100*8)-absent*5-late*2);
-    return{emp,present,late,absent,sick,trip,training,vacation,excused,lateMins,score};
-  }),[dates,attendanceData,totalDays]);
-  const sorted=useMemo(()=>[...empStats].sort((a,b)=>sortBy==="present"?b.present-a.present:sortBy==="score"?b.score-a.score:b[sortBy]-a[sortBy]),[empStats,sortBy]);
+  const dates=useMemo(()=>getDatesForPeriod(yr,mon,period),[yr,mon,period]);
+  const totalDays=dates.length;
+
+  /* Previous period for trend comparison */
+  const prevDates=useMemo(()=>{
+    if(period==="weekly"){const d=new Date(today);d.setDate(d.getDate()-7);return getWeekDates(d)}
+    if(period==="monthly"){const pm=mon===0?11:mon-1;const py=mon===0?yr-1:yr;return getMonthDates(py,pm)}
+    if(period==="quarterly"){const q=Math.floor(mon/3);const pq=q===0?3:q-1;const py=q===0?yr-1:yr;return[pq*3,pq*3+1,pq*3+2].flatMap(mm=>getMonthDates(py,mm))}
+    return Array.from({length:12},(_,i)=>i).flatMap(mm=>getMonthDates(yr-1,mm));
+  },[yr,mon,period]);
+
+  function prevMon(){setPage(0);if(mon===0){setMon(11);setYr(y=>y-1)}else setMon(m=>m-1)}
+  function nextMon(){setPage(0);if(mon===11){setMon(0);setYr(y=>y+1)}else setMon(m=>m+1)}
+
+  function calcEmpStats(dts){
+    const td=dts.length;
+    return EMPLOYEES.map(emp=>{
+      let present=0,late=0,absent=0,sick=0,trip=0,training=0,vacation=0,excused=0,lateMins=0;
+      dts.forEach(d=>{const rec=attendanceData[fmtDate(d)]?.[safeKey(emp)];const st=rec?.status||"present";
+        if(st==="present")present++;else if(st==="late"){late++;present++}else if(st==="absent")absent++;
+        else if(st==="sick")sick++;else if(st==="trip")trip++;else if(st==="training")training++;
+        else if(st==="vacation")vacation++;else if(st==="excused")excused++;
+        lateMins+=(rec?.morning||0)+(rec?.afternoon||0);});
+      const score=Math.max(0,100-Math.round(lateMins/Math.max(1,td*480)*100*8)-absent*5-late*2);
+      return{emp,present,late,absent,sick,trip,training,vacation,excused,lateMins,score};
+    });
+  }
+
+  const empStats=useMemo(()=>calcEmpStats(dates),[dates,attendanceData]);
+  const prevEmpStats=useMemo(()=>calcEmpStats(prevDates),[prevDates,attendanceData]);
+
+  const sorted=useMemo(()=>{
+    let list=[...empStats];
+    if(searchQ.trim()){const q=searchQ.toLowerCase();list=list.filter(s=>s.emp.toLowerCase().includes(q))}
+    list.sort((a,b)=>sortBy==="present"?b.present-a.present:sortBy==="score"?b.score-a.score:b[sortBy]-a[sortBy]);
+    return list;
+  },[empStats,sortBy,searchQ]);
+
   const totals=empStats.reduce((t,s)=>({present:t.present+s.present,late:t.late+s.late,absent:t.absent+s.absent,sick:t.sick+s.sick,lateMins:t.lateMins+s.lateMins}),{present:0,late:0,absent:0,sick:0,lateMins:0});
+  const prevTotals=prevEmpStats.reduce((t,s)=>({present:t.present+s.present,late:t.late+s.late,absent:t.absent+s.absent,sick:t.sick+s.sick,lateMins:t.lateMins+s.lateMins}),{present:0,late:0,absent:0,sick:0,lateMins:0});
+
   const maxLate=Math.max(1,...sorted.map(s=>s.lateMins));
-  const avgScore=Math.round(empStats.reduce((s,e)=>s+e.score,0)/EMPLOYEES.length);
+  const avgScore=Math.round(empStats.reduce((s,e)=>s+e.score,0)/Math.max(1,EMPLOYEES.length));
+  const prevAvgScore=Math.round(prevEmpStats.reduce((s,e)=>s+e.score,0)/Math.max(1,EMPLOYEES.length));
+
+  /* Trend calculation */
+  function trendPct(cur,prev){if(!prev)return cur>0?100:0;return Math.round((cur-prev)/Math.max(1,prev)*100)}
+  function TrendBadge({cur,prev,inverse}){
+    const pct=trendPct(cur,prev);const isUp=pct>0;const isGood=inverse?!isUp:isUp;
+    if(pct===0)return React.createElement("span",{className:"stat-trend stat-trend-neutral"},"— 0%");
+    return React.createElement("span",{className:"stat-trend "+(isGood?"stat-trend-up":"stat-trend-down")},
+      (isUp?"▲ +":"▼ ")+pct+"%");
+  }
+
+  /* Daily sparkline data (last 7 work days in period) */
+  const sparkData=useMemo(()=>{
+    const last7=dates.slice(-7);
+    return last7.map(d=>{
+      const dk=fmtDate(d);let p=0;
+      EMPLOYEES.forEach(emp=>{const st=attendanceData[dk]?.[safeKey(emp)]?.status||"present";if(st==="present"||st==="late")p++});
+      return{date:d,count:p,pct:Math.round(p/Math.max(1,EMPLOYEES.length)*100)};
+    });
+  },[dates,attendanceData]);
+
+  /* Heatmap: daily attendance for current month */
+  const heatmapData=useMemo(()=>{
+    const mDates=getMonthDates(yr,mon);
+    return mDates.map(d=>{
+      const dk=fmtDate(d);let p=0,l=0,a=0,s=0;
+      EMPLOYEES.forEach(emp=>{const st=attendanceData[dk]?.[safeKey(emp)]?.status||"present";
+        if(st==="present")p++;else if(st==="late"){l++;p++}else if(st==="absent")a++;else if(st==="sick")s++});
+      const rate=Math.round(p/Math.max(1,EMPLOYEES.length)*100);
+      return{date:d,day:d.getDate(),present:p,late:l,absent:a,sick:s,rate};
+    });
+  },[yr,mon,attendanceData]);
+
+  /* Top 3 performers */
+  const topPerformers=useMemo(()=>[...empStats].sort((a,b)=>b.score-a.score).slice(0,3),[empStats]);
+
+  /* Pie data with more categories */
   const pie=[
-    {l:"Ish joyida",v:totals.present,c:"var(--emerald)"},{l:"Kechikdi",v:totals.late,c:"var(--gold)"},
+    {l:"Ish joyida",v:totals.present-totals.late,c:"var(--emerald)"},{l:"Kechikdi",v:totals.late,c:"var(--gold)"},
     {l:"Kasal",v:totals.sick,c:"#e74c3c"},{l:"Sababsiz",v:totals.absent,c:"var(--ruby)"}
   ].filter(d=>d.v>0);
   const pieT=pie.reduce((s,d)=>s+d.v,0)||1;
+
+  /* Pagination */
+  const totalPages=Math.ceil(sorted.length/PER_PAGE);
+  const paged=sorted.slice(page*PER_PAGE,(page+1)*PER_PAGE);
+
+  const attendPct=Math.round(totals.present/Math.max(1,totalDays*EMPLOYEES.length)*100);
+
   return(
-    <div style={{animation:"fadeUp .35s ease"}}>
-      <div className="page-header">
-        <div><div className="page-title">Statistika va Tahlil</div><div className="page-subtitle">{MONTHS[mon]} {yr} · {totalDays} ish kuni</div></div>
-        <div className="page-actions">
-          <div className="date-nav">
-            <button className="date-nav-btn" onClick={prevMon}>‹</button>
-            <span className="date-display">{MONTHS[mon].slice(0,3)} {yr}</span>
-            <button className="date-nav-btn" onClick={nextMon}>›</button>
-          </div>
-          <button className="action-btn" onClick={()=>window.print()}>🖨 Chop</button>
-          <button className="action-btn primary" onClick={()=>exportStatsExcel(yr,mon,period,dates,empStats,sorted,totals)}>📊 Excel</button>
-        </div>
-      </div>
-      <div className="period-tabs">
-        {[["weekly","Hafta"],["monthly","Oy"],["quarterly","Chorak"],["yearly","Yil"]].map(([k,v])=>
-          <button key={k} className={`period-tab ${period===k?"active":""}`} onClick={()=>setPeriod(k)}>{v}</button>)}
-      </div>
-      <div className="stats-grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))"}}>
-        <div className="stat-card c-green"><div className="stat-accent"/><div className="stat-card-inner">
-          <div className="stat-top"><div className="stat-icon-wrap">✓</div><Ring pct={totals.present/(totalDays*EMPLOYEES.length)*100} size={42} stroke={4}/></div>
-          <div className="stat-num">{totals.present}</div><div className="stat-label">Jami davomat</div></div></div>
-        <div className="stat-card c-amber"><div className="stat-accent"/><div className="stat-card-inner">
-          <div className="stat-top"><div className="stat-icon-wrap">⏰</div></div>
-          <div className="stat-num">{totals.late}</div><div className="stat-label">Kechikishlar</div></div></div>
-        <div className="stat-card c-navy"><div className="stat-accent"/><div className="stat-card-inner">
-          <div className="stat-top"><div className="stat-icon-wrap">⏱</div></div>
-          <div className="stat-num">{totals.lateMins}<sup> d</sup></div><div className="stat-label">Kechikish (daqiqa)</div></div></div>
-        <div className="stat-card c-red"><div className="stat-accent"/><div className="stat-card-inner">
-          <div className="stat-top"><div className="stat-icon-wrap">✗</div></div>
-          <div className="stat-num">{totals.absent}</div><div className="stat-label">Sababsiz yo'qlik</div></div></div>
-        <div className="stat-card c-violet"><div className="stat-accent"/><div className="stat-card-inner">
-          <div className="stat-top"><div className="stat-icon-wrap">🎯</div><Ring pct={avgScore} size={42} stroke={4} color={avgScore>=80?"var(--emerald)":avgScore>=60?"var(--gold)":"var(--ruby)"}/></div>
-          <div className="stat-num">{avgScore}</div><div className="stat-label">O'rtacha intizom</div></div></div>
-      </div>
+    React.createElement("div",{style:{animation:"fadeUp .35s ease"}},
 
-      <div className="section-grid">
-        <div className="table-card">
-          <div className="table-header">
-            <div><div className="table-title">📊 Kechikish Reytingi</div><div className="table-meta">Eng ko'p kechikkan xodimlar</div></div>
-          </div>
-          <div style={{padding:"14px 18px",maxHeight:380,overflowY:"auto"}}>
-            {sorted.filter(s=>s.lateMins>0).length===0&&
-              <div style={{textAlign:"center",color:"var(--t4)",padding:28,fontSize:12}}>Bu davrda kechikish qayd etilmagan ✓</div>}
-            {sorted.filter(s=>s.lateMins>0).slice(0,15).map((s,i)=>(
-              <div key={s.emp} className="bar-item" onClick={()=>onEmpClick(s.emp)}>
-                <span style={{width:20,fontSize:10,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace",textAlign:"right",flexShrink:0}}>{i+1}</span>
-                <span style={{width:105,fontSize:12,fontWeight:600,color:"var(--navy)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}}>{s.emp.split(" ")[0]}</span>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{
-                    width:`${Math.max(4,s.lateMins/maxLate*100)}%`,
-                    background:s.lateMins>120?"linear-gradient(90deg,#e74c3c,var(--ruby))":"linear-gradient(90deg,var(--gold),var(--gold-lt))"
-                  }}/>
-                </div>
-                <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:12,fontWeight:700,color:s.lateMins>60?"var(--ruby)":"var(--amber)",width:52,textAlign:"right",flexShrink:0}}>{fmtMins(s.lateMins)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      /* Header */
+      React.createElement("div",{className:"page-header"},
+        React.createElement("div",null,
+          React.createElement("div",{className:"page-title"},"Statistika va Tahlil"),
+          React.createElement("div",{className:"page-subtitle"},MONTHS[mon]," ",yr," · ",totalDays," ish kuni · ",EMPLOYEES.length," xodim")
+        ),
+        React.createElement("div",{className:"page-actions"},
+          React.createElement("div",{className:"date-nav"},
+            React.createElement("button",{className:"date-nav-btn",onClick:prevMon},"‹"),
+            React.createElement("span",{className:"date-display"},MONTHS[mon].slice(0,3)," ",yr),
+            React.createElement("button",{className:"date-nav-btn",onClick:nextMon},"›")
+          ),
+          React.createElement("button",{className:"action-btn",onClick:()=>window.print()},"🖨 Chop"),
+          React.createElement("button",{className:"action-btn primary",onClick:()=>exportStatsExcel(yr,mon,period,dates,empStats,sorted,totals)},"📊 Excel")
+        )
+      ),
 
-        <div className="table-card">
-          <div className="table-header"><div><div className="table-title">🥧 Holat Taqsimoti</div><div className="table-meta">Barcha xodimlar umumiy ko'rsatkichi</div></div></div>
-          <div style={{padding:"22px",display:"flex",alignItems:"center",justifyContent:"center",gap:30,flexWrap:"wrap"}}>
-            <div style={{position:"relative"}}>
-              <svg width="160" height="160" viewBox="0 0 160 160">
-                {(()=>{let off=0;const r=60,cx=80,cy=80,circ=2*Math.PI*r;
-                  return pie.map((d,i)=>{const pct=d.v/pieT;const dashLen=pct*circ;const dashOff=-off*circ;off+=pct;
-                  return<circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={d.c} strokeWidth="26"
-                    strokeDasharray={`${dashLen} ${circ-dashLen}`} strokeDashoffset={dashOff}
-                    style={{transform:"rotate(-90deg)",transformOrigin:"center",transition:"all .5s ease"}}/>});
-                })()}
-                <circle cx="80" cy="80" r="40" fill="white"/>
-                <text x="80" y="74" textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--navy)"
-                  style={{fontFamily:"JetBrains Mono,monospace"}}>{pieT}</text>
-                <text x="80" y="94" textAnchor="middle" fontSize="9.5" fill="var(--t3)">jami holat</text>
-              </svg>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {pie.map((d,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:9,fontSize:12.5}}>
-                  <span style={{width:10,height:10,borderRadius:3,background:d.c,flexShrink:0}}/>
-                  <span style={{color:"var(--t2)",fontWeight:500,minWidth:80}}>{d.l}</span>
-                  <span style={{fontFamily:"JetBrains Mono,monospace",fontWeight:700,color:"var(--navy)",minWidth:30}}>{d.v}</span>
-                  <span style={{fontSize:11,color:"var(--t4)"}}>{Math.round(d.v/pieT*100)}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      /* Summary bar */
+      React.createElement("div",{className:"stats-summary-bar"},
+        React.createElement("div",{className:"stats-summary-item"},
+          React.createElement("span",{className:"sum-val"},attendPct+"%"),
+          React.createElement("span",{className:"sum-label"},"Davomat darajasi")
+        ),
+        React.createElement("div",{className:"stats-summary-divider"}),
+        React.createElement("div",{className:"stats-summary-item"},
+          React.createElement("span",{className:"sum-val"},EMPLOYEES.length),
+          React.createElement("span",{className:"sum-label"},"Jami xodimlar")
+        ),
+        React.createElement("div",{className:"stats-summary-divider"}),
+        React.createElement("div",{className:"stats-summary-item"},
+          React.createElement("span",{className:"sum-val"},avgScore),
+          React.createElement("span",{className:"sum-label"},"O'rtacha intizom ball")
+        ),
+        React.createElement("div",{className:"stats-summary-divider"}),
+        React.createElement("div",{className:"stats-summary-item"},
+          React.createElement("span",{className:"sum-val"},fmtMins(Math.round(totals.lateMins/Math.max(1,EMPLOYEES.length)))),
+          React.createElement("span",{className:"sum-label"},"O'rtacha kechikish")
+        )
+      ),
 
-      <div className="table-card">
-        <div className="table-header">
-          <div><div className="table-title">Batafsil Ko'rsatkichlar</div><div className="table-meta">{totalDays} kun · {EMPLOYEES.length} xodim</div></div>
-          <div style={{display:"flex",gap:3}}>
-            {[["lateMins","Kechikish"],["late","Soni"],["absent","Yo'qlik"],["score","Intizom"]].map(([k,v])=>
-              <button key={k} className={`sort-btn ${sortBy===k?"active":""}`} onClick={()=>setSortBy(k)}>{v}</button>)}
-          </div>
-        </div>
-        <div className="scroll-x"><table><thead><tr>
-          <th style={{width:44}}>№</th><th style={{minWidth:165}}>F.I.O</th>
-          <th className="th-center">Davomat</th><th className="th-center">Kech.</th>
-          <th className="th-center">Yo'q</th><th className="th-center">Kasal</th>
-          <th className="th-center">Safari</th><th className="th-right">Kech. vaqt</th>
-          <th className="th-center" style={{width:100}}>Intizom</th>
-        </tr></thead>
-        <tbody>{sorted.map((s,i)=>{
-          const sc=s.score;const scColor=sc>=85?"var(--emerald)":sc>=65?"var(--gold)":"var(--ruby)";
-          return(<tr key={s.emp}>
-            <td><span className="row-num">{String(i+1).padStart(2,"0")}</span></td>
-            <td className="emp-name emp-link" onClick={()=>onEmpClick(s.emp)}>{s.emp}</td>
-            <td className="th-center">
-              <span style={{fontFamily:"JetBrains Mono,monospace",fontWeight:700,color:"var(--navy)"}}>{s.present}</span>
-              <span style={{color:"var(--t4)",fontSize:10}}>/{totalDays}</span>
-            </td>
-            <td className="th-center">{s.late>0?<span className="badge" style={{color:"var(--amber)",background:"var(--amber-bg)"}}>{s.late}</span>:<span className="zero-val">—</span>}</td>
-            <td className="th-center">{s.absent>0?<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>{s.absent}</span>:<span className="zero-val">—</span>}</td>
-            <td className="th-center">{s.sick>0?<span className="badge" style={{color:"var(--ruby)",background:"var(--ruby-bg)"}}>{s.sick}</span>:<span className="zero-val">—</span>}</td>
-            <td className="th-center">{s.trip>0?<span className="badge" style={{color:"var(--cobalt)",background:"var(--cobalt-bg)"}}>{s.trip}</span>:<span className="zero-val">—</span>}</td>
-            <td className="th-right">{s.lateMins>0?<span className="late-val">{fmtMins(s.lateMins)}</span>:<span className="zero-val">—</span>}</td>
-            <td className="th-center">
-              <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"center"}}>
-                <div style={{width:38,height:5,background:"var(--border)",borderRadius:3,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:`${sc}%`,background:scColor,borderRadius:3,transition:"width .4s ease"}}/>
-                </div>
-                <span style={{fontFamily:"JetBrains Mono,monospace",fontSize:11.5,fontWeight:700,color:scColor,minWidth:22}}>{sc}</span>
-              </div>
-            </td>
-          </tr>);
-        })}</tbody></table></div>
-      </div>
-    </div>
+      /* Period tabs */
+      React.createElement("div",{className:"period-tabs"},
+        [["weekly","Hafta"],["monthly","Oy"],["quarterly","Chorak"],["yearly","Yil"]].map(function(pair){
+          return React.createElement("button",{key:pair[0],className:"period-tab "+(period===pair[0]?"active":""),onClick:function(){setPeriod(pair[0]);setPage(0)}},pair[1])
+        })
+      ),
+
+      /* KPI Cards with trends */
+      React.createElement("div",{className:"stats-grid",style:{gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))"}},
+        /* Attendance card */
+        React.createElement("div",{className:"stat-card c-green"},
+          React.createElement("div",{className:"stat-accent"}),
+          React.createElement("div",{className:"stat-card-inner"},
+            React.createElement("div",{className:"stat-top"},
+              React.createElement("div",{className:"stat-icon-wrap"},"✓"),
+              React.createElement(Ring,{pct:attendPct,size:42,stroke:4})
+            ),
+            React.createElement("div",{className:"stat-num"},totals.present),
+            React.createElement("div",{className:"stat-label"},"Jami davomat"),
+            React.createElement(TrendBadge,{cur:totals.present,prev:prevTotals.present,inverse:false}),
+            React.createElement("div",{className:"stat-sparkline"},
+              sparkData.map(function(sd,si){return React.createElement("div",{key:si,className:"stat-spark-bar",
+                style:{height:Math.max(8,sd.pct*0.28)+"px",background:sd.pct>=80?"var(--emerald)":sd.pct>=60?"var(--gold)":"var(--ruby)"},
+                title:sd.date.getDate()+"/"+(sd.date.getMonth()+1)+": "+sd.pct+"%"})})
+            )
+          )
+        ),
+        /* Late count card */
+        React.createElement("div",{className:"stat-card c-amber"},
+          React.createElement("div",{className:"stat-accent"}),
+          React.createElement("div",{className:"stat-card-inner"},
+            React.createElement("div",{className:"stat-top"},
+              React.createElement("div",{className:"stat-icon-wrap"},"⏰"),
+              React.createElement(Ring,{pct:Math.min(100,totals.late/(Math.max(1,totalDays*EMPLOYEES.length))*100*5),size:42,stroke:4,color:"var(--gold)"})
+            ),
+            React.createElement("div",{className:"stat-num"},totals.late),
+            React.createElement("div",{className:"stat-label"},"Kechikishlar"),
+            React.createElement(TrendBadge,{cur:totals.late,prev:prevTotals.late,inverse:true})
+          )
+        ),
+        /* Late minutes card */
+        React.createElement("div",{className:"stat-card c-navy"},
+          React.createElement("div",{className:"stat-accent"}),
+          React.createElement("div",{className:"stat-card-inner"},
+            React.createElement("div",{className:"stat-top"},
+              React.createElement("div",{className:"stat-icon-wrap"},"⏱")
+            ),
+            React.createElement("div",{className:"stat-num"},totals.lateMins,React.createElement("sup",null," d")),
+            React.createElement("div",{className:"stat-label"},"Kechikish (daqiqa)"),
+            React.createElement(TrendBadge,{cur:totals.lateMins,prev:prevTotals.lateMins,inverse:true})
+          )
+        ),
+        /* Absent card */
+        React.createElement("div",{className:"stat-card c-red"},
+          React.createElement("div",{className:"stat-accent"}),
+          React.createElement("div",{className:"stat-card-inner"},
+            React.createElement("div",{className:"stat-top"},
+              React.createElement("div",{className:"stat-icon-wrap"},"✗")
+            ),
+            React.createElement("div",{className:"stat-num"},totals.absent),
+            React.createElement("div",{className:"stat-label"},"Sababsiz yo'qlik"),
+            React.createElement(TrendBadge,{cur:totals.absent,prev:prevTotals.absent,inverse:true})
+          )
+        ),
+        /* Discipline card */
+        React.createElement("div",{className:"stat-card c-violet"},
+          React.createElement("div",{className:"stat-accent"}),
+          React.createElement("div",{className:"stat-card-inner"},
+            React.createElement("div",{className:"stat-top"},
+              React.createElement("div",{className:"stat-icon-wrap"},"🎯"),
+              React.createElement(Ring,{pct:avgScore,size:42,stroke:4,color:avgScore>=80?"var(--emerald)":avgScore>=60?"var(--gold)":"var(--ruby)"})
+            ),
+            React.createElement("div",{className:"stat-num"},avgScore),
+            React.createElement("div",{className:"stat-label"},"O'rtacha intizom"),
+            React.createElement(TrendBadge,{cur:avgScore,prev:prevAvgScore,inverse:false})
+          )
+        )
+      ),
+
+      /* Top 3 performers */
+      React.createElement("div",{className:"table-card",style:{marginBottom:16}},
+        React.createElement("div",{className:"table-header"},
+          React.createElement("div",null,
+            React.createElement("div",{className:"table-title"},"🏆 Eng yaxshi xodimlar"),
+            React.createElement("div",{className:"table-meta"},"Intizom bo'yicha top 3")
+          )
+        ),
+        React.createElement("div",{className:"top-performers"},
+          topPerformers.map(function(tp,ti){
+            var medals=["🥇","🥈","🥉"];var bgColors=["rgba(255,215,0,.1)","rgba(192,192,192,.1)","rgba(205,127,50,.1)"];
+            var borderColors=["rgba(255,215,0,.3)","rgba(192,192,192,.3)","rgba(205,127,50,.3)"];
+            return React.createElement("div",{key:tp.emp,className:"top-performer-card",
+              style:{borderColor:borderColors[ti],background:bgColors[ti],cursor:"pointer"},onClick:function(){onEmpClick(tp.emp)}},
+              React.createElement("div",{className:"top-performer-rank"},medals[ti]),
+              React.createElement("div",{className:"top-performer-info"},
+                React.createElement("div",{className:"top-performer-name"},tp.emp),
+                React.createElement("div",{className:"top-performer-score",
+                  style:{color:tp.score>=80?"var(--emerald)":tp.score>=60?"var(--gold)":"var(--ruby)"}},
+                  tp.score+" ball · ",tp.present,"/",totalDays," kun")
+              )
+            )
+          })
+        )
+      ),
+
+      /* Charts row: Late ranking + Donut */
+      React.createElement("div",{className:"section-grid"},
+        /* Late ranking */
+        React.createElement("div",{className:"table-card"},
+          React.createElement("div",{className:"table-header"},
+            React.createElement("div",null,
+              React.createElement("div",{className:"table-title"},"📊 Kechikish Reytingi"),
+              React.createElement("div",{className:"table-meta"},"Eng ko'p kechikkan xodimlar")
+            )
+          ),
+          React.createElement("div",{style:{padding:"14px 18px",maxHeight:400,overflowY:"auto"}},
+            sorted.filter(function(s){return s.lateMins>0}).length===0?
+              React.createElement("div",{style:{textAlign:"center",color:"var(--t4)",padding:28,fontSize:12}},"Bu davrda kechikish qayd etilmagan ✓"):
+              sorted.filter(function(s){return s.lateMins>0}).slice(0,15).map(function(s,i){
+                return React.createElement("div",{key:s.emp,className:"bar-item",onClick:function(){onEmpClick(s.emp)}},
+                  React.createElement("span",{style:{width:22,fontSize:10,color:i<3?"var(--navy)":"var(--t4)",fontFamily:"JetBrains Mono,monospace",textAlign:"right",flexShrink:0,fontWeight:i<3?700:400}},i+1),
+                  React.createElement("span",{style:{width:110,fontSize:12,fontWeight:600,color:"var(--navy)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}},s.emp.split(" ")[0]),
+                  React.createElement("div",{className:"bar-track"},
+                    React.createElement("div",{className:"bar-fill",style:{
+                      width:Math.max(4,s.lateMins/maxLate*100)+"%",
+                      background:s.lateMins>120?"linear-gradient(90deg,#e74c3c,var(--ruby))":s.lateMins>60?"linear-gradient(90deg,#e67e22,var(--gold))":"linear-gradient(90deg,var(--gold),var(--gold-lt))"
+                    }})
+                  ),
+                  React.createElement("span",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:12,fontWeight:700,color:s.lateMins>60?"var(--ruby)":"var(--amber)",width:55,textAlign:"right",flexShrink:0}},fmtMins(s.lateMins))
+                )
+              })
+          )
+        ),
+
+        /* Donut chart */
+        React.createElement("div",{className:"table-card"},
+          React.createElement("div",{className:"table-header"},
+            React.createElement("div",null,
+              React.createElement("div",{className:"table-title"},"🥧 Holat Taqsimoti"),
+              React.createElement("div",{className:"table-meta"},"Barcha xodimlar umumiy ko'rsatkichi")
+            )
+          ),
+          React.createElement("div",{style:{padding:"22px",display:"flex",alignItems:"center",justifyContent:"center",gap:30,flexWrap:"wrap"}},
+            React.createElement("div",{style:{position:"relative"}},
+              React.createElement("svg",{width:180,height:180,viewBox:"0 0 180 180"},
+                (function(){
+                  var off=0,r=68,cx=90,cy=90,circ=2*Math.PI*r;
+                  return pie.map(function(d,i){
+                    var pct=d.v/pieT;var dashLen=pct*circ;var dashOff=-off*circ;off+=pct;
+                    var isHovered=hoveredPie===i;
+                    return React.createElement("circle",{key:i,className:"donut-segment",cx:cx,cy:cy,r:r,fill:"none",
+                      stroke:d.c,strokeWidth:isHovered?32:28,
+                      strokeDasharray:dashLen+" "+(circ-dashLen),strokeDashoffset:dashOff,
+                      style:{transform:"rotate(-90deg)",transformOrigin:"center",transition:"all .4s ease",
+                        filter:isHovered?"brightness(1.15) drop-shadow(0 2px 6px rgba(0,0,0,.2))":"none"},
+                      onMouseEnter:function(){setHoveredPie(i)},onMouseLeave:function(){setHoveredPie(-1)}
+                    })
+                  })
+                })(),
+                React.createElement("circle",{cx:90,cy:90,r:45,fill:"white"}),
+                React.createElement("text",{x:90,y:82,textAnchor:"middle",fontSize:24,fontWeight:800,fill:"var(--navy)",
+                  style:{fontFamily:"JetBrains Mono,monospace"}},pieT),
+                React.createElement("text",{x:90,y:102,textAnchor:"middle",fontSize:10,fill:"var(--t3)"},"jami holat")
+              )
+            ),
+            React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+              pie.map(function(d,i){
+                var isHovered=hoveredPie===i;
+                return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,fontSize:13,
+                  padding:"6px 10px",borderRadius:8,background:isHovered?"var(--cloud)":"transparent",
+                  transition:"all .2s",cursor:"pointer"},
+                  onMouseEnter:function(){setHoveredPie(i)},onMouseLeave:function(){setHoveredPie(-1)}},
+                  React.createElement("span",{style:{width:12,height:12,borderRadius:4,background:d.c,flexShrink:0}}),
+                  React.createElement("span",{style:{color:"var(--t2)",fontWeight:600,minWidth:85}},d.l),
+                  React.createElement("span",{style:{fontFamily:"JetBrains Mono,monospace",fontWeight:700,color:"var(--navy)",minWidth:35}},d.v),
+                  React.createElement("span",{style:{fontSize:11.5,color:"var(--t4)",fontWeight:600}},Math.round(d.v/pieT*100)+"%")
+                )
+              })
+            )
+          )
+        )
+      ),
+
+      /* Attendance Heatmap Calendar */
+      React.createElement("div",{className:"table-card",style:{marginBottom:16}},
+        React.createElement("div",{className:"table-header"},
+          React.createElement("div",null,
+            React.createElement("div",{className:"table-title"},"📅 Oylik Davomat Xaritasi"),
+            React.createElement("div",{className:"table-meta"},MONTHS[mon]," ",yr," — kunlik davomat darajasi")
+          )
+        ),
+        React.createElement("div",{className:"heatmap-wrap"},
+          React.createElement("div",{className:"heatmap-grid"},
+            heatmapData.map(function(hd){
+              var bg=hd.rate>=90?"#16a85e":hd.rate>=75?"#86efac":hd.rate>=60?"#fbbf24":hd.rate>=40?"#f97316":"#ef4444";
+              return React.createElement("div",{key:hd.day,className:"heatmap-cell",
+                style:{background:bg}},
+                React.createElement("div",{className:"heatmap-tooltip"},
+                  hd.day+"-"+MONTHS[mon].slice(0,3)+": "+hd.rate+"% davomat",
+                  React.createElement("br"),
+                  hd.present+" keldi, "+hd.late+" kechikdi, "+hd.absent+" yo'q"
+                )
+              )
+            })
+          ),
+          React.createElement("div",{className:"heatmap-legend"},
+            React.createElement("span",{style:{fontWeight:600,marginRight:4}},"Daraja:"),
+            [{c:"#ef4444",l:"<40%"},{c:"#f97316",l:"40-59%"},{c:"#fbbf24",l:"60-74%"},{c:"#86efac",l:"75-89%"},{c:"#16a85e",l:"90%+"}].map(function(item){
+              return React.createElement("div",{key:item.l,className:"heatmap-legend-item"},
+                React.createElement("div",{className:"heatmap-legend-dot",style:{background:item.c}}),
+                React.createElement("span",null,item.l)
+              )
+            })
+          )
+        )
+      ),
+
+      /* Detailed table with search & pagination */
+      React.createElement("div",{className:"table-card"},
+        React.createElement("div",{className:"table-header"},
+          React.createElement("div",null,
+            React.createElement("div",{className:"table-title"},"Batafsil Ko'rsatkichlar"),
+            React.createElement("div",{className:"table-meta"},totalDays+" kun · "+sorted.length+" xodim"+(searchQ?" (filtr)":""))
+          ),
+          React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},
+            React.createElement("div",{className:"stats-search-wrap"},
+              React.createElement("span",{className:"stats-search-icon"},"🔍"),
+              React.createElement("input",{type:"text",className:"stats-search",placeholder:"Xodim qidirish...",
+                value:searchQ,onChange:function(e){setSearchQ(e.target.value);setPage(0)}})
+            ),
+            React.createElement("div",{style:{display:"flex",gap:3}},
+              [["lateMins","Kechikish"],["late","Soni"],["absent","Yo'qlik"],["score","Intizom"],["present","Davomat"]].map(function(pair){
+                return React.createElement("button",{key:pair[0],className:"sort-btn "+(sortBy===pair[0]?"active":""),
+                  onClick:function(){setSortBy(pair[0]);setPage(0)}},pair[1])
+              })
+            )
+          )
+        ),
+        React.createElement("div",{className:"scroll-x"},
+          React.createElement("table",null,
+            React.createElement("thead",null,
+              React.createElement("tr",null,
+                React.createElement("th",{style:{width:44}},"№"),
+                React.createElement("th",{style:{minWidth:165}},"F.I.O"),
+                React.createElement("th",{className:"th-center"},"Davomat"),
+                React.createElement("th",{className:"th-center"},"Kech."),
+                React.createElement("th",{className:"th-center"},"Yo'q"),
+                React.createElement("th",{className:"th-center"},"Kasal"),
+                React.createElement("th",{className:"th-center"},"Safari"),
+                React.createElement("th",{className:"th-right"},"Kech. vaqt"),
+                React.createElement("th",{className:"th-center",style:{width:110}},"Intizom")
+              )
+            ),
+            React.createElement("tbody",null,
+              paged.map(function(s,i){
+                var sc=s.score;var scColor=sc>=85?"var(--emerald)":sc>=65?"var(--gold)":"var(--ruby)";
+                var rowIdx=page*PER_PAGE+i;
+                return React.createElement("tr",{key:s.emp},
+                  React.createElement("td",null,React.createElement("span",{className:"row-num"},String(rowIdx+1).padStart(2,"0"))),
+                  React.createElement("td",{className:"emp-name emp-link",onClick:function(){onEmpClick(s.emp)}},s.emp),
+                  React.createElement("td",{className:"th-center"},
+                    React.createElement("span",{style:{fontFamily:"JetBrains Mono,monospace",fontWeight:700,color:"var(--navy)"}},s.present),
+                    React.createElement("span",{style:{color:"var(--t4)",fontSize:10}},"/"+totalDays)
+                  ),
+                  React.createElement("td",{className:"th-center"},s.late>0?React.createElement("span",{className:"badge",style:{color:"var(--amber)",background:"var(--amber-bg)"}},s.late):React.createElement("span",{className:"zero-val"},"—")),
+                  React.createElement("td",{className:"th-center"},s.absent>0?React.createElement("span",{className:"badge",style:{color:"var(--ruby)",background:"var(--ruby-bg)"}},s.absent):React.createElement("span",{className:"zero-val"},"—")),
+                  React.createElement("td",{className:"th-center"},s.sick>0?React.createElement("span",{className:"badge",style:{color:"var(--ruby)",background:"var(--ruby-bg)"}},s.sick):React.createElement("span",{className:"zero-val"},"—")),
+                  React.createElement("td",{className:"th-center"},s.trip>0?React.createElement("span",{className:"badge",style:{color:"var(--cobalt)",background:"var(--cobalt-bg)"}},s.trip):React.createElement("span",{className:"zero-val"},"—")),
+                  React.createElement("td",{className:"th-right"},s.lateMins>0?React.createElement("span",{className:"late-val"},fmtMins(s.lateMins)):React.createElement("span",{className:"zero-val"},"—")),
+                  React.createElement("td",{className:"th-center"},
+                    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,justifyContent:"center"}},
+                      React.createElement("div",{style:{width:44,height:6,background:"var(--border)",borderRadius:3,overflow:"hidden"}},
+                        React.createElement("div",{style:{height:"100%",width:sc+"%",background:scColor,borderRadius:3,transition:"width .4s ease"}})
+                      ),
+                      React.createElement("span",{style:{fontFamily:"JetBrains Mono,monospace",fontSize:12,fontWeight:700,color:scColor,minWidth:24}},sc)
+                    )
+                  )
+                )
+              })
+            )
+          )
+        ),
+        /* Pagination */
+        totalPages>1?React.createElement("div",{className:"stats-pagination"},
+          React.createElement("button",{className:"stats-page-btn",disabled:page===0,onClick:function(){setPage(0)}},"«"),
+          React.createElement("button",{className:"stats-page-btn",disabled:page===0,onClick:function(){setPage(page-1)}},"‹"),
+          Array.from({length:Math.min(5,totalPages)},function(_,idx){
+            var start=Math.max(0,Math.min(page-2,totalPages-5));var pg=start+idx;
+            if(pg>=totalPages)return null;
+            return React.createElement("button",{key:pg,className:"stats-page-btn "+(page===pg?"active":""),
+              onClick:function(){setPage(pg)}},pg+1)
+          }),
+          React.createElement("span",{className:"stats-page-info"},(page*PER_PAGE+1)+"-"+Math.min((page+1)*PER_PAGE,sorted.length)+" / "+sorted.length),
+          React.createElement("button",{className:"stats-page-btn",disabled:page>=totalPages-1,onClick:function(){setPage(page+1)}},"›"),
+          React.createElement("button",{className:"stats-page-btn",disabled:page>=totalPages-1,onClick:function(){setPage(totalPages-1)}},"»")
+        ):null
+      )
+    )
   );
 }
 
