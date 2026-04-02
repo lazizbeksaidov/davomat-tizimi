@@ -3134,7 +3134,7 @@ function WeeklyView({selectedDate,setSelectedDate,attendanceData,onEmpClick}){
               <td className="emp-name emp-link" onClick={()=>onEmpClick(emp)}>{emp}</td>
               {weekDates.map(date=>{
                 const dk=fmtDate(date);const rec=attendanceData[dk]?.[safeKey(emp)];
-                const st=STATUSES[rec?.status||"present"];
+                const st=STATUSES[rec?.status||"present"]||STATUSES.present;
                 const mins=(rec?.morning||0)+(rec?.afternoon||0);
                 return(<td key={dk} className="th-center">
                   <span className="badge" style={{color:st.color,background:st.bg,fontSize:10.5}}>{st.icon} {st.short}</span>
@@ -3879,7 +3879,7 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
         <tbody>{weekDates.map((date,i)=>{
           const dk=fmtDate(date);
           const rec=attendanceData[dk]?.[safeKey(empName)]||{status:"present",morning:0,afternoon:0,note:""};
-          const st=STATUSES[rec.status];const isToday=dk===fmtDate(today);
+          const st=STATUSES[rec.status]||STATUSES.present;const isToday=dk===fmtDate(today);
           return(
             <tr key={dk} style={isToday?{background:"rgba(200,150,42,.04)"}:{}}>
               <td>
