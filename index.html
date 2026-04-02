@@ -4834,251 +4834,181 @@ function WeatherWidget(){
 
 /* ═══ GLOBAL SEARCH ═══ */
 function GlobalSearch({attendanceData, onSelectEmployee}){
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState(0);
-  const inputRef = useRef(null);
+  const [open,setOpen]=React.useState(false);
+  const [query,setQuery]=React.useState("");
+  const [sel,setSel]=React.useState(0);
+  const inputRef=useRef(null);
 
-  const results = useMemo(()=>{
-    const q = normalizeUz(query.trim().toLowerCase());
+  const results=useMemo(()=>{
+    const q=normalizeUz(query.trim().toLowerCase());
     if(!q) return [];
-    return EMPLOYEES.filter(emp=>{
-      return normalizeUz(emp.toLowerCase()).includes(q);
-    }).slice(0,8);
+    return EMPLOYEES.filter(e=>normalizeUz(e.toLowerCase()).includes(q)).slice(0,8);
   },[query]);
 
-  // Keyboard shortcut: Ctrl+K or /
   useEffect(()=>{
-    function onKey(e){
-      if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();setOpen(true);}
-    }
+    function onKey(e){if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();setOpen(true);}}
     window.addEventListener("keydown",onKey);
     return()=>window.removeEventListener("keydown",onKey);
   },[]);
 
   useEffect(()=>{
-    if(open){
-      setQuery(""); setSelected(0);
-      setTimeout(()=>inputRef.current?.focus(),50);
-    }
+    if(open){setQuery("");setSel(0);setTimeout(()=>inputRef.current&&inputRef.current.focus(),50);}
   },[open]);
 
   function handleKey(e){
-    if(e.key==="ArrowDown"){setSelected(s=>Math.min(s+1,results.length-1));}
-    else if(e.key==="ArrowUp"){setSelected(s=>Math.max(s-1,0));}
-    else if(e.key==="Enter"&&results[selected]){pick(results[selected]);}
-    else if(e.key==="Escape"){setOpen(false);}
+    if(e.key==="ArrowDown") setSel(s=>Math.min(s+1,results.length-1));
+    else if(e.key==="ArrowUp") setSel(s=>Math.max(s-1,0));
+    else if(e.key==="Enter"&&results[sel]) pick(results[sel]);
+    else if(e.key==="Escape") setOpen(false);
   }
 
-  function pick(emp){
-    setOpen(false);
-    onSelectEmployee(emp);
-  }
+  function pick(emp){setOpen(false);onSelectEmployee(emp);}
 
-  // Stats summary for employee
-  function empSummary(emp){
-    const allDates = Object.keys(attendanceData||{});
-    if(!allDates.length) return "Davomat ma'lumoti yo'q";
-    const key = emp.replace(/[\s''\u2018\u2019]/g,m=>m===" "?"_":"");
-    const safeK = emp.toLowerCase().replace(/\s+/g,"_").replace(/['''\u2018\u2019]/g,"");
-    let present=0,absent=0,late=0;
-    allDates.forEach(d=>{
-      const dayData = attendanceData[d];
-      if(!dayData) return;
-      const rec = Object.entries(dayData).find(([k])=>k.toLowerCase()===safeK.toLowerCase())?.[1];
-      if(!rec) return;
-      if(rec.status==="present") present++;
-      else if(rec.status==="absent") absent++;
-      else if(rec.status==="late") late++;
+  function empStat(emp){
+    const dates=Object.keys(attendanceData||{});
+    if(!dates.length) return "Ma'lumot yo'q";
+    const k=safeKey(emp);
+    let p=0,a=0,l=0;
+    dates.forEach(d=>{
+      const r=(attendanceData[d]||{})[k];
+      if(!r) return;
+      if(r.status==="present") p++;
+      else if(r.status==="absent") a++;
+      else if(r.status==="late") l++;
     });
-    const total = present+absent+late;
-    if(!total) return "Ma'lumot yo'q";
-    const pct = Math.round((present+late)/total*100);
-    return `${total} kun · ${pct}% davomat`;
+    const t=p+a+l;
+    if(!t) return "Ma'lumot yo'q";
+    return t+" kun \u00B7 "+Math.round((p+l)/t*100)+"% davomat";
   }
 
   return(
-    <>
-      {/* Desktop trigger button in topbar */}
-      <button className="gsearch-trigger" onClick={()=>setOpen(true)} title="Ctrl+K">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-        Xodim qidirish
-        <kbd>Ctrl+K</kbd>
-      </button>
-
-      {open&&(
-        <div className="gsearch-modal-overlay" onClick={()=>setOpen(false)}>
-          <div className="gsearch-modal" onClick={e=>e.stopPropagation()}>
-            <div className="gsearch-input-row">
-              <svg className="gsearch-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input
-                ref={inputRef}
-                className="gsearch-input"
-                placeholder="Xodim ismini yozing..."
-                value={query}
-                onChange={e=>{setQuery(e.target.value);setSelected(0);}}
-                onKeyDown={handleKey}
-              />
-              <span className="gsearch-esc" onClick={()=>setOpen(false)}>ESC</span>
-            </div>
-
-            <div className="gsearch-results">
-              {query.trim()====""&&(
-                <div className="gsearch-empty">
-                  <div className="gsearch-empty-icon">🔍</div>
-                  <div>Xodim ismini kiriting...</div>
-                </div>
-              )}
-              {query.trim()!==""&&results.length===0&&(
-                <div className="gsearch-empty">
-                  <div className="gsearch-empty-icon">😔</div>
-                  <div>"{query}" — xodim topilmadi</div>
-                </div>
-              )}
-              {results.length>0&&(
-                <>
-                  <div className="gsearch-section-label">Xodimlar — {results.length} ta natija</div>
-                  {results.map((emp,i)=>(
-                    <div
-                      key={emp}
-                      className={`gsearch-result-item${i===selected?" selected":""}`}
-                      onClick={()=>pick(emp)}
-                      onMouseEnter={()=>setSelected(i)}
-                    >
-                      <div className="gsearch-avatar">{emp.charAt(0)}</div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div className="gsearch-result-name">{emp}</div>
-                        <div className="gsearch-result-sub">{empSummary(emp)}</div>
-                      </div>
-                      <svg className="gsearch-result-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M9 18l6-6-6-6"/>
-                      </svg>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-            <div className="gsearch-hint">↑↓ navigatsiya · Enter tanlash · Esc yopish</div>
-          </div>
-        </div>
-      )}
-    </>
+    React.createElement(React.Fragment, null,
+      React.createElement("button",{className:"gsearch-trigger",onClick:()=>setOpen(true),title:"Ctrl+K"},
+        React.createElement("svg",{width:"13",height:"13",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
+          React.createElement("circle",{cx:"11",cy:"11",r:"8"}),
+          React.createElement("path",{d:"m21 21-4.35-4.35"})
+        ),
+        " Xodim qidirish ",
+        React.createElement("kbd",null,"Ctrl+K")
+      ),
+      open&&React.createElement("div",{className:"gsearch-modal-overlay",onClick:()=>setOpen(false)},
+        React.createElement("div",{className:"gsearch-modal",onClick:e=>e.stopPropagation()},
+          React.createElement("div",{className:"gsearch-input-row"},
+            React.createElement("svg",{className:"gsearch-icon",width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
+              React.createElement("circle",{cx:"11",cy:"11",r:"8"}),
+              React.createElement("path",{d:"m21 21-4.35-4.35"})
+            ),
+            React.createElement("input",{ref:inputRef,className:"gsearch-input",placeholder:"Xodim ismini yozing...",value:query,onChange:e=>{setQuery(e.target.value);setSel(0);},onKeyDown:handleKey}),
+            React.createElement("span",{className:"gsearch-esc",onClick:()=>setOpen(false)},"ESC")
+          ),
+          React.createElement("div",{className:"gsearch-results"},
+            query.trim()===""&&React.createElement("div",{className:"gsearch-empty"},
+              React.createElement("div",{className:"gsearch-empty-icon"},"\uD83D\uDD0D"),
+              React.createElement("div",null,"Xodim ismini kiriting...")
+            ),
+            query.trim()!==""&&results.length===0&&React.createElement("div",{className:"gsearch-empty"},
+              React.createElement("div",{className:"gsearch-empty-icon"},"\uD83D\uDE14"),
+              React.createElement("div",null,query+" — topilmadi")
+            ),
+            results.length>0&&React.createElement(React.Fragment,null,
+              React.createElement("div",{className:"gsearch-section-label"},"Xodimlar — "+results.length+" ta natija"),
+              results.map((emp,i)=>React.createElement("div",{key:emp,className:"gsearch-result-item"+(i===sel?" selected":""),onClick:()=>pick(emp),onMouseEnter:()=>setSel(i)},
+                React.createElement("div",{className:"gsearch-avatar"},emp.charAt(0)),
+                React.createElement("div",{style:{flex:1,minWidth:0}},
+                  React.createElement("div",{className:"gsearch-result-name"},emp),
+                  React.createElement("div",{className:"gsearch-result-sub"},empStat(emp))
+                ),
+                React.createElement("svg",{className:"gsearch-result-arrow",width:"14",height:"14",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
+                  React.createElement("path",{d:"M9 18l6-6-6-6"})
+                )
+              ))
+            )
+          ),
+          React.createElement("div",{className:"gsearch-hint"},"\u2191\u2193 navigatsiya \u00B7 Enter tanlash \u00B7 Esc yopish")
+        )
+      )
+    )
   );
 }
 
-/* ═══ MOBILE SEARCH BUTTON ═══ */
 function MobileSearchBtn({attendanceData, onSelectEmployee}){
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState(0);
-  const inputRef = useRef(null);
+  const [open,setOpen]=React.useState(false);
+  const [query,setQuery]=React.useState("");
+  const inputRef=useRef(null);
 
-  const results = useMemo(()=>{
-    const q = normalizeUz(query.trim().toLowerCase());
+  const results=useMemo(()=>{
+    const q=normalizeUz(query.trim().toLowerCase());
     if(!q) return [];
-    return EMPLOYEES.filter(emp=>{
-      return normalizeUz(emp.toLowerCase()).includes(q);
-    }).slice(0,8);
+    return EMPLOYEES.filter(e=>normalizeUz(e.toLowerCase()).includes(q)).slice(0,8);
   },[query]);
 
   useEffect(()=>{
-    if(open){
-      setQuery(""); setSelected(0);
-      setTimeout(()=>inputRef.current?.focus(),80);
-    }
+    if(open){setQuery("");setTimeout(()=>inputRef.current&&inputRef.current.focus(),80);}
   },[open]);
 
-  function pick(emp){
-    setOpen(false);
-    onSelectEmployee(emp);
-  }
+  function pick(emp){setOpen(false);onSelectEmployee(emp);}
 
-  function empSummary(emp){
-    const allDates = Object.keys(attendanceData||{});
-    if(!allDates.length) return "Ma'lumot yo'q";
-    const safeK = emp.toLowerCase().replace(/\s+/g,"_").replace(/['''\u2018\u2019]/g,"");
-    let present=0,absent=0,late=0;
-    allDates.forEach(d=>{
-      const dayData = attendanceData[d];
-      if(!dayData) return;
-      const rec = Object.entries(dayData).find(([k])=>k.toLowerCase()===safeK.toLowerCase())?.[1];
-      if(!rec) return;
-      if(rec.status==="present") present++;
-      else if(rec.status==="absent") absent++;
-      else if(rec.status==="late") late++;
+  function empStat(emp){
+    const dates=Object.keys(attendanceData||{});
+    if(!dates.length) return "Ma'lumot yo'q";
+    const k=safeKey(emp);
+    let p=0,a=0,l=0;
+    dates.forEach(d=>{
+      const r=(attendanceData[d]||{})[k];
+      if(!r) return;
+      if(r.status==="present") p++;
+      else if(r.status==="absent") a++;
+      else if(r.status==="late") l++;
     });
-    const total = present+absent+late;
-    if(!total) return "Ma'lumot yo'q";
-    const pct = Math.round((present+late)/total*100);
-    return `${total} kun · ${pct}%`;
+    const t=p+a+l;
+    if(!t) return "Ma'lumot yo'q";
+    return t+" kun \u00B7 "+Math.round((p+l)/t*100)+"%";
   }
 
   return(
-    <>
-      <button className="mobile-search-btn" onClick={()=>setOpen(true)} title="Qidirish">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-      </button>
-
-      {open&&(
-        <div className="gsearch-modal-overlay" onClick={()=>setOpen(false)} style={{paddingTop:20}}>
-          <div className="gsearch-modal" style={{maxWidth:"100%",margin:"0 12px",borderRadius:16}} onClick={e=>e.stopPropagation()}>
-            <div className="gsearch-input-row">
-              <svg className="gsearch-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input
-                ref={inputRef}
-                className="gsearch-input"
-                placeholder="Xodim ismini yozing..."
-                value={query}
-                onChange={e=>{setQuery(e.target.value);setSelected(0);}}
-              />
-              <span className="gsearch-esc" onClick={()=>setOpen(false)}>✕</span>
-            </div>
-            <div className="gsearch-results">
-              {query.trim()====""&&(
-                <div className="gsearch-empty">
-                  <div className="gsearch-empty-icon">🔍</div>
-                  <div>Xodim ismini kiriting...</div>
-                </div>
-              )}
-              {query.trim()!==""&&results.length===0&&(
-                <div className="gsearch-empty">
-                  <div className="gsearch-empty-icon">😔</div>
-                  <div>"{query}" — topilmadi</div>
-                </div>
-              )}
-              {results.map((emp,i)=>(
-                <div
-                  key={emp}
-                  className={`gsearch-result-item${i===selected?" selected":""}`}
-                  onClick={()=>pick(emp)}
-                >
-                  <div className="gsearch-avatar">{emp.charAt(0)}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div className="gsearch-result-name">{emp}</div>
-                    <div className="gsearch-result-sub">{empSummary(emp)}</div>
-                  </div>
-                  <svg className="gsearch-result-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 18l6-6-6-6"/>
-                  </svg>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    React.createElement(React.Fragment,null,
+      React.createElement("button",{className:"mobile-search-btn",onClick:()=>setOpen(true),title:"Qidirish"},
+        React.createElement("svg",{width:"15",height:"15",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},
+          React.createElement("circle",{cx:"11",cy:"11",r:"8"}),
+          React.createElement("path",{d:"m21 21-4.35-4.35"})
+        )
+      ),
+      open&&React.createElement("div",{className:"gsearch-modal-overlay",onClick:()=>setOpen(false),style:{paddingTop:20}},
+        React.createElement("div",{className:"gsearch-modal",style:{maxWidth:"100%",margin:"0 12px",borderRadius:16},onClick:e=>e.stopPropagation()},
+          React.createElement("div",{className:"gsearch-input-row"},
+            React.createElement("svg",{className:"gsearch-icon",width:"16",height:"16",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
+              React.createElement("circle",{cx:"11",cy:"11",r:"8"}),
+              React.createElement("path",{d:"m21 21-4.35-4.35"})
+            ),
+            React.createElement("input",{ref:inputRef,className:"gsearch-input",placeholder:"Xodim ismini yozing...",value:query,onChange:e=>{setQuery(e.target.value);}}),
+            React.createElement("span",{className:"gsearch-esc",onClick:()=>setOpen(false)},"\u2715")
+          ),
+          React.createElement("div",{className:"gsearch-results"},
+            query.trim()===""&&React.createElement("div",{className:"gsearch-empty"},
+              React.createElement("div",{className:"gsearch-empty-icon"},"\uD83D\uDD0D"),
+              React.createElement("div",null,"Xodim ismini kiriting...")
+            ),
+            query.trim()!==""&&results.length===0&&React.createElement("div",{className:"gsearch-empty"},
+              React.createElement("div",{className:"gsearch-empty-icon"},"\uD83D\uDE14"),
+              React.createElement("div",null,query+" — topilmadi")
+            ),
+            results.map((emp,i)=>React.createElement("div",{key:emp,className:"gsearch-result-item",onClick:()=>pick(emp)},
+              React.createElement("div",{className:"gsearch-avatar"},emp.charAt(0)),
+              React.createElement("div",{style:{flex:1,minWidth:0}},
+                React.createElement("div",{className:"gsearch-result-name"},emp),
+                React.createElement("div",{className:"gsearch-result-sub"},empStat(emp))
+              ),
+              React.createElement("svg",{className:"gsearch-result-arrow",width:"14",height:"14",viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},
+                React.createElement("path",{d:"M9 18l6-6-6-6"})
+              )
+            ))
+          )
+        )
+      )
+    )
   );
 }
 
-/* ═══ MAIN APP ═══ */
 function App(){
   const [user,setUser]=useState(null);
   const [loginU,setLoginU]=useState("");
