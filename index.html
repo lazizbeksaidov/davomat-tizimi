@@ -1827,6 +1827,73 @@
     .emp-profile-detail-value {
       font-size: 12.5px; color: var(--t1); font-weight: 500;
     }
+
+    /* ─── SELFIE REMINDER ─────────────────────── */
+    .selfie-reminder { margin-bottom: 18px; animation: reminderSlide .4s ease; }
+    @keyframes reminderSlide { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+    .reminder-card {
+      background: linear-gradient(135deg, #fef9ee 0%, #fff7ed 100%);
+      border: 1.5px solid rgba(200,150,42,.25);
+      border-radius: var(--rl); padding: 18px 22px;
+      display: flex; align-items: center; gap: 16px;
+      cursor: pointer; transition: all .2s;
+      box-shadow: 0 2px 12px rgba(200,150,42,.1);
+      position: relative; overflow: hidden;
+    }
+    .reminder-card:hover {
+      border-color: rgba(200,150,42,.45);
+      box-shadow: 0 4px 20px rgba(200,150,42,.18);
+      transform: translateY(-1px);
+    }
+    .reminder-card::before {
+      content:''; position:absolute; top:0; left:0; bottom:0;
+      width:4px; background:linear-gradient(180deg,var(--gold),var(--gold-lt));
+      border-radius: var(--rl) 0 0 var(--rl);
+    }
+    .reminder-pulse {
+      width:48px; height:48px; border-radius:50%;
+      background:rgba(200,150,42,.12);
+      display:flex; align-items:center; justify-content:center;
+      font-size:24px; flex-shrink:0;
+      animation: reminderPulse 2s ease infinite;
+    }
+    @keyframes reminderPulse {
+      0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(200,150,42,.3)}
+      50%{transform:scale(1.05);box-shadow:0 0 0 8px rgba(200,150,42,0)}
+    }
+    .reminder-content { flex:1; min-width:0; }
+    .reminder-title { font-size:14.5px; font-weight:700; color:var(--amber); margin-bottom:3px; }
+    .reminder-sub { font-size:12.5px; color:var(--t3); line-height:1.5; }
+    .reminder-btn {
+      padding:8px 18px;
+      background:linear-gradient(135deg,var(--gold),var(--gold-lt));
+      color:var(--ink); border:none; border-radius:8px;
+      font-size:12px; font-weight:700; font-family:'Outfit',sans-serif;
+      cursor:pointer; transition:all .2s; white-space:nowrap;
+      box-shadow:0 2px 8px rgba(200,150,42,.25);
+    }
+    .reminder-btn:hover { box-shadow:0 4px 14px rgba(200,150,42,.35); transform:translateY(-1px); }
+    .reminder-done {
+      background:linear-gradient(135deg,#e3f5ef 0%,#edfaf4 100%);
+      border:1.5px solid rgba(13,122,91,.15);
+      border-radius:var(--rl); padding:14px 22px;
+      display:flex; align-items:center; gap:14px;
+      margin-bottom:18px; position:relative; overflow:hidden;
+      animation: reminderSlide .4s ease;
+    }
+    .reminder-done::before {
+      content:''; position:absolute; top:0; left:0; bottom:0;
+      width:4px; background:var(--emerald);
+      border-radius:var(--rl) 0 0 var(--rl);
+    }
+    .reminder-done-icon { font-size:20px; }
+    .reminder-done-text { font-size:13px; font-weight:600; color:var(--emerald); }
+    .reminder-done-sub { font-size:11.5px; color:var(--t3); margin-top:1px; }
+    @media(max-width:768px){
+      .reminder-card { flex-wrap:wrap; padding:14px 16px; gap:12px; }
+      .reminder-pulse { width:40px; height:40px; font-size:20px; }
+      .reminder-btn { width:100%; text-align:center; padding:10px; }
+    }
   </style>
 </head>
 <body>
@@ -4310,6 +4377,70 @@ function setupPWAAssets(){
   if(appleIcon)appleIcon.href=iconUrl;
 }
 
+/* ═══ SELFIE ESLATMA ═══ */
+function SelfieReminder({user,checkinsData,onGoSelfie}){
+  const[now,setNow]=useState(new Date());
+  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),30000);return()=>clearInterval(t);},[]);
+  const todayKey=fmtDate(now);
+  const empKey=safeKey(user.name);
+  const h=now.getHours(),m=now.getMinutes(),totalM=h*60+m;
+  const dow=now.getDay();
+  if(dow===0||dow===6) return null;
+  const my=checkinsData?.[todayKey]?.[empKey];
+  const mDone=my?.morning, aDone=my?.afternoon;
+  const timeStr=String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
+  if(mDone&&aDone) return(
+    <div className="reminder-done">
+      <div className="reminder-done-icon">✅</div>
+      <div>
+        <div className="reminder-done-text">Bugungi selfie davomat to'liq!</div>
+        <div className="reminder-done-sub">Ertalabki: {mDone.time||"✓"} · Tushlik: {aDone.time||"✓"}</div>
+      </div>
+    </div>
+  );
+  if(totalM>=7*60&&totalM<13*60&&!mDone){
+    const urgent=totalM>=8*60+45;
+    return(<div className="selfie-reminder"><div className="reminder-card" onClick={onGoSelfie}>
+      <div className="reminder-pulse">📸</div>
+      <div className="reminder-content">
+        <div className="reminder-title">{urgent?"⚠️ Ertalabki selfie vaqti tugamoqda!":"Ertalabki selfie qilishni unutmang!"}</div>
+        <div className="reminder-sub">09:10 gacha kechikishsiz hisoblanadi. Hozir {timeStr}</div>
+      </div>
+      <button className="reminder-btn">Selfie qilish →</button>
+    </div></div>);
+  }
+  if(totalM>=13*60+30&&totalM<18*60&&!aDone){
+    const urgent=totalM>=13*60+50;
+    return(<div className="selfie-reminder"><div className="reminder-card" onClick={onGoSelfie}>
+      <div className="reminder-pulse">📸</div>
+      <div className="reminder-content">
+        <div className="reminder-title">{urgent?"⚠️ Tushlik selfie vaqti tugamoqda!":"Tushlik selfie qilishni unutmang!"}</div>
+        <div className="reminder-sub">14:10 gacha kechikishsiz hisoblanadi. Hozir {timeStr}</div>
+      </div>
+      <button className="reminder-btn">Selfie qilish →</button>
+    </div></div>);
+  }
+  if(mDone&&!aDone&&totalM>=13*60&&totalM<13*60+30) return(
+    <div className="reminder-done">
+      <div className="reminder-done-icon">☕</div>
+      <div>
+        <div className="reminder-done-text" style={{color:"var(--amber)"}}>Tushlik tanaffus</div>
+        <div className="reminder-done-sub">Ertalabki selfie: {mDone.time||"✓"} · Tushlik selfie 13:30 da boshlanadi</div>
+      </div>
+    </div>
+  );
+  if(mDone&&!aDone&&totalM<13*60) return(
+    <div className="reminder-done">
+      <div className="reminder-done-icon">✅</div>
+      <div>
+        <div className="reminder-done-text">Ertalabki selfie qilingan!</div>
+        <div className="reminder-done-sub">Vaqt: {mDone.time||"✓"} · Tushlik selfie 13:30 dan boshlanadi</div>
+      </div>
+    </div>
+  );
+  return null;
+}
+
 /* ═══ MAIN APP ═══ */
 function App(){
   const [user,setUser]=useState(null);
@@ -4678,6 +4809,7 @@ function App(){
           {loading
             ? <div className="empty-state"><div className="empty-icon">⏳</div><div className="empty-title">Yuklanmoqda...</div><div className="empty-sub">Firebase bilan ulanish o'rnatilmoqda</div></div>
             : <>
+                {!canManage&&<SelfieReminder user={user} checkinsData={checkinsData} onGoSelfie={()=>setView("selfie")}/>}
                 {view==="daily"&&canManage&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} checkinsData={checkinsData} updateRecord={dispatch}/>}
                 {view==="weekly"&&canManage&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="monthly"&&canManage&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
