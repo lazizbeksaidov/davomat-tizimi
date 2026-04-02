@@ -2180,7 +2180,7 @@ const STATUSES = {
 const OFFICE_LOCATION = {
   lat: 40.1034,
   lng: 65.3740,
-  radius: 150,
+  radius: 200,
   name: "Investitsiyalar, sanoat va savdo boshqarmasi",
   address: "Navoiy sh., Amir Temur ko'chasi, 77A"
 };
@@ -4157,7 +4157,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var myA=checkinsData[todayKey]&&checkinsData[todayKey][empKey]?checkinsData[todayKey][empKey].afternoon:null;
   var curDone=uiSession==="morning"?myM:uiSession==="afternoon"?myA:null;
   var bothDone=myM&&myA;
-  var gpsOk=gpsStatus==="ok"||gpsStatus==="far";
+  var gpsOk=gpsStatus==="ok";
 
   function blockExternalImage(e){
     if(e&&e.preventDefault)e.preventDefault();
@@ -4515,10 +4515,17 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
         React.createElement("video",{ref:videoRef,autoPlay:true,playsInline:true,muted:true,className:"selfie-video",style:{display:cameraActive&&!capturedPhoto?"block":"none"}}),
         // GPS not ready
         !gpsOk&&!cameraActive&&!capturedPhoto&&React.createElement("div",{style:{padding:"40px 30px",textAlign:"center"}},
-          React.createElement("div",{style:{fontSize:32,marginBottom:12}},gpsStatus==="checking"?"\u{1F4E1}":"\u{1F6AB}"),
+          React.createElement("div",{style:{fontSize:32,marginBottom:12}},gpsStatus==="checking"?"\u{1F4E1}":gpsStatus==="far"?"\u{1F4CD}":"\u{1F6AB}"),
           gpsStatus==="checking"?React.createElement(React.Fragment,null,
             React.createElement("div",{style:{width:24,height:24,border:"3px solid rgba(255,255,255,.15)",borderTopColor:"var(--gold)",borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}),
             React.createElement("div",{style:{color:"rgba(255,255,255,.6)",fontSize:13}},"GPS aniqlanmoqda...")
+          ):gpsStatus==="far"?React.createElement(React.Fragment,null,
+            React.createElement("div",{style:{color:"#fca5a5",fontSize:16,fontWeight:800,marginBottom:6}},"Ishxona hududidan uzoqdasiz!"),
+            React.createElement("div",{style:{color:"rgba(255,255,255,.7)",fontSize:13,lineHeight:1.7,marginTop:4}},"Siz hozir ishxonadan ",React.createElement("strong",{style:{color:"#fbbf24"}},gpsData?gpsData.distance+"m":"—")," uzoqlikdasiz."),
+            React.createElement("div",{style:{color:"rgba(255,255,255,.5)",fontSize:12,marginTop:8,lineHeight:1.7}},"Selfie olish uchun ishxona hududiga (",React.createElement("strong",null,OFFICE_LOCATION.radius+"m"),") yaqinlashing."),
+            React.createElement("div",{style:{color:"rgba(255,255,255,.35)",fontSize:11,marginTop:12}},OFFICE_LOCATION.name),
+            React.createElement("div",{style:{color:"rgba(255,255,255,.3)",fontSize:11}},OFFICE_LOCATION.address),
+            React.createElement("button",{onClick:function(){window.location.reload();},style:{marginTop:16,padding:"10px 24px",background:"var(--ruby)",color:"#fff",border:"none",borderRadius:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"Outfit,sans-serif"}},"\u{1F504} Qayta tekshirish")
           ):React.createElement(React.Fragment,null,
             React.createElement("div",{style:{color:"#fca5a5",fontSize:14,fontWeight:700}},gpsMsg),
             React.createElement("div",{style:{color:"rgba(255,255,255,.35)",fontSize:12,marginTop:8,lineHeight:1.7}},"Selfie uchun GPS ",React.createElement("strong",{style:{color:"rgba(255,255,255,.7)"}},"majburiy")),
