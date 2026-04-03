@@ -12,13 +12,13 @@
   <link id="dynamic-apple-icon" rel="apple-touch-icon" />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
 
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js" integrity="sha384-3k8kxVAXIf47vgdf3Q4mXcBDdvMrYx80aK5RjODMB70JWXm6MEkDdtSu0zpHWpJ+" crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js" integrity="sha384-uic5NV27Y056/arxaoI4ZEI+gCZOns0NP+6MM8z+eGF1ba9Lifv7ZHI+IdxTDYQn" crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js" integrity="sha384-5PDE6CZvnNIJI5xu68GIFoOO3U73lAnRLBwPBmmKjWnYnYwKEHWr/ghtGooEOXGb" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" integrity="sha384-dqDn4UOhYWNxmtwnMX6yC3WtZZ6Li8rF6rLB7cu0i/R7btvb+p+kObgEHto7VsJK" crossorigin="anonymous"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -6686,6 +6686,24 @@ function App(){
   useEffect(()=>{document.documentElement.setAttribute("data-theme",darkMode?"dark":"light");try{localStorage.setItem("xodimlar-dark",darkMode)}catch(e){}},[darkMode]);
 
   useEffect(()=>{const t=setInterval(()=>setClock(new Date()),30000);return()=>clearInterval(t)},[]);
+
+  // Session timeout — 30 daqiqa harakatsizlikda avtomatik chiqish
+  useEffect(()=>{
+    if(!user)return;
+    var timeout=30*60*1000;
+    var timer=null;
+    function resetTimer(){
+      if(timer)clearTimeout(timer);
+      timer=setTimeout(function(){auth.signOut()},timeout);
+    }
+    var events=["mousedown","keydown","touchstart","scroll"];
+    events.forEach(function(ev){window.addEventListener(ev,resetTimer,{passive:true})});
+    resetTimer();
+    return function(){
+      if(timer)clearTimeout(timer);
+      events.forEach(function(ev){window.removeEventListener(ev,resetTimer)});
+    };
+  },[user]);
 
   // Notification hooks
   useNotificationScheduler(user,checkinsData);
