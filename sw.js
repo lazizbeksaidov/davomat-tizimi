@@ -1,4 +1,4 @@
-var CACHE_NAME="xodimlar-monitoring-pwa-v4";
+var CACHE_NAME="xodimlar-monitoring-pwa-v5";
 var APP_SHELL=["./","./index.html","./sw.js"];
 var LAST_PAGE_KEY="last-successful-page";
 
@@ -98,4 +98,36 @@ self.addEventListener("fetch",function(event){
       return cached||networkFetch;
     })
   );
+});
+
+/* ═══ PUSH NOTIFICATION HANDLER ═══ */
+self.addEventListener("notificationclick",function(event){
+  event.notification.close();
+  var url=event.notification.data&&event.notification.data.url?event.notification.data.url:"/";
+  event.waitUntil(
+    clients.matchAll({type:"window",includeUncontrolled:true}).then(function(clientList){
+      for(var i=0;i<clientList.length;i++){
+        if(clientList[i].url.indexOf("davomat-tizimi")!==-1&&"focus" in clientList[i]){
+          return clientList[i].focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});
+
+/* Show notification from message event (triggered by app) */
+self.addEventListener("message",function(event){
+  if(event.data&&event.data.type==="SHOW_NOTIFICATION"){
+    var d=event.data;
+    self.registration.showNotification(d.title,{
+      body:d.body,
+      icon:d.icon||"/favicon.ico",
+      badge:d.badge||"/favicon.ico",
+      tag:d.tag||"xodimlar-notif",
+      data:{url:d.url||"/"},
+      vibrate:[200,100,200],
+      requireInteraction:d.requireInteraction||false
+    });
+  }
 });

@@ -6545,6 +6545,121 @@ function WeatherWidget(){
   );
 }
 
+/* ═══ NOTIFICATION SYSTEM ═══ */
+var _notifSentKeys={};
+function sendBrowserNotification(title,body,tag,url){
+  if(!("Notification" in window)||Notification.permission!=="granted") return;
+  var key=tag+"-"+new Date().toDateString();
+  if(_notifSentKeys[key]) return;
+  _notifSentKeys[key]=true;
+  try{localStorage.setItem("notif_sent",JSON.stringify(_notifSentKeys))}catch(e){}
+  if(navigator.serviceWorker&&navigator.serviceWorker.controller){
+    navigator.serviceWorker.controller.postMessage({
+      type:"SHOW_NOTIFICATION",title:title,body:body,tag:tag,
+      url:url||"https://lazizbeksaidov.github.io/davomat-tizimi/",
+      icon:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡</text></svg>"
+    });
+  }else{
+    new Notification(title,{body:body,tag:tag});
+  }
+}
+try{_notifSentKeys=JSON.parse(localStorage.getItem("notif_sent")||"{}")}catch(e){}
+
+function NotificationBanner(){
+  var _s=useState(function(){return typeof Notification!=="undefined"?Notification.permission:"denied"});
+  var permission=_s[0],setPermission=_s[1];
+  var _d=useState(false);var dismissed=_d[0],setDismissed=_d[1];
+
+  useEffect(function(){
+    try{if(localStorage.getItem("notif_dismissed")==="1")setDismissed(true)}catch(e){}
+  },[]);
+
+  if(permission==="granted"||dismissed||typeof Notification==="undefined") return null;
+
+  function handleAllow(){
+    Notification.requestPermission().then(function(p){
+      setPermission(p);
+      if(p==="granted"){
+        sendBrowserNotification("Bildirishnomalar yoqildi!","Endi selfie eslatmalari va e'lonlar keladi","notif-enabled");
+      }
+    });
+  }
+  function handleDismiss(){setDismissed(true);try{localStorage.setItem("notif_dismissed","1")}catch(e){}}
+
+  return React.createElement("div",{style:{
+    background:"linear-gradient(135deg,#0a1628,var(--navy-mid))",borderRadius:16,padding:"16px 20px",
+    marginBottom:16,display:"flex",alignItems:"center",gap:14,color:"#fff",
+    border:"1px solid rgba(200,150,42,.2)",boxShadow:"0 4px 20px rgba(0,0,0,.15)",animation:"fadeUp .3s ease"
+  }},
+    React.createElement("div",{style:{width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,var(--gold),var(--gold-lt))",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}},"🔔"),
+    React.createElement("div",{style:{flex:1,minWidth:0}},
+      React.createElement("div",{style:{fontSize:13,fontWeight:700}},"Bildirishnomalarni yoqing"),
+      React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,.5)",marginTop:2}},"Selfie eslatmalari va yangi e'lonlar haqida xabar oling")
+    ),
+    React.createElement("div",{style:{display:"flex",gap:6,flexShrink:0}},
+      React.createElement("button",{onClick:handleAllow,style:{
+        padding:"8px 16px",borderRadius:10,border:"none",background:"linear-gradient(135deg,var(--gold),var(--gold-lt))",
+        color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 12px rgba(200,150,42,.3)"
+      }},"Yoqish"),
+      React.createElement("button",{onClick:handleDismiss,style:{
+        padding:"8px 12px",borderRadius:10,border:"1px solid rgba(255,255,255,.15)",background:"transparent",
+        color:"rgba(255,255,255,.5)",fontSize:11,cursor:"pointer"
+      }},"Keyin")
+    )
+  );
+}
+
+function useNotificationScheduler(user,checkinsData){
+  useEffect(function(){
+    if(!user||typeof Notification==="undefined"||Notification.permission!=="granted") return;
+    var interval=setInterval(function(){
+      var now=new Date();
+      var h=now.getHours(),m=now.getMinutes(),dow=now.getDay();
+      if(dow===0||dow===6) return;
+      var todayKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),String(now.getDate()).padStart(2,"0")].join("-");
+      var empKey=safeKey(user.name);
+      var myCheckins=checkinsData?.[todayKey]?.[empKey];
+
+      // 08:50 — Ertalabki selfie eslatma
+      if(h===8&&m>=50&&m<=55&&!myCheckins?.morning){
+        sendBrowserNotification("Ertalabki selfie vaqti!","09:10 gacha selfie qiling — kechikmaslik uchun","morning-selfie-"+todayKey);
+      }
+      // 09:05 — Oxirgi eslatma
+      if(h===9&&m>=5&&m<=8&&!myCheckins?.morning){
+        sendBrowserNotification("Ertalabki selfie — 5 daqiqa qoldi!","09:10 dan keyin kechikish hisoblanadi","morning-urgent-"+todayKey);
+      }
+      // 13:50 — Tushlik selfie eslatma
+      if(h===13&&m>=50&&m<=55&&!myCheckins?.afternoon){
+        sendBrowserNotification("Tushlik selfie vaqti!","14:10 gacha selfie qiling","afternoon-selfie-"+todayKey);
+      }
+      // 14:05 — Oxirgi eslatma
+      if(h===14&&m>=5&&m<=8&&!myCheckins?.afternoon){
+        sendBrowserNotification("Tushlik selfie — 5 daqiqa qoldi!","14:10 dan keyin kechikish hisoblanadi","afternoon-urgent-"+todayKey);
+      }
+    },30000);
+    return function(){clearInterval(interval)};
+  },[user,checkinsData]);
+}
+
+function useAnnouncementNotifier(user){
+  var lastAnnRef=useRef(null);
+  useEffect(function(){
+    if(!user||typeof Notification==="undefined"||Notification.permission!=="granted") return;
+    var ref=db.ref("announcements");
+    var handler=ref.orderByChild("timestamp").limitToLast(1).on("child_added",function(snap){
+      var ann=snap.val();
+      if(!ann||!ann.timestamp) return;
+      if(lastAnnRef.current===null){lastAnnRef.current=ann.timestamp;return;}
+      if(ann.timestamp>lastAnnRef.current){
+        lastAnnRef.current=ann.timestamp;
+        var pri=ann.priority==="urgent"?"SHOSHILINCH: ":"";
+        sendBrowserNotification(pri+"Yangi e'lon: "+ann.title,ann.text?.slice(0,80)||"","ann-"+snap.key);
+      }
+    });
+    return function(){ref.off("child_added",handler)};
+  },[user]);
+}
+
 /* ═══ MAIN APP ═══ */
 function App(){
   const [user,setUser]=useState(null);
@@ -6571,6 +6686,10 @@ function App(){
   useEffect(()=>{document.documentElement.setAttribute("data-theme",darkMode?"dark":"light");try{localStorage.setItem("xodimlar-dark",darkMode)}catch(e){}},[darkMode]);
 
   useEffect(()=>{const t=setInterval(()=>setClock(new Date()),30000);return()=>clearInterval(t)},[]);
+
+  // Notification hooks
+  useNotificationScheduler(user,checkinsData);
+  useAnnouncementNotifier(user);
 
   useEffect(()=>{
     setupPWAAssets();
@@ -6984,6 +7103,7 @@ function App(){
           {loading
             ? <div className="empty-state"><div className="empty-icon">⏳</div><div className="empty-title">Yuklanmoqda...</div><div className="empty-sub">Firebase bilan ulanish o'rnatilmoqda</div></div>
             : <>
+                <NotificationBanner/>
                 {!canManage&&<SelfieReminder user={user} checkinsData={checkinsData} onGoSelfie={()=>setView("selfie")}/>}
                 {view==="davomat"&&canManage&&<>
                   <div style={{display:"flex",gap:4,marginBottom:20,background:"var(--surface)",borderRadius:14,padding:4,border:"1px solid var(--border)",boxShadow:"var(--s1)"}}>
