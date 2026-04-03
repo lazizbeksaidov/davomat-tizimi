@@ -2450,15 +2450,9 @@ function notifyTelegramAbsent(empName,dateStr){
   sendTelegram(text);
 }
 function notifyTelegramSelfie(empName,session,lateMins,dist){
-  if(!_telegramConfig.enabled||!_telegramConfig.notifySelfie)return;
-  var sessionLabel=session==="morning"?"Ertalabki":"Tushlik";
-  var icon=lateMins>0?"⏰":"✅";
-  var text=icon+" <b>Selfie davomat</b>\n\n"
-    +"👤 <b>"+empName+"</b>\n"
-    +"🕐 "+sessionLabel+": "+(lateMins>0?lateMins+" daqiqa kechikdi":"Vaqtida keldi")+"\n"
-    +"📍 Masofa: "+(dist||"—")+"m\n"
-    +"🕰 "+new Date().toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"});
-  sendTelegram(text);
+  // Individual selfie xabari guruhga yuborilmaydi
+  // Faqat 09:20 va 14:20 da umumiy hisobot Cloud Function orqali yuboriladi
+  return;
 }
 function sendTelegramDavomat(dateKey){
   var dk=dateKey||fmtDate(new Date());
@@ -4740,8 +4734,7 @@ function TelegramSettings({showToast}){
             <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
               {[
                 {key:"notifyLate",label:"⏰ Kechikish",desc:"Selfie orqali kechikish aniqlanganda"},
-                {key:"notifyAbsent",label:"❌ Sababsiz yo'qlik",desc:"Admin tomonidan yo'q belgilanganda"},
-                {key:"notifySelfie",label:"📸 Selfie davomat",desc:"Har bir selfie qayd etilganda"}
+                {key:"notifyAbsent",label:"❌ Sababsiz yo'qlik",desc:"Admin tomonidan yo'q belgilanganda"}
               ].map(item=>(
                 <div key={item.key} onClick={()=>setCfg(p=>({...p,[item.key]:!p[item.key]}))}
                   style={{padding:"10px 14px",borderRadius:10,border:"1.5px solid "+(cfg[item.key]?"var(--emerald)":"var(--border)"),
