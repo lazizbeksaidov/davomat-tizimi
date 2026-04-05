@@ -143,7 +143,7 @@
       min-height: 100vh;
       display: grid;
       grid-template-columns: 1fr 480px;
-      background: var(--ink);
+      background: #06080F;
       position: relative;
       overflow: hidden;
     }
@@ -155,7 +155,7 @@
       position: absolute;
       width: 900px; height: 900px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(6,182,212,.06) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(6,182,212,.1) 0%, transparent 70%);
       top: -300px; left: -200px;
       animation: loginOrb1 12s ease-in-out infinite;
     }
@@ -164,7 +164,7 @@
       position: absolute;
       width: 600px; height: 600px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(124,58,237,.08) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(124,58,237,.12) 0%, transparent 70%);
       bottom: -100px; left: 30%;
       animation: loginOrb2 10s ease-in-out infinite;
     }
@@ -180,8 +180,8 @@
     .login-grid-bg {
       position: absolute; inset: 0;
       background-image:
-        linear-gradient(rgba(6,182,212,.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(6,182,212,.04) 1px, transparent 1px);
+        linear-gradient(rgba(6,182,212,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(6,182,212,.06) 1px, transparent 1px);
       background-size: 56px 56px;
     }
     .login-particles {
@@ -202,7 +202,7 @@
     .login-glow-line {
       position: absolute;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(200,150,42,.15), transparent);
+      background: linear-gradient(90deg, transparent, rgba(6,182,212,.12), transparent);
       animation: glowSweep 8s ease-in-out infinite;
       left: 0; right: 0;
     }
@@ -213,7 +213,7 @@
     .login-time {
       position: absolute; top: 28px; right: 32px; z-index: 10;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 13px; color: rgba(255,255,255,.25);
+      font-size: 13px; color: rgba(255,255,255,.35);
       display: flex; align-items: center; gap: 8px;
     }
     .login-time-dot {
@@ -232,10 +232,10 @@
     }
     .login-emblem-mark {
       width: 48px; height: 48px;
-      background: linear-gradient(135deg, #6063ee, #a3a6ff);
+      background: linear-gradient(135deg, #06b6d4, #7C3AED);
       border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 6px 24px rgba(163,166,255,.25);
+      box-shadow: 0 6px 24px rgba(6,182,212,.3);
       flex-shrink: 0;
     }
     .login-emblem-text h2 {
@@ -251,7 +251,7 @@
     }
     .login-headline em {
       font-style: normal;
-      background: linear-gradient(135deg, #a3a6ff 0%, #c180ff 100%);
+      background: linear-gradient(135deg, #4cd7f6 0%, #d2bbff 100%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
     .login-desc { font-size: 14.5px; color: rgba(255,255,255,.38); line-height: 1.9; max-width: 380px; }
@@ -265,7 +265,7 @@
       backdrop-filter: blur(8px);
       transition: background .2s, border-color .2s;
     }
-    .login-feat:hover { background: rgba(255,255,255,.07); border-color: rgba(200,150,42,.25); }
+    .login-feat:hover { background: rgba(255,255,255,.07); border-color: rgba(6,182,212,.3); }
     .login-feat-icon { font-size: 20px; margin-bottom: 10px; }
     .login-feat-title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.8); margin-bottom: 5px; }
     .login-feat-desc { font-size: 11px; color: rgba(255,255,255,.3); line-height: 1.6; }
