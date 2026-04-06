@@ -6326,6 +6326,142 @@ function SelfieReminder({user,checkinsData,onGoSelfie}){
   return null;
 }
 
+/* ═══ XODIM IZOHLARI ═══ */
+function EmployeeNotesView({user}){
+  var isEmp=user.role==="employee";
+  var isAdminOrObs=user.role==="admin"||user.role==="observer"||user.role==="boss";
+  var[notes,setNotes]=useState([]);
+  var[noteText,setNoteText]=useState("");
+  var[noteType,setNoteType]=useState("general");
+  var[noteDate,setNoteDate]=useState(fmtDate(new Date()));
+  var[saving,setSaving]=useState(false);
+  var[filterDate,setFilterDate]=useState("");
+  var[filterEmp,setFilterEmp]=useState("");
+
+  useEffect(function(){
+    var ref=db.ref("employee_notes");
+    ref.orderByChild("timestamp").on("value",function(snap){
+      var d=snap.val()||{};
+      var arr=Object.entries(d).map(function(e){return Object.assign({id:e[0]},e[1])});
+      arr.sort(function(a,b){return(b.timestamp||0)-(a.timestamp||0)});
+      setNotes(arr);
+    });
+    return function(){ref.off()};
+  },[]);
+
+  function handleSubmit(){
+    if(!noteText.trim())return;
+    setSaving(true);
+    var id=Date.now().toString(36)+Math.random().toString(36).substr(2,4);
+    var empKey=safeKey(user.name);
+    db.ref("employee_notes/"+id).set({
+      empName:user.name, empKey:empKey, date:noteDate,
+      type:noteType, text:noteText.trim(),
+      timestamp:Date.now(),
+      dateDisplay:noteDate.split("-").reverse().join(".")
+    }).then(function(){
+      setNoteText("");setSaving(false);
+    }).catch(function(){setSaving(false)});
+  }
+
+  function handleDelete(id){
+    if(window.confirm("Bu izohni o'chirmoqchimisiz?"))db.ref("employee_notes/"+id).remove();
+  }
+
+  var typeLabels={
+    late:"⏰ Kechikish sababi",
+    absent:"🚫 Kelmadim — sabab",
+    leave:"🏖 Ta'til / Ruxsat so'rovi",
+    sick:"🏥 Kasallik",
+    general:"📝 Umumiy izoh"
+  };
+  var typeColors={
+    late:"var(--amber)",absent:"var(--ruby)",
+    leave:"var(--violet)",sick:"var(--teal)",general:"var(--cobalt)"
+  };
+  var typeBg={
+    late:"var(--amber-bg)",absent:"var(--ruby-bg)",
+    leave:"var(--violet-bg)",sick:"var(--teal-bg)",general:"var(--cobalt-bg)"
+  };
+
+  // Filtrlash
+  var filtered=notes.filter(function(n){
+    if(isEmp&&n.empKey!==safeKey(user.name))return false;
+    if(filterDate&&n.date!==filterDate)return false;
+    if(filterEmp&&!n.empName.toLowerCase().includes(filterEmp.toLowerCase()))return false;
+    return true;
+  });
+
+  return React.createElement("div",null,
+    React.createElement("div",{className:"page-header"},
+      React.createElement("div",null,
+        React.createElement("div",{className:"page-title"},"Izohlar"),
+        React.createElement("div",{className:"page-subtitle"},isEmp?"Kechikish, ta'til yoki boshqa sabab yozing":"Xodimlar izohlari va sabablari")
+      )
+    ),
+
+    // Xodim uchun izoh yozish formasi
+    isEmp&&React.createElement("div",{className:"ann-form",style:{marginBottom:20}},
+      React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"var(--navy)",marginBottom:16}},"✏️ Izoh yozish"),
+      React.createElement("div",{className:"ann-form-row"},
+        React.createElement("label",null,"Izoh turi"),
+        React.createElement("select",{value:noteType,onChange:function(e){setNoteType(e.target.value)}},
+          React.createElement("option",{value:"late"},"⏰ Kechikish sababi"),
+          React.createElement("option",{value:"absent"},"🚫 Kelmadim — sabab"),
+          React.createElement("option",{value:"leave"},"🏖 Ta'til / Ruxsat so'rovi"),
+          React.createElement("option",{value:"sick"},"🏥 Kasallik"),
+          React.createElement("option",{value:"general"},"📝 Umumiy izoh")
+        )
+      ),
+      React.createElement("div",{className:"ann-form-row"},
+        React.createElement("label",null,"Qaysi kunga"),
+        React.createElement("input",{type:"date",value:noteDate,onChange:function(e){setNoteDate(e.target.value)}})
+      ),
+      React.createElement("div",{className:"ann-form-row"},
+        React.createElement("label",null,"Izoh matni"),
+        React.createElement("textarea",{value:noteText,onChange:function(e){setNoteText(e.target.value)},placeholder:"Masalan: Transport muammosi tufayli 10 daqiqa kechikdim...",rows:3})
+      ),
+      React.createElement("button",{className:"ann-submit",onClick:handleSubmit,disabled:saving||!noteText.trim()},saving?"Saqlanmoqda...":"📨 Izoh yuborish")
+    ),
+
+    // Admin/Observer uchun filtr
+    isAdminOrObs&&React.createElement("div",{style:{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}},
+      React.createElement("input",{type:"date",value:filterDate,onChange:function(e){setFilterDate(e.target.value)},
+        style:{padding:"7px 12px",border:"1.5px solid var(--border)",borderRadius:8,fontSize:12,fontFamily:"'JetBrains Mono',monospace",color:"var(--t1)",background:"var(--cloud)",outline:"none"}}),
+      React.createElement("input",{type:"text",value:filterEmp,onChange:function(e){setFilterEmp(e.target.value)},placeholder:"Xodim nomi bo'yicha qidirish...",
+        style:{padding:"7px 12px",border:"1.5px solid var(--border)",borderRadius:8,fontSize:12,color:"var(--t1)",background:"var(--cloud)",outline:"none",flex:1,minWidth:160}}),
+      filterDate&&React.createElement("button",{onClick:function(){setFilterDate("")},
+        style:{padding:"7px 12px",border:"1.5px solid var(--border)",borderRadius:8,fontSize:11,fontWeight:600,color:"var(--t3)",background:"var(--cloud)",cursor:"pointer"}},"✕ Filtrni tozalash")
+    ),
+
+    // Izohlar ro'yxati
+    React.createElement("div",{className:"ann-list"},
+      filtered.length===0&&React.createElement("div",{className:"empty-state"},
+        React.createElement("div",{className:"empty-icon"},"📝"),
+        React.createElement("div",{className:"empty-title"},"Izohlar yo'q"),
+        React.createElement("div",{className:"empty-sub"},isEmp?"Hali izoh yozmadingiz":"Hali xodimlardan izoh kelmagan")
+      ),
+      filtered.map(function(n){
+        var tColor=typeColors[n.type]||"var(--cobalt)";
+        var tBg=typeBg[n.type]||"var(--cobalt-bg)";
+        var tLabel=typeLabels[n.type]||"📝 Izoh";
+        return React.createElement("div",{key:n.id,className:"ann-card",style:{borderLeft:"4px solid "+tColor}},
+          (isAdminOrObs)&&React.createElement("button",{className:"ann-del",onClick:function(){handleDelete(n.id)},title:"O'chirish"},"✕"),
+          React.createElement("div",{className:"ann-top"},
+            React.createElement("span",{style:{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:tBg,color:tColor,textTransform:"uppercase",letterSpacing:".5px"}},tLabel),
+            React.createElement("span",{className:"ann-date"},n.dateDisplay||n.date)
+          ),
+          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"var(--navy)",marginBottom:4}},n.empName),
+          React.createElement("div",{style:{fontSize:13,color:"var(--t2)",lineHeight:1.7}},n.text),
+          React.createElement("div",{style:{fontSize:10,color:"var(--t4)",marginTop:8}},
+            "Yuborilgan: "+new Date(n.timestamp).toLocaleString("uz-UZ",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})
+          )
+        );
+      })
+    )
+  );
+}
+
 /* ═══ E'LONLAR PANELI ═══ */
 function AnnouncementsView({user,isAdmin}){
   const[anns,setAnns]=useState([]);
@@ -7074,6 +7210,7 @@ function App(){
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
     {k:"selfie",icon:"📸",label:"Selfie Davomat"},
+    {k:"empNotes",icon:"✏️",label:"Xodim Izohlari"},
     ...((isAdmin||isObserver)?[{k:"aiAnalysis",icon:"🤖",label:"AI Tahlil"}]:[]),
     ...(isAdmin?[{k:"telegram",icon:"📨",label:"Telegram Bot"}]:[]),
     ...(isAdmin?[{k:"accounts",icon:"🔑",label:"Akkauntlar"}]:[])
@@ -7082,10 +7219,11 @@ function App(){
     {k:"myStats",icon:"👤",label:"Shaxsiy Kabinet"},
     {k:"announcements",icon:"📢",label:"E'lonlar"},
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
-    {k:"selfie",icon:"📸",label:"Selfie Davomat"}
+    {k:"selfie",icon:"📸",label:"Selfie Davomat"},
+    {k:"empNotes",icon:"✏️",label:"Izoh yozish"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={davomat:"Davomat",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={davomat:"Davomat",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":isObserver?"Kuzatuvchi":"Xodim";
 
   return(
@@ -7255,6 +7393,7 @@ function App(){
                 {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>}
                 {view==="birthdays"&&<BirthdaysView/>}
                 {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
+                {view==="empNotes"&&<EmployeeNotesView user={user}/>}
                 {view==="aiAnalysis"&&(isAdmin||isObserver)&&<AIAnalysisView showToast={showToast}/>}
                 {view==="telegram"&&isAdmin&&<TelegramSettings showToast={showToast}/>}
                 {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
