@@ -5979,9 +5979,16 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     else{u.afternoon=late;if(late>0||rec.morning>0)u.status="late";u.note=(rec.note?rec.note+" | ":"")+(late===0?"Tushlikdan keyingi selfie (14:10 gacha): ":"Selfie 14:10 dan keyin: ")+tStr+notePrefix;}
 
     db.ref("checkins/"+todayKey+"/"+empKey+"/"+uiSession).set(checkinObj)
-    .then(function(){return db.ref("attendance/"+todayKey+"/"+empKey).update(u);})
     .then(function(){
-      showToast("\u2713 "+(uiSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!");
+      // Attendance yangilash Cloud Function (onCheckinWrite) tomonidan avtomatik amalga oshiriladi
+      // Admin bo'lsa client-side ham yozib ko'ramiz (tezroq update uchun)
+      if(user.role==="admin"||user.role==="boss"){
+        return db.ref("attendance/"+todayKey+"/"+empKey).update(u).catch(function(){});
+      }
+      return Promise.resolve();
+    })
+    .then(function(){
+      showToast("\u2713 "+(uiSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!"+(late>0?" ("+late+" daq kechikish)":""));
       try{
         var _lateMins=(u.morning||0)+(u.afternoon||0);
         var _dist=gpsData?gpsData.distance:null;
