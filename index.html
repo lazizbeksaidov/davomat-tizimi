@@ -2475,7 +2475,7 @@ function bdAge(name){
 }
 const USERS_INFO = {
   "kadr@boshqarma.uz":{role:"admin",name:"Kadrlar Bo\u2018limi"},
-  "ravshan.azimov@boshqarma.uz":{role:"boss",name:"Azimov Ravshan",title:"Boshqarma boshlig\u2018i"},
+  "ravshan.azimov@boshqarma.uz":{role:"observer",name:"Azimov Ravshan",title:"Boshqarma boshlig\u2018i"},
   "elbek.gafforov@boshqarma.uz":{role:"boss",name:"G\u2018afforov Elbek",title:"Boshlig\u2018i o\u2018rinbosari"}
 };
 EMPLOYEES.forEach(emp=>{
@@ -3357,7 +3357,7 @@ function DashboardCharts({dateKey,attendanceData,checkinsData,counts}){
 /* ═══ DAILY VIEW ═══ */
 function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsData,updateRecord}){
   const isAdmin=user.role==="admin";
-  const canView=user.role==="admin"||user.role==="boss";
+  const canView=user.role==="admin"||user.role==="boss"||user.role==="observer";
   const dateKey=fmtDate(selectedDate);
   const dayName=WDAYS[selectedDate.getDay()-1]||"Dam olish kuni";
   const [search,setSearch]=useState("");
@@ -6016,7 +6016,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     });
   },[checkinsData,todayKey]);
 
-  var canView=user.role==="admin"||user.role==="boss";
+  var canView=user.role==="admin"||user.role==="boss"||user.role==="observer";
 
   // GPS status text
   var gpsMsg="";
@@ -6860,6 +6860,7 @@ function App(){
         const info=USERS_INFO[email]||{role:"employee",name:email};
         setUser({email,...info});
         setView(info.role==="employee"?"myStats":"davomat");
+        // Observer role — faqat kuzatuvchi, DB ga yozish kerak emas
         // Set user role in DB for server-side security rules
         fUser.getIdToken().then(function(token){
           fetch("https://us-central1-xodimlar-7c13c.cloudfunctions.net/setUserRole",{
@@ -7056,7 +7057,9 @@ function App(){
   /* APP */
   const isAdmin=user.role==="admin";
   const isBoss=user.role==="boss";
-  const canManage=isAdmin||isBoss;
+  const isObserver=user.role==="observer";
+  const canManage=isAdmin||isBoss||isObserver;
+  const canEdit=isAdmin||isBoss;
   const adminNav=[
     {k:"davomat",icon:"📅",label:"Davomat"},
     {k:"stats",icon:"📊",label:"Statistika"},
@@ -7064,7 +7067,7 @@ function App(){
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
     {k:"selfie",icon:"📸",label:"Selfie Davomat"},
-    ...(isAdmin?[{k:"aiAnalysis",icon:"🤖",label:"AI Tahlil"}]:[]),
+    ...((isAdmin||isObserver)?[{k:"aiAnalysis",icon:"🤖",label:"AI Tahlil"}]:[]),
     ...(isAdmin?[{k:"telegram",icon:"📨",label:"Telegram Bot"}]:[]),
     ...(isAdmin?[{k:"accounts",icon:"🔑",label:"Akkauntlar"}]:[])
   ];
@@ -7076,7 +7079,7 @@ function App(){
   ];
   const navItems=canManage?adminNav:empNav;
   const viewLabels={davomat:"Davomat",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
-  const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":"Xodim";
+  const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":isObserver?"Kuzatuvchi":"Xodim";
 
   return(
     <div className="app">
@@ -7245,7 +7248,7 @@ function App(){
                 {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>}
                 {view==="birthdays"&&<BirthdaysView/>}
                 {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
-                {view==="aiAnalysis"&&isAdmin&&<AIAnalysisView showToast={showToast}/>}
+                {view==="aiAnalysis"&&(isAdmin||isObserver)&&<AIAnalysisView showToast={showToast}/>}
                 {view==="telegram"&&isAdmin&&<TelegramSettings showToast={showToast}/>}
                 {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
               </>
