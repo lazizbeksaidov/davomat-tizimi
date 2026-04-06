@@ -2327,6 +2327,21 @@
       background: linear-gradient(135deg,rgba(251,191,36,.06) 0%,rgba(245,158,11,.03) 100%);
       border-color: rgba(251,191,36,.15);
     }
+    [data-theme="dark"] .bday-banner {
+      background: linear-gradient(135deg,rgba(251,191,36,.08) 0%,rgba(251,191,36,.04) 100%);
+      border-color: rgba(251,191,36,.2);
+    }
+    [data-theme="dark"] .bday-banner-main { color: #fbbf24; }
+    [data-theme="dark"] .bday-banner-sub { color: rgba(251,191,36,.7); }
+    [data-theme="dark"] .bday-card.is-today { background: linear-gradient(135deg,rgba(251,191,36,.1),rgba(251,191,36,.05)); border-color: rgba(251,191,36,.25); }
+    [data-theme="dark"] .bday-full-card.is-today { background: linear-gradient(160deg,rgba(251,191,36,.08),rgba(22,27,34,.7)); border-color: rgba(251,191,36,.3); }
+    [data-theme="dark"] .bday-full-card.is-soon { background: linear-gradient(160deg,rgba(76,215,246,.06),rgba(22,27,34,.7)); border-color: rgba(76,215,246,.2); }
+    [data-theme="dark"] .vac-chip { background: var(--surface2); border-color: var(--border); }
+    [data-theme="dark"] .heat-l0 { background: rgba(22,27,34,.5); }
+    [data-theme="dark"] .heat-l1 { background: rgba(74,222,128,.1); border-color: rgba(74,222,128,.2); }
+    [data-theme="dark"] .heat-l2 { background: rgba(251,191,36,.1); border-color: rgba(251,191,36,.2); }
+    [data-theme="dark"] .heat-l3 { background: rgba(251,146,60,.1); border-color: rgba(251,146,60,.2); }
+    [data-theme="dark"] .heat-l4 { background: rgba(251,113,133,.1); border-color: rgba(251,113,133,.2); }
     [data-theme="dark"] .glass-card {
       background: rgba(22,27,34,0.7);
       backdrop-filter: blur(12px);
@@ -6446,7 +6461,7 @@ function EmployeeNotesView({user}){
         var tBg=typeBg[n.type]||"var(--cobalt-bg)";
         var tLabel=typeLabels[n.type]||"📝 Izoh";
         return React.createElement("div",{key:n.id,className:"ann-card",style:{borderLeft:"4px solid "+tColor}},
-          (isAdminOrObs)&&React.createElement("button",{className:"ann-del",onClick:function(){handleDelete(n.id)},title:"O'chirish"},"✕"),
+          (user.role==="admin"||user.role==="boss")&&React.createElement("button",{className:"ann-del",onClick:function(){handleDelete(n.id)},title:"O'chirish"},"✕"),
           React.createElement("div",{className:"ann-top"},
             React.createElement("span",{style:{fontSize:10,fontWeight:700,padding:"3px 10px",borderRadius:20,background:tBg,color:tColor,textTransform:"uppercase",letterSpacing:".5px"}},tLabel),
             React.createElement("span",{className:"ann-date"},n.dateDisplay||n.date)
@@ -6918,8 +6933,8 @@ function App(){
   const [iosInstallHint,setIosInstallHint]=useState(false);
   const [hideInstallBanner,setHideInstallBanner]=useState(false);
   const toastRef=useRef(null);
-  const [darkMode,setDarkMode]=useState(false);
-  useEffect(()=>{if(darkMode){document.documentElement.setAttribute("data-theme","dark")}else{document.documentElement.removeAttribute("data-theme")}},[darkMode]);
+  const [darkMode,setDarkMode]=useState(()=>{try{return localStorage.getItem("xodimlar-dark-mode")==="1"}catch(e){return false}});
+  useEffect(()=>{if(darkMode){document.documentElement.setAttribute("data-theme","dark")}else{document.documentElement.removeAttribute("data-theme")}try{localStorage.setItem("xodimlar-dark-mode",darkMode?"1":"0")}catch(e){}},[darkMode]);
 
   useEffect(()=>{const t=setInterval(()=>setClock(new Date()),30000);return()=>clearInterval(t)},[]);
 
@@ -7023,7 +7038,8 @@ function App(){
   useEffect(()=>{
     if(!user)return;
     var now=new Date();
-    var startKey=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
+    var startD=new Date(now.getFullYear(),now.getMonth()-5,1);
+    var startKey=startD.getFullYear()+"-"+String(startD.getMonth()+1).padStart(2,"0")+"-01";
     var endKey=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-31";
     const ref=db.ref("attendance").orderByKey().startAt(startKey).endAt(endKey);
     ref.on("value",(snap)=>setData(snap.val()||{}),(err)=>console.error(err));
@@ -7033,7 +7049,8 @@ function App(){
   useEffect(()=>{
     if(!user)return;
     var now=new Date();
-    var startKey=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-01";
+    var startD=new Date(now.getFullYear(),now.getMonth()-5,1);
+    var startKey=startD.getFullYear()+"-"+String(startD.getMonth()+1).padStart(2,"0")+"-01";
     var endKey=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-31";
     const ref=db.ref("checkins").orderByKey().startAt(startKey).endAt(endKey);
     ref.on("value",(snap)=>setCheckinsData(snap.val()||{}),(err)=>console.error(err));
@@ -7067,7 +7084,7 @@ function App(){
     setAuthLoading(true);
     const fullEmail=loginU.trim().toLowerCase().includes("@")?loginU.trim().toLowerCase():loginU.trim().toLowerCase()+"@boshqarma.uz";
     auth.signInWithEmailAndPassword(fullEmail,loginP)
-      .then(()=>{setLoginErr("");setLoginU("");setLoginP("");})
+      .then(()=>{setLoginErr("");setLoginU("");setLoginP("");setAuthLoading(false);})
       .catch((err)=>{setAuthLoading(false);
         if(err.code==="auth/user-not-found")setLoginErr("Bu email uchun akkaunt topilmadi. Admin bilan bog'laning.");
         else if(err.code==="auth/wrong-password"||err.code==="auth/invalid-credential")setLoginErr("Parol noto'g'ri! Qayta urinib ko'ring.");
@@ -7308,7 +7325,7 @@ function App(){
 
       {/* MOBILE BOTTOM NAV */}
       <div className="mobile-bottom-nav">
-        {navItems.map(({k,icon,label})=>{
+        {(canManage?[{k:"davomat",icon:"\u{1F4C5}",label:"Davomat"},{k:"stats",icon:"\u{1F4CA}",label:"Statistika"},{k:"selfie",icon:"\u{1F4F8}",label:"Selfie"},{k:"empNotes",icon:"\u270F\uFE0F",label:"Izohlar"},{k:"announcements",icon:"\u{1F4E2}",label:"E'lonlar"}]:navItems).map(({k,icon,label})=>{
           const shortLabels={davomat:"Davomat",daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfieHistory:"Tarix",selfie:"Selfie",myStats:"Kabinet",accounts:"Akkaunt"};
           return(
             <button key={k} className={`mob-nav-btn ${view===k?"active":""}`} onClick={()=>setView(k)}>
