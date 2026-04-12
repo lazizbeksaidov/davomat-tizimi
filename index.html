@@ -2201,6 +2201,56 @@
     .mob-gs-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.7);-webkit-tap-highlight-color:transparent;}
     /* Dark overrides removed — already dark */
 
+    /* ─── HOLIDAYS / BAYRAMLAR ─── */
+    .hol-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+    .hol-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .hol-filter-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 16px; border:1.5px solid var(--border); border-radius:var(--r); font-size:12px; font-weight:600; font-family:'Inter',sans-serif; color:var(--t2); background:var(--white); cursor:pointer; transition:all .12s; }
+    .hol-filter-btn:hover { border-color:var(--navy); color:var(--navy); }
+    .hol-filter-btn.active { background:var(--gold-pale); border-color:var(--navy); color:var(--navy); }
+    .hol-add-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 20px; background:linear-gradient(135deg,#465fff,#7a5af8); color:#fff; border:none; border-radius:var(--r); font-size:13px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; box-shadow:0 4px 16px rgba(70,95,255,.2); transition:all .15s; white-space:nowrap; }
+    .hol-add-btn:hover { box-shadow:0 6px 20px rgba(70,95,255,.3); transform:translateY(-1px); }
+    .hol-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:22px; }
+    .hol-stat-card { padding:18px 20px; border-radius:var(--rl); background:var(--white); border:1px solid var(--border); box-shadow:var(--s1); display:flex; align-items:center; gap:14px; }
+    .hol-stat-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+    .hol-stat-info { min-width:0; }
+    .hol-stat-val { font-size:22px; font-weight:700; font-family:'JetBrains Mono',monospace; color:var(--t1); line-height:1.1; }
+    .hol-stat-label { font-size:11px; color:var(--t3); font-weight:500; margin-top:2px; }
+    .hol-table-wrap { overflow-x:auto; border-radius:var(--rl); border:1px solid var(--border); background:var(--white); box-shadow:var(--s1); }
+    .hol-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .hol-table th { padding:12px 16px; text-align:left; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--t4); background:var(--surface2); border-bottom:1px solid var(--border); white-space:nowrap; }
+    .hol-table td { padding:14px 16px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    .hol-table tbody tr:hover { background:var(--surface2); }
+    .hol-table tbody tr:last-child td { border-bottom:none; }
+    .hol-name-wrap { display:flex; align-items:center; gap:10px; }
+    .hol-emoji { font-size:20px; flex-shrink:0; }
+    .hol-name { font-weight:600; color:var(--t1); }
+    .hol-name-sub { font-size:10.5px; color:var(--t4); margin-top:2px; }
+    .hol-date-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; font-family:'JetBrains Mono',monospace; background:var(--gold-pale); color:var(--navy); }
+    .hol-scope-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; background:var(--cobalt-bg); color:var(--cobalt); }
+    .hol-exception-list { display:flex; flex-wrap:wrap; gap:4px; max-width:200px; }
+    .hol-exception-chip { display:inline-block; padding:2px 8px; border-radius:12px; font-size:10px; font-weight:600; background:var(--amber-bg); color:var(--amber); }
+    .hol-status-toggle { display:inline-flex; align-items:center; gap:6px; padding:5px 14px; border-radius:20px; font-size:11px; font-weight:700; border:none; cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; }
+    .hol-status-toggle.on { background:var(--emerald-bg); color:var(--emerald); }
+    .hol-status-toggle.off { background:var(--ash-bg); color:var(--ash); }
+    .hol-empty { padding:48px 20px; text-align:center; color:var(--t4); }
+    .hol-empty-icon { font-size:48px; margin-bottom:12px; opacity:.5; }
+    .hol-empty-text { font-size:14px; font-weight:500; margin-bottom:4px; }
+    .hol-empty-sub { font-size:12px; color:var(--t5); }
+    .hol-modal-form { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .hol-modal-form .full-row { grid-column:1/-1; }
+    .hol-field label { display:block; font-size:11px; font-weight:600; color:var(--t3); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
+    .hol-field input, .hol-field select, .hol-field textarea { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:var(--r); font-size:13px; font-family:'Inter',sans-serif; color:var(--t1); background:var(--cloud); outline:none; transition:border-color .15s; box-sizing:border-box; }
+    .hol-field input:focus, .hol-field select:focus, .hol-field textarea:focus { border-color:var(--navy); box-shadow:0 0 0 3px var(--gold-glow); }
+    .hol-field textarea { resize:vertical; min-height:60px; }
+    .hol-upcoming { display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:var(--r); background:var(--gold-pale); border:1px solid rgba(70,95,255,.15); margin-bottom:18px; font-size:12.5px; color:var(--navy); font-weight:500; }
+    .hol-upcoming strong { font-weight:700; }
+    @media(max-width:640px){
+      .hol-header { flex-direction:column; align-items:stretch; }
+      .hol-actions { flex-direction:column; }
+      .hol-stats { grid-template-columns:1fr 1fr; }
+      .hol-modal-form { grid-template-columns:1fr; }
+    }
+
     /* ─── EMPLOYEES MANAGEMENT ─── */
     .emp-mgmt-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
     .emp-mgmt-filters { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -2542,6 +2592,7 @@ const STATUSES = {
   training:{label:"Malaka oshirish",color:"var(--violet)",bg:"var(--violet-bg)",icon:"📚",short:"MO"},
   vacation:{label:"Ta\u2018til",color:"var(--teal)",bg:"var(--teal-bg)",icon:"🌴",short:"T"},
   excused:{label:"Sababli",color:"var(--ash)",bg:"var(--ash-bg)",icon:"📋",short:"S"},
+  holiday:{label:"Bayram",color:"var(--violet)",bg:"var(--violet-bg)",icon:"🎉",short:"BY"},
   absent:{label:"Sababsiz",color:"var(--ruby)",bg:"var(--ruby-bg)",icon:"✗",short:"SS"}
 };
 
@@ -3402,13 +3453,15 @@ function DashboardCharts({dateKey,attendanceData,checkinsData,counts}){
 }
 
 /* ═══ DAILY VIEW ═══ */
-function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsData,updateRecord}){
+function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsData,updateRecord,isHolidayDate,getHolidayInfo}){
   const isAdmin=user.role==="admin";
   const canView=user.role==="admin"||user.role==="boss"||user.role==="observer";
   const dateKey=fmtDate(selectedDate);
   const dayName=WDAYS[selectedDate.getDay()-1]||"Dam olish kuni";
   const [search,setSearch]=useState("");
   const [statusDrill,setStatusDrill]=useState(null);
+  const todayIsHoliday=isHolidayDate?isHolidayDate(dateKey):false;
+  const holidayInfo=getHolidayInfo?getHolidayInfo(dateKey):null;
 
   useEffect(()=>{ setStatusDrill(null); },[dateKey]);
 
@@ -3494,6 +3547,11 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
           {canView&&<button className="action-btn primary" onClick={()=>exportDailyExcel(dateKey,attendanceData,checkinsData)}>📊 Excel</button>}
         </div>
       </div>
+
+      {todayIsHoliday&&<div className="hol-upcoming" style={{marginBottom:"16px",background:"var(--violet-bg)",borderColor:"rgba(122,90,248,.2)"}}>
+        <span style={{fontSize:"22px"}}>{holidayInfo?.emoji||"🎉"}</span>
+        <span style={{color:"var(--violet)",fontWeight:600}}>Bayram kuni: <strong>{holidayInfo?.name||"Rasmiy dam olish"}</strong> — barcha xodimlar avtomatik dam olish sifatida belgilangan</span>
+      </div>}
 
       <div className="stats-grid">
         <div className="stat-card c-green">
@@ -3622,9 +3680,11 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
             <tbody>
               {filtered.map((emp)=>{
                 const idx=EMPLOYEES.indexOf(emp);
-                const rec=attendanceData[dateKey]?.[safeKey(emp)]||{status:"present",morning:0,afternoon:0,note:""};
-                const active=["present","late"].includes(rec.status);
-                const stDef=STATUSES[rec.status]||STATUSES.present;
+                const rawRec=attendanceData[dateKey]?.[safeKey(emp)]||{status:"present",morning:0,afternoon:0,note:""};
+                const rec=todayIsHoliday&&!rawRec.status?Object.assign({},rawRec,{status:"holiday"}):rawRec;
+                const effectiveStatus=todayIsHoliday&&rec.status==="present"?"holiday":rec.status;
+                const active=["present","late"].includes(effectiveStatus);
+                const stDef=STATUSES[effectiveStatus]||STATUSES.present;
                 return(
                   <tr key={emp}>
                     <td><span className="row-num">{String(idx+1).padStart(2,"0")}</span></td>
@@ -3637,7 +3697,9 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
                       {!bdToday(emp)&&bdDays(emp)<=7&&<span className="bday-soon-tag">🎈 {bdDays(emp)} kun</span>}
                     </td>
                     <td>
-                      {isAdmin
+                      {todayIsHoliday
+                        ? <span className="badge" style={{color:stDef.color,background:stDef.bg}}>{stDef.icon} {stDef.label}</span>
+                        : isAdmin
                         ? <select className="status-select" value={rec.status} onChange={e=>updateRecord(dateKey,emp,"status",e.target.value)}>
                             {Object.entries(STATUSES).map(([k,v])=><option key={k} value={k}>{v.icon} {v.label}</option>)}
                           </select>
@@ -6509,6 +6571,286 @@ function EmployeeNotesView({user}){
   );
 }
 
+/* ═══ BAYRAMLAR BO'LIMI ═══ */
+function HolidaysView({user,showToast}){
+  var isAdmin=user.role==="admin";
+  var canEdit=user.role==="admin"||user.role==="boss";
+  var[holidays,setHolidays]=useState([]);
+  var[editModal,setEditModal]=useState(null);
+  var[saving,setSaving]=useState(false);
+  var[filter,setFilter]=useState("all");
+  var[formData,setFormData]=useState({name:"",date:"",endDate:"",scope:"all",emoji:"🎉",description:"",active:true,exceptions:""});
+
+  var UZ_HOLIDAYS=[
+    {name:"Yangi yil",date:"01-01",emoji:"🎄",description:"Yangi yil bayrami"},
+    {name:"Xotin-qizlar kuni",date:"03-08",emoji:"💐",description:"Xalqaro xotin-qizlar kuni"},
+    {name:"Navro'z",date:"03-21",emoji:"🌷",description:"Navro'z bayrami"},
+    {name:"Xotira va qadrlash kuni",date:"05-09",emoji:"🕊",description:"Xotira va qadrlash kuni"},
+    {name:"Mustaqillik kuni",date:"09-01",emoji:"🇺🇿",description:"O'zbekiston Mustaqillik kuni"},
+    {name:"O'qituvchilar kuni",date:"10-01",emoji:"📚",description:"O'qituvchi va murabbiylar kuni"},
+    {name:"Konstitutsiya kuni",date:"12-08",emoji:"📜",description:"O'zbekiston Respublikasi Konstitutsiyasi kuni"}
+  ];
+
+  useEffect(function(){
+    var ref=db.ref("holidays");
+    ref.on("value",function(snap){
+      var d=snap.val()||{};
+      var arr=Object.entries(d).map(function(e){return Object.assign({id:e[0]},e[1])});
+      arr.sort(function(a,b){return(a.date||"").localeCompare(b.date||"")});
+      setHolidays(arr);
+    });
+    return function(){ref.off()};
+  },[]);
+
+  function seedDefaults(){
+    var yr=new Date().getFullYear();
+    var updates={};
+    UZ_HOLIDAYS.forEach(function(h,i){
+      var key="hol_"+Date.now()+"_"+i;
+      updates[key]={name:h.name,date:yr+"-"+h.date,endDate:"",scope:"all",emoji:h.emoji,description:h.description,active:true,exceptions:"",createdAt:Date.now()};
+    });
+    db.ref("holidays").update(updates).then(function(){showToast("✅ "+UZ_HOLIDAYS.length+" ta bayram qo'shildi!")}).catch(function(e){showToast("❌ Xato: "+e.message)});
+  }
+
+  function openAdd(){
+    setFormData({name:"",date:"",endDate:"",scope:"all",emoji:"🎉",description:"",active:true,exceptions:""});
+    setEditModal("new");
+  }
+  function openEdit(h){
+    setFormData({name:h.name||"",date:h.date||"",endDate:h.endDate||"",scope:h.scope||"all",emoji:h.emoji||"🎉",description:h.description||"",active:h.active!==false,exceptions:(h.exceptions||"")});
+    setEditModal(h.id);
+  }
+  function saveHoliday(){
+    if(!formData.name.trim()||!formData.date){showToast("⚠️ Bayram nomi va sana kiritilishi shart!");return}
+    setSaving(true);
+    var data={name:formData.name.trim(),date:formData.date,endDate:formData.endDate||"",scope:formData.scope,emoji:formData.emoji||"🎉",description:formData.description.trim(),active:formData.active,exceptions:formData.exceptions.trim(),updatedAt:Date.now()};
+    if(editModal==="new"){data.createdAt=Date.now();var newRef=db.ref("holidays").push();newRef.set(data).then(function(){setSaving(false);setEditModal(null);showToast("✅ Bayram qo'shildi!")}).catch(function(e){setSaving(false);showToast("❌ Xato: "+e.message)})}
+    else{db.ref("holidays/"+editModal).update(data).then(function(){setSaving(false);setEditModal(null);showToast("✅ Bayram yangilandi!")}).catch(function(e){setSaving(false);showToast("❌ Xato: "+e.message)})}
+  }
+  function deleteHoliday(id,name){
+    if(!confirm(name+" bayramini o'chirmoqchimisiz?"))return;
+    db.ref("holidays/"+id).remove().then(function(){showToast("🗑 O'chirildi")}).catch(function(e){showToast("❌ "+e.message)});
+  }
+  function toggleActive(id,cur){
+    db.ref("holidays/"+id).update({active:!cur}).then(function(){showToast(!cur?"✅ Faollashtirildi":"⏸ O'chirildi")});
+  }
+
+  var today=fmtDate(new Date());
+  var activeHolidays=holidays.filter(function(h){return h.active!==false});
+  var upcoming=activeHolidays.filter(function(h){return h.date>=today}).sort(function(a,b){return a.date.localeCompare(b.date)});
+  var nextHoliday=upcoming[0]||null;
+  var thisYear=holidays.filter(function(h){return h.date&&h.date.startsWith(String(new Date().getFullYear()))});
+  var pastCount=activeHolidays.filter(function(h){return h.date<today}).length;
+
+  var filtered=holidays;
+  if(filter==="active")filtered=holidays.filter(function(h){return h.active!==false});
+  if(filter==="upcoming")filtered=holidays.filter(function(h){return h.active!==false&&h.date>=today});
+  if(filter==="past")filtered=holidays.filter(function(h){return h.date<today});
+
+  function fmtHolDate(d){if(!d)return"—";var p=d.split("-");return p[2]+"."+p[1]+"."+p[0]}
+  function daysUntil(d){if(!d)return 999;var t=new Date(d);t.setHours(0,0,0,0);var n=new Date();n.setHours(0,0,0,0);return Math.ceil((t-n)/(86400000))}
+  var EMOJIS=["🎉","🎄","💐","🌷","🕊","🇺🇿","📚","📜","🌙","☪️","🎊","⭐","🏠","🎂","🌟"];
+
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Bayramlar</div>
+          <div className="page-subtitle">Rasmiy dam olish kunlari boshqaruvi — bayram kunlari avtomatik dam olish sifatida belgilanadi</div>
+        </div>
+      </div>
+
+      {nextHoliday&&<div className="hol-upcoming">
+        <span style={{fontSize:"18px"}}>{nextHoliday.emoji||"🎉"}</span>
+        <span>Keyingi bayram: <strong>{nextHoliday.name}</strong> — {fmtHolDate(nextHoliday.date)} ({daysUntil(nextHoliday.date)<=0?"Bugun!":daysUntil(nextHoliday.date)+" kun qoldi"})</span>
+      </div>}
+
+      <div className="hol-stats">
+        <div className="hol-stat-card">
+          <div className="hol-stat-icon" style={{background:"var(--gold-pale)",color:"var(--navy)"}}>📅</div>
+          <div className="hol-stat-info">
+            <div className="hol-stat-val">{thisYear.length}</div>
+            <div className="hol-stat-label">Jami bayramlar ({new Date().getFullYear()})</div>
+          </div>
+        </div>
+        <div className="hol-stat-card">
+          <div className="hol-stat-icon" style={{background:"var(--emerald-bg)",color:"var(--emerald)"}}>✅</div>
+          <div className="hol-stat-info">
+            <div className="hol-stat-val">{activeHolidays.length}</div>
+            <div className="hol-stat-label">Faol bayramlar</div>
+          </div>
+        </div>
+        <div className="hol-stat-card">
+          <div className="hol-stat-icon" style={{background:"var(--cobalt-bg)",color:"var(--cobalt)"}}>⏳</div>
+          <div className="hol-stat-info">
+            <div className="hol-stat-val">{upcoming.length}</div>
+            <div className="hol-stat-label">Kelayotgan bayramlar</div>
+          </div>
+        </div>
+        <div className="hol-stat-card">
+          <div className="hol-stat-icon" style={{background:"var(--violet-bg)",color:"var(--violet)"}}>📊</div>
+          <div className="hol-stat-info">
+            <div className="hol-stat-val">{pastCount}</div>
+            <div className="hol-stat-label">O'tgan bayramlar</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="hol-header">
+        <div className="hol-actions">
+          {["all","active","upcoming","past"].map(function(f){
+            var labels={all:"Barchasi",active:"Faol",upcoming:"Kelayotgan",past:"O'tgan"};
+            return <button key={f} className={"hol-filter-btn"+(filter===f?" active":"")} onClick={function(){setFilter(f)}}>{labels[f]} ({f==="all"?holidays.length:f==="active"?activeHolidays.length:f==="upcoming"?upcoming.length:pastCount})</button>;
+          })}
+        </div>
+        {canEdit&&<div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}>
+          {holidays.length===0&&<button className="hol-filter-btn" onClick={seedDefaults}>🇺🇿 O'zbekiston bayramlarini qo'shish</button>}
+          <button className="hol-add-btn" onClick={openAdd}>+ Bayram qo'shish</button>
+        </div>}
+      </div>
+
+      {filtered.length===0?(
+        <div className="hol-table-wrap">
+          <div className="hol-empty">
+            <div className="hol-empty-icon">🎉</div>
+            <div className="hol-empty-text">Bayramlar topilmadi</div>
+            <div className="hol-empty-sub">{holidays.length===0?"Birinchi bayramni qo'shing yoki O'zbekiston bayramlarini avtomatik yuklang":"Filtrni o'zgartiring"}</div>
+          </div>
+        </div>
+      ):(
+        <div className="hol-table-wrap">
+          <table className="hol-table">
+            <thead>
+              <tr>
+                <th>Bayram</th>
+                <th>Sana</th>
+                <th>Qamrov</th>
+                <th>Istisnolar</th>
+                <th>Holat</th>
+                {canEdit&&<th style={{width:"100px",textAlign:"center"}}>Amallar</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(function(h){
+                var du=daysUntil(h.date);
+                var isPast=du<0;
+                var isToday=du===0;
+                var scopeLabels={all:"Barcha xodimlar",department:"Bo'lim",custom:"Tanlangan"};
+                var excArr=(h.exceptions||"").split(",").map(function(s){return s.trim()}).filter(Boolean);
+                return(
+                  <tr key={h.id} style={{opacity:h.active===false?.5:1}}>
+                    <td>
+                      <div className="hol-name-wrap">
+                        <span className="hol-emoji">{h.emoji||"🎉"}</span>
+                        <div>
+                          <div className="hol-name">{h.name}</div>
+                          {h.description&&<div className="hol-name-sub">{h.description}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="hol-date-badge">{fmtHolDate(h.date)}</div>
+                      {h.endDate&&<div style={{fontSize:"10px",color:"var(--t4)",marginTop:"3px"}}>→ {fmtHolDate(h.endDate)}</div>}
+                      {isToday&&<div style={{fontSize:"10px",color:"var(--emerald)",fontWeight:700,marginTop:"3px"}}>Bugun!</div>}
+                      {!isToday&&!isPast&&du<=30&&<div style={{fontSize:"10px",color:"var(--amber)",marginTop:"3px"}}>{du} kun qoldi</div>}
+                    </td>
+                    <td><span className="hol-scope-badge">{scopeLabels[h.scope]||h.scope}</span></td>
+                    <td>
+                      {excArr.length>0?(
+                        <div className="hol-exception-list">
+                          {excArr.slice(0,3).map(function(ex,i){return <span key={i} className="hol-exception-chip">{ex}</span>})}
+                          {excArr.length>3&&<span className="hol-exception-chip">+{excArr.length-3}</span>}
+                        </div>
+                      ):<span style={{fontSize:"11px",color:"var(--t5)"}}>—</span>}
+                    </td>
+                    <td>
+                      {canEdit
+                        ?<button className={"hol-status-toggle "+(h.active!==false?"on":"off")} onClick={function(){toggleActive(h.id,h.active!==false)}}>
+                          {h.active!==false?"● Faol":"○ O'chirilgan"}
+                        </button>
+                        :<span className={"badge"} style={{color:h.active!==false?"var(--emerald)":"var(--ash)",background:h.active!==false?"var(--emerald-bg)":"var(--ash-bg)"}}>{h.active!==false?"Faol":"O'chirilgan"}</span>
+                      }
+                    </td>
+                    {canEdit&&<td style={{textAlign:"center"}}>
+                      <div style={{display:"flex",gap:"6px",justifyContent:"center"}}>
+                        <button className="emp-action-btn" title="Tahrirlash" onClick={function(){openEdit(h)}}>✏️</button>
+                        {isAdmin&&<button className="emp-action-btn danger" title="O'chirish" onClick={function(){deleteHoliday(h.id,h.name)}}>🗑</button>}
+                      </div>
+                    </td>}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {editModal!==null&&<div className="modal-overlay" onClick={function(){setEditModal(null)}}>
+        <div className="modal-card" onClick={function(e){e.stopPropagation()}} style={{maxWidth:"560px"}}>
+          <div className="modal-header">
+            <span className="modal-title">{editModal==="new"?"Yangi Bayram Qo'shish":"Bayramni Tahrirlash"}</span>
+            <button className="modal-close" onClick={function(){setEditModal(null)}}>✕</button>
+          </div>
+          <div style={{padding:"20px"}}>
+            <div className="hol-modal-form">
+              <div className="hol-field full-row">
+                <label>Bayram nomi *</label>
+                <input value={formData.name} onChange={function(e){setFormData(Object.assign({},formData,{name:e.target.value}))}} placeholder="Masalan: Navro'z bayrami"/>
+              </div>
+              <div className="hol-field">
+                <label>Boshlanish sana *</label>
+                <input type="date" value={formData.date} onChange={function(e){setFormData(Object.assign({},formData,{date:e.target.value}))}}/>
+              </div>
+              <div className="hol-field">
+                <label>Tugash sana (ixtiyoriy)</label>
+                <input type="date" value={formData.endDate} onChange={function(e){setFormData(Object.assign({},formData,{endDate:e.target.value}))}}/>
+              </div>
+              <div className="hol-field">
+                <label>Belgi</label>
+                <div style={{display:"flex",flexWrap:"wrap",gap:"6px"}}>
+                  {EMOJIS.map(function(em){
+                    return <button key={em} onClick={function(){setFormData(Object.assign({},formData,{emoji:em}))}}
+                      style={{width:"36px",height:"36px",borderRadius:"8px",border:formData.emoji===em?"2px solid var(--navy)":"1.5px solid var(--border)",background:formData.emoji===em?"var(--gold-pale)":"var(--white)",fontSize:"18px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{em}</button>;
+                  })}
+                </div>
+              </div>
+              <div className="hol-field">
+                <label>Qamrov</label>
+                <select value={formData.scope} onChange={function(e){setFormData(Object.assign({},formData,{scope:e.target.value}))}}>
+                  <option value="all">Barcha xodimlar</option>
+                  <option value="department">Faqat tanlangan bo'lim</option>
+                  <option value="custom">Tanlangan xodimlar</option>
+                </select>
+              </div>
+              <div className="hol-field full-row">
+                <label>Izoh</label>
+                <textarea value={formData.description} onChange={function(e){setFormData(Object.assign({},formData,{description:e.target.value}))}} placeholder="Bayram haqida qisqacha..."/>
+              </div>
+              <div className="hol-field full-row">
+                <label>Istisnolar (vergul bilan ajrating)</label>
+                <input value={formData.exceptions} onChange={function(e){setFormData(Object.assign({},formData,{exceptions:e.target.value}))}} placeholder="Masalan: Qorovul, Operator"/>
+              </div>
+              <div className="hol-field full-row" style={{display:"flex",alignItems:"center",gap:"10px"}}>
+                <label style={{margin:0}}>Faol</label>
+                <button onClick={function(){setFormData(Object.assign({},formData,{active:!formData.active}))}}
+                  className={"hol-status-toggle "+(formData.active?"on":"off")}>
+                  {formData.active?"● Faol":"○ O'chirilgan"}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button className="btn-outline" onClick={function(){setEditModal(null)}}>Bekor qilish</button>
+            <button className="btn-primary" disabled={saving} onClick={saveHoliday}>
+              {saving?"Saqlanmoqda...":editModal==="new"?"Qo'shish":"Saqlash"}
+            </button>
+          </div>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
 /* ═══ XODIMLAR BO'LIMI ═══ */
 function EmployeesManageView({user,showToast}){
   var isAdmin=user.role==="admin";
@@ -7259,6 +7601,7 @@ function App(){
   const [selDate,setSelDate]=useState(new Date());
   const [data,setData]=useState({});
   const [checkinsData,setCheckinsData]=useState({});
+  const [holidaysData,setHolidaysData]=useState([]);
   const [loading,setLoading]=useState(true);
   const [authLoading,setAuthLoading]=useState(false);
   const [toast,setToast]=useState(null);
@@ -7393,6 +7736,33 @@ function App(){
     ref.on("value",(snap)=>setCheckinsData(snap.val()||{}),(err)=>console.error(err));
     return()=>ref.off();
   },[user]);
+
+  useEffect(()=>{
+    if(!user)return;
+    const ref=db.ref("holidays");
+    ref.on("value",(snap)=>{
+      var d=snap.val()||{};
+      var arr=Object.values(d).filter(function(h){return h.active!==false});
+      setHolidaysData(arr);
+    },(err)=>console.error(err));
+    return()=>ref.off();
+  },[user]);
+
+  function isHolidayDate(dateStr){
+    return holidaysData.some(function(h){
+      if(!h.date)return false;
+      if(h.endDate&&h.endDate>=dateStr)return dateStr>=h.date&&dateStr<=h.endDate;
+      return h.date===dateStr;
+    });
+  }
+
+  function getHolidayInfo(dateStr){
+    return holidaysData.find(function(h){
+      if(!h.date)return false;
+      if(h.endDate&&h.endDate>=dateStr)return dateStr>=h.date&&dateStr<=h.endDate;
+      return h.date===dateStr;
+    });
+  }
 
   function showToast(msg){
     setToast(msg);
@@ -7561,6 +7931,7 @@ function App(){
     {k:"davomat",icon:"📅",label:"Davomat"},
     {k:"stats",icon:"📊",label:"Statistika"},
     {k:"employees",icon:"👥",label:"Xodimlar"},
+    {k:"holidays",icon:"🎉",label:"Bayramlar"},
     {k:"announcements",icon:"📢",label:"E'lonlar"},
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
@@ -7578,7 +7949,7 @@ function App(){
     {k:"empNotes",icon:"✏️",label:"Izoh yozish"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={davomat:"Davomat",employees:"Xodimlar Bo'limi",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={davomat:"Davomat",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":isObserver?"Kuzatuvchi":"Xodim";
 
   return(
@@ -7737,12 +8108,13 @@ function App(){
                       );
                     })}
                   </div>
-                  {davomatTab==="daily"&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} checkinsData={checkinsData} updateRecord={dispatch}/>}
+                  {davomatTab==="daily"&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} checkinsData={checkinsData} updateRecord={dispatch} isHolidayDate={isHolidayDate} getHolidayInfo={getHolidayInfo}/>}
                   {davomatTab==="weekly"&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                   {davomatTab==="monthly"&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 </>}
                 {view==="stats"&&canManage&&<StatsView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="employees"&&canManage&&<EmployeesManageView user={user} showToast={showToast}/>}
+                {view==="holidays"&&canManage&&<HolidaysView user={user} showToast={showToast}/>}
                 {view==="rankings"&&canManage&&<RankingsView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="announcements"&&<AnnouncementsView user={user} isAdmin={isAdmin}/>}
                 {view==="selfieHistory"&&isAdmin&&<SelfieHistoryView checkinsData={checkinsData}/>}
