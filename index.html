@@ -7178,6 +7178,7 @@ function EmployeesManageView({user,showToast}){
   var[deptFilter,setDeptFilter]=useState("");
   var[editModal,setEditModal]=useState(null);
   var[saving,setSaving]=useState(false);
+  var[importProgress,setImportProgress]=useState(null);
   var fileInputRef=useRef(null);
   var[formData,setFormData]=useState({firstName:"",lastName:"",position:"",department:"",phone:"",schedule:"Dush-Jum 09:00-18:00",photo:""});
 
@@ -7192,42 +7193,69 @@ function EmployeesManageView({user,showToast}){
     return function(){ref.off()};
   },[]);
 
-  useEffect(function(){
-    if(!isAdmin)return;
-    var SEED_KEY="emp_seed_v3";
-    try{if(localStorage.getItem(SEED_KEY)==="done")return}catch(e){}
-    db.ref("employees").once("value").then(function(snap){
-      var existing=snap.val()||{};
-      var needsSeed=Object.keys(existing).length<EMPLOYEES.length;
-      if(!needsSeed){
-        var first=Object.values(existing)[0];
-        if(first&&(first.position==="Mutaxassis"||!first.fullName))needsSeed=true;
+  function importEmployees(){
+    if(importProgress!==null)return;
+    setImportProgress({done:0,total:EMPLOYEES.length,phase:"text"});
+    var idx=0;
+    function writeNext(){
+      if(idx>=EMPLOYEES.length){
+        setImportProgress({done:EMPLOYEES.length,total:EMPLOYEES.length,phase:"photos"});
+        uploadPhotos();
+        return;
       }
-      if(!needsSeed){try{localStorage.setItem(SEED_KEY,"done")}catch(e){}return}
-      var pending=EMPLOYEES.length;var failed=0;
-      EMPLOYEES.forEach(function(name){
-        var parts=name.split(" ");
-        var key=safeKey(name);
-        var prof=EMPLOYEE_PROFILES[name]||{};
-        var data={
-          firstName:parts[1]||"",lastName:parts[0]||"",
-          position:prof.position||"Mutaxassis",
-          department:prof.department||"Boshqarma",
-          phone:prof.phone||"",
-          schedule:"Dush-Jum 09:00-18:00",
-          photo:prof.photo||"",
-          fullName:prof.fullName||name
-        };
-        db.ref("employees/"+key).set(data).then(function(){
-          pending--;
-          if(pending<=0){try{localStorage.setItem(SEED_KEY,"done")}catch(e){}}
-        }).catch(function(err){
-          failed++;pending--;
-          console.error("Seed error for "+name+":",err.message);
-        });
+      var name=EMPLOYEES[idx];
+      var parts=name.split(" ");
+      var key=safeKey(name);
+      var prof=EMPLOYEE_PROFILES[name]||{};
+      var data={
+        firstName:parts[1]||"",lastName:parts[0]||"",
+        position:prof.position||"Mutaxassis",
+        department:prof.department||"Boshqarma",
+        phone:prof.phone||"",
+        schedule:"Dush-Jum 09:00-18:00",
+        photo:"",
+        fullName:prof.fullName||name
+      };
+      db.ref("employees/"+key).set(data).then(function(){
+        idx++;
+        setImportProgress({done:idx,total:EMPLOYEES.length,phase:"text"});
+        setTimeout(writeNext,50);
+      }).catch(function(err){
+        console.error("Import error:",name,err.message);
+        idx++;
+        setImportProgress({done:idx,total:EMPLOYEES.length,phase:"text"});
+        setTimeout(writeNext,50);
       });
-    });
-  },[isAdmin]);
+    }
+    writeNext();
+  }
+
+  function uploadPhotos(){
+    var photoEmps=EMPLOYEES.filter(function(n){return EMPLOYEE_PROFILES[n]&&EMPLOYEE_PROFILES[n].photo});
+    if(photoEmps.length===0){setImportProgress(null);showToast("✅ "+EMPLOYEES.length+" ta xodim import qilindi!");return}
+    var pIdx=0;
+    function nextPhoto(){
+      if(pIdx>=photoEmps.length){
+        setImportProgress(null);
+        showToast("✅ "+EMPLOYEES.length+" xodim + "+photoEmps.length+" rasm import qilindi!");
+        return;
+      }
+      var name=photoEmps[pIdx];
+      var key=safeKey(name);
+      var prof=EMPLOYEE_PROFILES[name];
+      db.ref("employees/"+key+"/photo").set(prof.photo).then(function(){
+        pIdx++;
+        setImportProgress({done:pIdx,total:photoEmps.length,phase:"photos"});
+        setTimeout(nextPhoto,100);
+      }).catch(function(err){
+        console.error("Photo error:",name,err.message);
+        pIdx++;
+        setImportProgress({done:pIdx,total:photoEmps.length,phase:"photos"});
+        setTimeout(nextPhoto,100);
+      });
+    }
+    nextPhoto();
+  }
 
   function openAdd(){
     setFormData({firstName:"",lastName:"",position:"",department:"",phone:"",schedule:"Dush-Jum 09:00-18:00",photo:""});
@@ -7320,7 +7348,18 @@ function EmployeesManageView({user,showToast}){
       ),
       React.createElement("div",{className:"page-actions",style:{display:"flex",gap:8,alignItems:"center"}},
         React.createElement("span",{className:"emp-count-badge"},"👥 "+empList.length+" nafar"),
+        isAdmin&&empList.length<EMPLOYEES.length&&!importProgress&&React.createElement("button",{className:"emp-add-btn",onClick:importEmployees,style:{background:"linear-gradient(135deg,#12b76a,#0ba5ec)"}},"📥 Xodimlarni import qilish ("+EMPLOYEES.length+" ta)"),
         isAdmin&&React.createElement("button",{className:"emp-add-btn",onClick:openAdd},"+ Xodim qo'shish")
+      )
+    ),
+
+    importProgress&&React.createElement("div",{style:{marginBottom:18,padding:"16px 20px",background:"var(--white)",border:"1px solid var(--border)",borderRadius:"var(--rl)",boxShadow:"var(--s1)"}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}},
+        React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},importProgress.phase==="text"?"📋 Ma'lumotlar yozilmoqda...":"📸 Rasmlar yuklanmoqda..."),
+        React.createElement("span",{style:{fontSize:12,fontFamily:"JetBrains Mono,monospace",fontWeight:700,color:"var(--navy)"}},importProgress.done+"/"+importProgress.total)
+      ),
+      React.createElement("div",{style:{height:8,background:"var(--border)",borderRadius:4,overflow:"hidden"}},
+        React.createElement("div",{style:{height:"100%",width:Math.round(importProgress.done/Math.max(1,importProgress.total)*100)+"%",background:"linear-gradient(90deg,#465fff,#12b76a)",borderRadius:4,transition:"width .3s ease"}})
       )
     ),
 
