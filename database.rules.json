@@ -1,0 +1,86 @@
+{
+  "rules": {
+    "attendance": {
+      ".read": "auth != null",
+      "$dateKey": {
+        "$empKey": {
+          ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin' || root.child('user_roles').child(auth.uid).val() === 'boss')",
+          ".validate": "newData.hasChild('status')",
+          "status": {
+            ".validate": "newData.isString() && newData.val().matches(/^(present|late|absent|sick|trip|training|vacation|excused|holiday)$/)"
+          },
+          "morning": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 480" },
+          "afternoon": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 480" },
+          "note": { ".validate": "newData.isString() && newData.val().length <= 500" }
+        }
+      }
+    },
+    "checkins": {
+      ".read": "auth != null",
+      "$dateKey": {
+        "$empKey": {
+          "morning": {
+            ".write": "auth != null",
+            ".validate": "newData.hasChild('time')"
+          },
+          "afternoon": {
+            ".write": "auth != null",
+            ".validate": "newData.hasChild('time')"
+          }
+        }
+      }
+    },
+    "employees": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')",
+      "$empKey": {
+        ".validate": "newData.hasChild('firstName') && newData.hasChild('lastName')"
+      }
+    },
+    "holidays": {
+      ".read": "auth != null",
+      "$holId": {
+        ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin' || root.child('user_roles').child(auth.uid).val() === 'boss')",
+        ".validate": "newData.hasChild('name') && newData.hasChild('date')"
+      }
+    },
+    "employee_notes": {
+      ".read": "auth != null",
+      "$noteId": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChild('empName') && newData.hasChild('text') && newData.hasChild('timestamp')"
+      }
+    },
+    "announcements": {
+      ".read": "auth != null",
+      "$annId": {
+        ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')",
+        ".validate": "newData.hasChild('title') && newData.hasChild('text') && newData.hasChild('timestamp')"
+      }
+    },
+    "telegram_config": {
+      ".read": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')",
+      ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')"
+    },
+    "config": {
+      ".read": false,
+      ".write": false
+    },
+    "user_roles": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')"
+      }
+    },
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && (auth.uid === $uid || root.child('user_roles').child(auth.uid).val() === 'admin')"
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
