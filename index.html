@@ -2708,58 +2708,122 @@ function sendTelegram(text,parseMode){
     }).then(function(r){return r.json()}).catch(function(){return null});
   });
 }
-function notifyTelegramLate(empName,lateMins,session,dateStr){
-  if(!_telegramConfig.enabled||!_telegramConfig.notifyLate)return;
-  var sessionLabel=session==="morning"?"Ertalabki":"Tushlik";
-  var text="⏰ <b>Kechikish qayd etildi</b>\n\n"
-    +"👤 <b>"+empName+"</b>\n"
-    +"📅 "+dateStr+"\n"
-    +"🕐 "+sessionLabel+" seans: <b>"+lateMins+" daqiqa</b> kechikdi\n"
-    +"📍 "+OFFICE_LOCATION.name;
-  sendTelegram(text);
-}
-function notifyTelegramAbsent(empName,dateStr){
-  if(!_telegramConfig.enabled||!_telegramConfig.notifyAbsent)return;
-  var text="❌ <b>Sababsiz yo'qlik</b>\n\n"
-    +"👤 <b>"+empName+"</b>\n"
-    +"📅 "+dateStr+"\n"
-    +"📍 "+OFFICE_LOCATION.name;
-  sendTelegram(text);
-}
-function notifyTelegramSelfie(empName,session,lateMins,dist){
-  // Individual selfie xabari guruhga yuborilmaydi
-  // Faqat 09:20 va 14:20 da umumiy hisobot Cloud Function orqali yuboriladi
-  return;
-}
-function sendTelegramDavomat(dateKey){
+
+/* ── Individual xabarlar o'chirildi — faqat 09:20 va 14:20 da umumiy hisobot yuboriladi ── */
+function notifyTelegramLate(){return;}
+function notifyTelegramAbsent(){return;}
+function notifyTelegramSelfie(){return;}
+
+/* ── Professional kunlik hisobot — checkins dan arrival time bilan ── */
+function sendTelegramDavomat(dateKey,sessionFilter){
   var dk=dateKey||fmtDate(new Date());
-  var ref=db.ref("attendance/"+dk);
-  return ref.once("value").then(function(snap){
-    var dayData=snap.val()||{};
-    var present=0,late=0,absent=0,sick=0,trip=0;var lateList=[];
+  var attRef=db.ref("attendance/"+dk);
+  var chkRef=db.ref("checkins/"+dk);
+  return Promise.all([attRef.once("value"),chkRef.once("value")]).then(function(snaps){
+    var dayData=snaps[0].val()||{};
+    var checkins=snaps[1].val()||{};
+    var present=0,late=0,absent=0,sick=0,trip=0,training=0,vacation=0,excused=0,holiday=0;
+    var lateList=[];var absentList=[];var notCheckedIn=[];
     EMPLOYEES.forEach(function(emp){
-      var rec=dayData[safeKey(emp)];var st=rec?.status||"present";
-      if(st==="present")present++;
-      else if(st==="late"){late++;present++;var mins=(rec?.morning||0)+(rec?.afternoon||0);lateList.push(emp.split(" ")[0]+" ("+mins+"d)")}
-      else if(st==="absent")absent++;
-      else if(st==="sick")sick++;
-      else if(st==="trip")trip++;
+      var ek=safeKey(emp);
+      var rec=dayData[ek];var st=rec?.status||"";
+      var chk=checkins[ek]||{};
+      var empShort=emp.split(" ")[1]||emp.split(" ")[0];
+      if(st==="present"){present++}
+      else if(st==="late"){
+        late++;present++;
+        var mornMins=rec?.morning||0;
+        var aftMins=rec?.afternoon||0;
+        var mornChk=chk.morning;
+        var aftChk=chk.afternoon;
+        if(sessionFilter==="morning"&&mornMins>0&&mornChk){
+          lateList.push("   └ "+empShort+" — <b>"+mornChk.time+"</b> da keldi (<b>"+mornMins+" daq</b> kechikdi)");
+        } else if(sessionFilter==="afternoon"&&aftMins>0&&aftChk){
+          lateList.push("   └ "+empShort+" — <b>"+aftChk.time+"</b> da keldi (<b>"+aftMins+" daq</b> kechikdi)");
+        } else if(!sessionFilter){
+          if(mornMins>0){
+            var mTime=mornChk?mornChk.time:"—";
+            lateList.push("   └ "+empShort+" — ertalab <b>"+mTime+"</b> ("+mornMins+" daq)");
+          }
+          if(aftMins>0){
+            var aTime=aftChk?aftChk.time:"—";
+            lateList.push("   └ "+empShort+" — tushlik <b>"+aTime+"</b> ("+aftMins+" daq)");
+          }
+          if(mornMins===0&&aftMins===0){
+            lateList.push("   └ "+empShort);
+          }
+        }
+      }
+      else if(st==="absent"){absent++;absentList.push("   └ "+empShort)}
+      else if(st==="sick"){sick++}
+      else if(st==="trip"){trip++}
+      else if(st==="training"){training++}
+      else if(st==="vacation"){vacation++}
+      else if(st==="excused"){excused++}
+      else if(st==="holiday"){holiday++}
+      else{
+        /* belgilanmagan — checkin bormi tekshir */
+        if(sessionFilter==="morning"&&!chk.morning)notCheckedIn.push("   └ "+empShort);
+        else if(sessionFilter==="afternoon"&&!chk.afternoon)notCheckedIn.push("   └ "+empShort);
+        else if(!sessionFilter&&!chk.morning&&!chk.afternoon)notCheckedIn.push("   └ "+empShort);
+        else present++;
+      }
     });
     var d=dk.split("-");var dateDisp=d[2]+"."+d[1]+"."+d[0];
-    var text="📊 <b>Kunlik davomat — "+dateDisp+"</b>\n"
-      +"━━━━━━━━━━━━━━━━━━\n"
+    var now=new Date();var timeStr=String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");
+    var sessionTitle=sessionFilter==="morning"?"Ertalabki hisobot (09:20)"
+      :sessionFilter==="afternoon"?"Tushlik hisobot (14:20)"
+      :"Kunlik davomat";
+    var text="📊 <b>"+sessionTitle+" — "+dateDisp+"</b>\n"
+      +"━━━━━━━━━━━━━━━━━━━━━\n"
       +"✅ Ish joyida: <b>"+present+"</b>/"+EMPLOYEES.length+"\n"
       +"⏰ Kechikdi: <b>"+late+"</b>\n"
-      +"❌ Sababsiz: <b>"+absent+"</b>\n"
-      +"🏥 Kasal: <b>"+sick+"</b>\n"
-      +"✈️ Safari: <b>"+trip+"</b>\n"
-      +"━━━━━━━━━━━━━━━━━━\n"
-      +"📈 Davomat: <b>"+Math.round(present/Math.max(1,EMPLOYEES.length)*100)+"%</b>";
-    if(lateList.length>0)text+="\n\n⏰ <b>Kechikkanlar:</b>\n"+lateList.join("\n");
-    text+="\n\n📍 "+OFFICE_LOCATION.name;
+      +"❌ Sababsiz: <b>"+absent+"</b>\n";
+    if(sick>0)text+="🏥 Kasal: <b>"+sick+"</b>\n";
+    if(trip>0)text+="✈️ Safari: <b>"+trip+"</b>\n";
+    if(training>0)text+="📚 O'qish: <b>"+training+"</b>\n";
+    if(vacation>0)text+="🏖 Ta'til: <b>"+vacation+"</b>\n";
+    if(excused>0)text+="📋 Sababli: <b>"+excused+"</b>\n";
+    if(holiday>0)text+="🎉 Bayram: <b>"+holiday+"</b>\n";
+    text+="━━━━━━━━━━━━━━━━━━━━━\n"
+      +"📈 Davomat: <b>"+Math.round(present/Math.max(1,EMPLOYEES.length)*100)+"%</b>\n";
+    if(lateList.length>0)text+="\n⏰ <b>Kechikkanlar ("+lateList.length+"):</b>\n"+lateList.join("\n")+"\n";
+    if(absentList.length>0)text+="\n❌ <b>Kelmagan ("+absentList.length+"):</b>\n"+absentList.join("\n")+"\n";
+    if(notCheckedIn.length>0)text+="\n⚠️ <b>Selfie qilmagan ("+notCheckedIn.length+"):</b>\n"+notCheckedIn.join("\n")+"\n";
+    text+="\n🕐 Hisobot vaqti: "+timeStr+"\n📍 "+OFFICE_LOCATION.name;
     return sendTelegram(text);
   });
 }
+
+/* ── 09:20 va 14:20 da avtomatik hisobot — faqat shu 2 vaqtda yuboriladi ── */
+var _tgScheduleSentKey="";
+function _tgScheduleCheck(){
+  if(!_telegramConfig.enabled)return;
+  var now=new Date();
+  var day=now.getDay();
+  if(day===0||day===6)return; /* shanba/yakshanba o'tkazib yuborish */
+  var h=now.getHours(),m=now.getMinutes();
+  var todayStr=fmtDate(now);
+  /* 09:20 — ertalabki hisobot */
+  if(h===9&&m>=20&&m<=25){
+    var key1=todayStr+"_morning";
+    if(_tgScheduleSentKey!==key1){
+      _tgScheduleSentKey=key1;
+      sendTelegramDavomat(todayStr,"morning");
+    }
+  }
+  /* 14:20 — tushlik hisobot */
+  if(h===14&&m>=20&&m<=25){
+    var key2=todayStr+"_afternoon";
+    if(_tgScheduleSentKey!==key2){
+      _tgScheduleSentKey=key2;
+      sendTelegramDavomat(todayStr,"afternoon");
+    }
+  }
+}
+setInterval(_tgScheduleCheck,60000);
+setTimeout(_tgScheduleCheck,5000); /* sahifa ochilganda 5s keyin tekshirish */
+
 loadTelegramConfig();
 
 const WDAYS=["Dushanba","Seshanba","Chorshanba","Payshanba","Juma"];
@@ -5210,14 +5274,15 @@ function TelegramSettings({showToast}){
     }).catch(function(e){_telegramConfig.enabled=origEnabled;setTestResult({ok:false,msg:"Tarmoq xatosi: "+e.message});setTesting(false)});
   }
 
-  function handleSendDavomat(){
+  function handleSendDavomat(sessionFilter){
     if(!cfg.chatId){showToast("⚠ Avval chat ID kiriting");return}
     setTesting(true);
     var origEnabled=_telegramConfig.enabled;
     _telegramConfig.enabled=true;_telegramConfig.chatId=cfg.chatId;
-    sendTelegramDavomat().then(r=>{
+    sendTelegramDavomat(null,sessionFilter).then(r=>{
       _telegramConfig.enabled=origEnabled;
-      if(r&&r.ok)showToast("✓ Kunlik davomat yuborildi!");else showToast("⚠ Yuborishda xatolik");
+      var label=sessionFilter==="morning"?"Ertalabki":sessionFilter==="afternoon"?"Tushlik":"Kunlik";
+      if(r&&r.ok)showToast("✓ "+label+" davomat yuborildi!");else showToast("⚠ Yuborishda xatolik");
       setTesting(false);
     });
   }
@@ -5296,29 +5361,24 @@ function TelegramSettings({showToast}){
           </div>
 
           <div style={{marginTop:20,paddingTop:18,borderTop:"1px solid var(--border)"}}>
-            <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Xabar turlari</label>
-            <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
-              {[
-                {key:"notifyLate",label:"⏰ Kechikish",desc:"Selfie orqali kechikish aniqlanganda"},
-                {key:"notifyAbsent",label:"❌ Sababsiz yo'qlik",desc:"Admin tomonidan yo'q belgilanganda"}
-              ].map(item=>(
-                <div key={item.key} onClick={()=>setCfg(p=>({...p,[item.key]:!p[item.key]}))}
-                  style={{padding:"10px 14px",borderRadius:10,border:"1.5px solid "+(cfg[item.key]?"var(--emerald)":"var(--border)"),
-                    background:cfg[item.key]?"var(--emerald-bg)":"var(--surface)",cursor:"pointer",transition:"all .2s",flex:"1",minWidth:160}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:14}}>{cfg[item.key]?"✅":"⬜"}</span>
-                    <span style={{fontSize:12.5,fontWeight:600,color:"var(--navy)"}}>{item.label}</span>
-                  </div>
-                  <div style={{fontSize:10.5,color:"var(--t4)",marginTop:3,marginLeft:22}}>{item.desc}</div>
-                </div>
-              ))}
+            <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Hisobot rejimi</label>
+            <div style={{padding:"12px 16px",borderRadius:10,background:"var(--emerald-bg)",border:"1.5px solid var(--emerald)",fontSize:12,color:"var(--t2)",lineHeight:1.7}}>
+              <b style={{color:"var(--emerald)"}}>Jadval bo'yicha</b> — Faqat <b>09:20</b> va <b>14:20</b> da umumiy hisobot yuboriladi.<br/>
+              Har bir kechikkan xodim uchun <b>kelgan vaqti</b> va <b>necha daqiqa kechikgani</b> ko'rsatiladi.
             </div>
           </div>
 
           <div style={{marginTop:20,display:"flex",gap:10,flexWrap:"wrap"}}>
             <button className="action-btn primary" onClick={handleSave} disabled={saving}>{saving?"Saqlanmoqda...":"💾 Saqlash"}</button>
             <button className="action-btn" onClick={handleTest} disabled={testing}>{testing?"Yuborilmoqda...":"📨 Test xabar"}</button>
-            <button className="action-btn" onClick={handleSendDavomat} disabled={testing}>📊 Kunlik davomat yuborish</button>
+          </div>
+          <div style={{marginTop:12,paddingTop:14,borderTop:"1px solid var(--border)"}}>
+            <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}}>Qo'lda hisobot yuborish</label>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button className="action-btn" onClick={()=>handleSendDavomat("morning")} disabled={testing} style={{background:"var(--emerald-bg)",borderColor:"var(--emerald)",color:"var(--emerald)"}}>🌅 Ertalabki (09:20)</button>
+              <button className="action-btn" onClick={()=>handleSendDavomat("afternoon")} disabled={testing} style={{background:"rgba(70,95,255,.08)",borderColor:"var(--cobalt)",color:"var(--cobalt)"}}>🌇 Tushlik (14:20)</button>
+              <button className="action-btn" onClick={()=>handleSendDavomat()} disabled={testing}>📊 To'liq kunlik</button>
+            </div>
           </div>
 
           {testResult&&(
@@ -5361,20 +5421,31 @@ function TelegramSettings({showToast}){
         </div>
       </div>
 
-      {/* Kunlik avtomatik yuborish */}
+      {/* Avtomatik jadval */}
       <div className="table-card">
         <div className="table-header">
-          <div><div className="table-title">🕐 Avtomatik kunlik hisobot</div><div className="table-meta">Har kuni belgilangan vaqtda davomat yuborilsin</div></div>
+          <div><div className="table-title">🕐 Avtomatik hisobot jadvali</div><div className="table-meta">Har kuni 2 marta avtomatik yuboriladi</div></div>
         </div>
-        <div style={{padding:"18px 22px",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-          <div>
-            <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Yuborish vaqti</label>
-            <input type="time" value={dailySchedule} onChange={e=>setDailySchedule(e.target.value)}
-              className="text-input" style={{width:120,fontFamily:"JetBrains Mono,monospace",fontSize:13}}/>
+        <div style={{padding:"18px 22px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,marginBottom:16}}>
+            <div style={{padding:"14px 16px",borderRadius:12,background:"var(--emerald-bg)",border:"1.5px solid var(--emerald)"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"var(--emerald)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Ertalabki hisobot</div>
+              <div style={{fontSize:22,fontWeight:800,color:"var(--navy)",fontFamily:"JetBrains Mono,monospace"}}>09:20</div>
+              <div style={{fontSize:11,color:"var(--t3)",marginTop:4}}>Ertalabki davomat + kechikkanlar + kelgan vaqti</div>
+            </div>
+            <div style={{padding:"14px 16px",borderRadius:12,background:"rgba(70,95,255,.06)",border:"1.5px solid var(--cobalt)"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"var(--cobalt)",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Tushlik hisobot</div>
+              <div style={{fontSize:22,fontWeight:800,color:"var(--navy)",fontFamily:"JetBrains Mono,monospace"}}>14:20</div>
+              <div style={{fontSize:11,color:"var(--t3)",marginTop:4}}>Tushlik davomat + kechikkanlar + kelgan vaqti</div>
+            </div>
           </div>
-          <div style={{fontSize:12,color:"var(--t3)",lineHeight:1.7,maxWidth:400}}>
-            Cloud Function o'rnatilganda har kuni shu vaqtda Telegram guruhga kunlik davomat hisoboti avtomatik yuboriladi.
-            Hozircha "📊 Kunlik davomat yuborish" tugmasi orqali qo'lda yuborishingiz mumkin.
+          <div style={{padding:"12px 16px",background:"var(--surface)",borderRadius:10,border:"1px solid var(--border)",fontSize:12,color:"var(--t2)",lineHeight:1.8}}>
+            <b>Qanday ishlaydi:</b><br/>
+            ✅ Sahifa ochiq bo'lsa — avtomatik yuboriladi (client-side timer)<br/>
+            ✅ Shanba va yakshanba kunlari o'tkazib yuboriladi<br/>
+            ✅ Har bir xabar kechikkan xodimning <b>kelgan vaqti</b> va <b>necha daqiqa kechikganini</b> ko'rsatadi<br/>
+            ✅ Selfie qilmagan xodimlar alohida ko'rsatiladi<br/>
+            💡 Cloud Function o'rnatilsa sahifa ochiq bo'lmasa ham ishlaydi
           </div>
         </div>
       </div>
@@ -6464,12 +6535,6 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     })
     .then(function(){
       showToast("\u2713 "+(uiSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!"+(late>0?" ("+late+" daq kechikish)":""));
-      try{
-        var _lateMins=(u.morning||0)+(u.afternoon||0);
-        var _dist=gpsData?gpsData.distance:null;
-        if(_lateMins>0)notifyTelegramLate(user.name,uiSession==="morning"?u.morning:u.afternoon,uiSession,todayKey.split("-").reverse().join("."));
-        notifyTelegramSelfie(user.name,uiSession,_lateMins,_dist);
-      }catch(tgErr){console.warn("TG:",tgErr)}
       lockedSessionRef.current=null;
       setCapturedPhoto(null);setSubmitting(false);setEmpNote("");
     })
@@ -8204,13 +8269,6 @@ function App(){
     db.ref(`attendance/${dateKey}/${empKey}`).set(rec)
       .then(()=>{
         showToast("✓ Muvaffaqiyatli saqlandi");
-        try{
-          var _dateDisp=dateKey.split("-").reverse().join(".");
-          if(field==="status"&&value==="absent")notifyTelegramAbsent(emp,_dateDisp);
-          if(field==="status"&&value==="late")notifyTelegramLate(emp,0,"",_dateDisp);
-          if(field==="morning"&&value>0)notifyTelegramLate(emp,value,"morning",_dateDisp);
-          if(field==="afternoon"&&value>0)notifyTelegramLate(emp,value,"afternoon",_dateDisp);
-        }catch(tgE){console.warn("TG dispatch:",tgE)}
       })
       .catch(()=>showToast("⚠ Tarmoqda xatolik yuz berdi"));
   }
