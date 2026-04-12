@@ -2201,6 +2201,47 @@
     .mob-gs-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.7);-webkit-tap-highlight-color:transparent;}
     /* Dark overrides removed — already dark */
 
+    /* ─── EMPLOYEES MANAGEMENT ─── */
+    .emp-mgmt-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+    .emp-mgmt-filters { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .emp-mgmt-filter { padding:7px 14px; border:1.5px solid var(--border); border-radius:var(--r); font-size:12px; font-family:'Inter',sans-serif; color:var(--t1); background:var(--white); outline:none; min-width:140px; }
+    .emp-mgmt-filter:focus { border-color:var(--navy); }
+    .emp-add-btn { display:inline-flex; align-items:center; gap:7px; padding:9px 20px; background:linear-gradient(135deg,#465fff,#7a5af8); color:#fff; border:none; border-radius:var(--r); font-size:13px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; box-shadow:0 4px 16px rgba(70,95,255,.2); transition:all .15s; white-space:nowrap; }
+    .emp-add-btn:hover { box-shadow:0 6px 20px rgba(70,95,255,.3); transform:translateY(-1px); }
+    .emp-table-avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; background:var(--surface3); border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--navy); overflow:hidden; }
+    .emp-table-avatar img { width:100%; height:100%; object-fit:cover; }
+    .emp-table-name-wrap { display:flex; align-items:center; gap:12px; min-width:0; }
+    .emp-table-info { min-width:0; }
+    .emp-table-fullname { font-size:13px; font-weight:600; color:var(--navy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .emp-table-email { font-size:10.5px; color:var(--t4); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .emp-action-btn { width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--white); color:var(--t3); font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all .12s; }
+    .emp-action-btn:hover { background:var(--surface2); border-color:var(--navy); color:var(--navy); }
+    .emp-action-btn.danger:hover { background:var(--ruby-bg); border-color:var(--ruby); color:var(--ruby); }
+    .emp-modal-form { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .emp-modal-form .full-row { grid-column:1/-1; }
+    .emp-modal-field label { display:block; font-size:11px; font-weight:600; color:var(--t3); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
+    .emp-modal-field input, .emp-modal-field select { width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:var(--r); font-size:13px; font-family:'Outfit',sans-serif; color:var(--t1); background:var(--cloud); outline:none; transition:border-color .15s; box-sizing:border-box; }
+    .emp-modal-field input:focus, .emp-modal-field select:focus { border-color:var(--navy); box-shadow:0 0 0 3px var(--gold-glow); }
+    .emp-photo-upload { display:flex; align-items:center; gap:16px; padding:14px; border:1.5px dashed var(--border); border-radius:var(--rl); background:var(--surface2); }
+    .emp-photo-preview { width:80px; height:96px; border-radius:12px; object-fit:cover; background:var(--surface3); border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:28px; color:var(--t4); overflow:hidden; }
+    .emp-photo-preview img { width:100%; height:100%; object-fit:cover; }
+    .emp-photo-actions { display:flex; flex-direction:column; gap:8px; }
+    .emp-photo-btn { padding:7px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:12px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; background:var(--white); color:var(--t2); transition:all .12s; }
+    .emp-photo-btn:hover { border-color:var(--navy); color:var(--navy); }
+    .emp-photo-btn.primary { background:linear-gradient(135deg,#465fff,#7a5af8); color:#fff; border-color:transparent; }
+    .emp-position-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; background:var(--gold-pale); color:var(--navy); }
+    .emp-dept-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; background:var(--cobalt-bg); color:var(--cobalt); }
+    .emp-phone-text { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--t2); }
+    .emp-schedule-text { font-size:11.5px; color:var(--t3); }
+    .emp-count-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; background:var(--surface3); color:var(--t2); border:1px solid var(--border); }
+    @media(max-width:640px){
+      .emp-mgmt-header { flex-direction:column; align-items:stretch; }
+      .emp-mgmt-filters { flex-direction:column; }
+      .emp-mgmt-filter { width:100%; }
+      .emp-modal-form { grid-template-columns:1fr; }
+      .emp-photo-upload { flex-direction:column; text-align:center; }
+    }
+
     /* ─── DASHBOARD CHARTS ────────────────────── */
     .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
     .chart-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--rl); padding: 20px; box-shadow: var(--s1); }
@@ -6468,6 +6509,311 @@ function EmployeeNotesView({user}){
   );
 }
 
+/* ═══ XODIMLAR BO'LIMI ═══ */
+function EmployeesManageView({user,showToast}){
+  var isAdmin=user.role==="admin";
+  var canEdit=user.role==="admin"||user.role==="boss";
+  var[empList,setEmpList]=useState([]);
+  var[search,setSearch]=useState("");
+  var[deptFilter,setDeptFilter]=useState("");
+  var[editModal,setEditModal]=useState(null);
+  var[saving,setSaving]=useState(false);
+  var fileInputRef=useRef(null);
+  var[formData,setFormData]=useState({firstName:"",lastName:"",position:"",department:"",phone:"",schedule:"Dush-Jum 09:00-18:00",photo:""});
+
+  useEffect(function(){
+    var ref=db.ref("employees");
+    ref.on("value",function(snap){
+      var d=snap.val()||{};
+      var arr=Object.entries(d).map(function(e){return Object.assign({id:e[0]},e[1])});
+      arr.sort(function(a,b){return(a.lastName||"").localeCompare(b.lastName||"")});
+      setEmpList(arr);
+    });
+    return function(){ref.off()};
+  },[]);
+
+  useEffect(function(){
+    if(!isAdmin)return;
+    db.ref("employees").once("value").then(function(snap){
+      if(snap.exists())return;
+      var batch={};
+      EMPLOYEES.forEach(function(name){
+        var parts=name.split(" ");
+        var key=safeKey(name);
+        batch[key]={
+          firstName:parts[1]||"",lastName:parts[0]||"",
+          position:"Mutaxassis",department:"Umumiy",
+          phone:"",schedule:"Dush-Jum 09:00-18:00",
+          photo:"",fullName:name
+        };
+      });
+      db.ref("employees").set(batch);
+    });
+  },[isAdmin]);
+
+  function openAdd(){
+    setFormData({firstName:"",lastName:"",position:"",department:"",phone:"",schedule:"Dush-Jum 09:00-18:00",photo:""});
+    setEditModal({isNew:true});
+  }
+  function openEdit(emp){
+    setFormData({
+      firstName:emp.firstName||"",lastName:emp.lastName||"",
+      position:emp.position||"",department:emp.department||"",
+      phone:emp.phone||"",schedule:emp.schedule||"Dush-Jum 09:00-18:00",
+      photo:emp.photo||""
+    });
+    setEditModal(emp);
+  }
+  function updateField(field,val){setFormData(function(p){var n=Object.assign({},p);n[field]=val;return n})}
+
+  function compressPhoto(file,cb){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var img=new Image();
+      img.onload=function(){
+        var canvas=document.createElement("canvas");
+        var maxW=120,maxH=144;
+        var w=img.width,h=img.height;
+        if(w>maxW){h=Math.round(h*(maxW/w));w=maxW;}
+        if(h>maxH){w=Math.round(w*(maxH/h));h=maxH;}
+        canvas.width=w;canvas.height=h;
+        var ctx=canvas.getContext("2d");
+        ctx.drawImage(img,0,0,w,h);
+        cb(canvas.toDataURL("image/jpeg",0.6));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  function handlePhotoSelect(e){
+    var file=e.target.files&&e.target.files[0];
+    if(!file)return;
+    if(file.size>5*1024*1024){showToast("Rasm hajmi 5MB dan oshmasligi kerak");return;}
+    compressPhoto(file,function(dataUrl){updateField("photo",dataUrl)});
+  }
+  function removePhoto(){updateField("photo","");if(fileInputRef.current)fileInputRef.current.value="";}
+
+  function handleSave(){
+    if(!formData.firstName.trim()||!formData.lastName.trim()){showToast("Ism va familiya majburiy!");return;}
+    setSaving(true);
+    var fullName=formData.lastName.trim()+" "+formData.firstName.trim();
+    var key=editModal.isNew?safeKey(fullName):editModal.id;
+    var obj={
+      firstName:formData.firstName.trim(),
+      lastName:formData.lastName.trim(),
+      position:formData.position.trim()||"Mutaxassis",
+      department:formData.department.trim()||"Umumiy",
+      phone:formData.phone.trim(),
+      schedule:formData.schedule.trim()||"Dush-Jum 09:00-18:00",
+      photo:formData.photo||"",
+      fullName:fullName
+    };
+    db.ref("employees/"+key).set(obj).then(function(){
+      showToast(editModal.isNew?"Xodim qo'shildi":"Ma'lumotlar saqlandi");
+      setSaving(false);setEditModal(null);
+    }).catch(function(err){
+      showToast("Xatolik: "+(err.message||""));setSaving(false);
+    });
+  }
+
+  function handleDelete(emp){
+    if(!window.confirm(emp.fullName+" ni o'chirmoqchimisiz?"))return;
+    db.ref("employees/"+emp.id).remove().then(function(){
+      showToast("Xodim o'chirildi");
+    });
+  }
+
+  var departments=useMemo(function(){
+    var set={};empList.forEach(function(e){if(e.department)set[e.department]=true});
+    return Object.keys(set).sort();
+  },[empList]);
+
+  var filtered=empList.filter(function(e){
+    if(search&&!(e.fullName||"").toLowerCase().includes(search.toLowerCase()))return false;
+    if(deptFilter&&e.department!==deptFilter)return false;
+    return true;
+  });
+
+  return React.createElement("div",{style:{animation:"fadeUp .35s ease"}},
+    React.createElement("div",{className:"page-header"},
+      React.createElement("div",null,
+        React.createElement("div",{className:"page-title"},"Xodimlar"),
+        React.createElement("div",{className:"page-subtitle"},empList.length+" nafar xodim ro'yxatga olingan")
+      ),
+      React.createElement("div",{className:"page-actions",style:{display:"flex",gap:8,alignItems:"center"}},
+        React.createElement("span",{className:"emp-count-badge"},"👥 "+empList.length+" nafar"),
+        isAdmin&&React.createElement("button",{className:"emp-add-btn",onClick:openAdd},"+ Xodim qo'shish")
+      )
+    ),
+
+    React.createElement("div",{className:"emp-mgmt-filters",style:{marginBottom:16}},
+      React.createElement("input",{className:"emp-mgmt-filter",placeholder:"Xodimlarni qidirish...",value:search,onChange:function(e){setSearch(e.target.value)},style:{flex:1,minWidth:200}}),
+      React.createElement("select",{className:"emp-mgmt-filter",value:deptFilter,onChange:function(e){setDeptFilter(e.target.value)}},
+        React.createElement("option",{value:""},"Barcha bo'limlar"),
+        departments.map(function(d){return React.createElement("option",{key:d,value:d},d)})
+      ),
+      React.createElement("button",{className:"action-btn",onClick:function(){
+        if(!empList.length)return;
+        var rows=filtered.map(function(e,i){return{"№":i+1,"Familiya":e.lastName,"Ism":e.firstName,"Lavozim":e.position,"Bo'lim":e.department,"Telefon":e.phone,"Jadval":e.schedule}});
+        var ws=XLSX.utils.json_to_sheet(rows);
+        ws["!cols"]=[{wch:4},{wch:20},{wch:18},{wch:20},{wch:16},{wch:16},{wch:22}];
+        var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Xodimlar");
+        XLSX.writeFile(wb,"Xodimlar_royxati.xlsx");
+        showToast("Excel yuklab olindi");
+      }},"📊 Excel")
+    ),
+
+    React.createElement("div",{className:"stats-grid",style:{gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))",marginBottom:20}},
+      React.createElement("div",{className:"stat-card c-navy"},
+        React.createElement("div",{className:"stat-accent"}),
+        React.createElement("div",{className:"stat-card-inner"},
+          React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"👥")),
+          React.createElement("div",{className:"stat-num"},empList.length),
+          React.createElement("div",{className:"stat-label"},"Jami xodimlar")
+        )
+      ),
+      React.createElement("div",{className:"stat-card c-cobalt"},
+        React.createElement("div",{className:"stat-accent"}),
+        React.createElement("div",{className:"stat-card-inner"},
+          React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"🏢")),
+          React.createElement("div",{className:"stat-num"},departments.length),
+          React.createElement("div",{className:"stat-label"},"Bo'limlar soni")
+        )
+      ),
+      React.createElement("div",{className:"stat-card c-green"},
+        React.createElement("div",{className:"stat-accent"}),
+        React.createElement("div",{className:"stat-card-inner"},
+          React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"📸")),
+          React.createElement("div",{className:"stat-num"},empList.filter(function(e){return!!e.photo}).length),
+          React.createElement("div",{className:"stat-label"},"Rasm yuklangan")
+        )
+      ),
+      React.createElement("div",{className:"stat-card c-amber"},
+        React.createElement("div",{className:"stat-accent"}),
+        React.createElement("div",{className:"stat-card-inner"},
+          React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"📱")),
+          React.createElement("div",{className:"stat-num"},empList.filter(function(e){return!!e.phone}).length),
+          React.createElement("div",{className:"stat-label"},"Telefon bor")
+        )
+      )
+    ),
+
+    React.createElement("div",{className:"table-card"},
+      React.createElement("div",{className:"table-header"},
+        React.createElement("div",null,
+          React.createElement("div",{className:"table-title"},"Xodimlar ro'yxati"),
+          React.createElement("div",{className:"table-meta"},filtered.length+" ta xodim ko'rsatilmoqda"+(deptFilter?" · "+deptFilter:""))
+        )
+      ),
+      React.createElement("div",{className:"scroll-x"},
+        React.createElement("table",null,
+          React.createElement("thead",null,
+            React.createElement("tr",null,
+              React.createElement("th",{style:{width:44}},"№"),
+              React.createElement("th",{style:{minWidth:200}},"Xodim"),
+              React.createElement("th",{style:{minWidth:140}},"Lavozim"),
+              React.createElement("th",{style:{minWidth:110}},"Bo'lim"),
+              React.createElement("th",{style:{minWidth:130}},"Telefon"),
+              React.createElement("th",{style:{minWidth:160}},"Jadval"),
+              canEdit&&React.createElement("th",{style:{width:100,textAlign:"center"}},"Amallar")
+            )
+          ),
+          React.createElement("tbody",null,
+            filtered.length===0&&React.createElement("tr",null,
+              React.createElement("td",{colSpan:7,style:{textAlign:"center",padding:30,color:"var(--t4)"}},"Xodim topilmadi")
+            ),
+            filtered.map(function(emp,i){
+              var initials=((emp.firstName||"").charAt(0)+(emp.lastName||"").charAt(0)).toUpperCase();
+              return React.createElement("tr",{key:emp.id},
+                React.createElement("td",null,React.createElement("span",{className:"row-num"},String(i+1).padStart(2,"0"))),
+                React.createElement("td",null,
+                  React.createElement("div",{className:"emp-table-name-wrap"},
+                    React.createElement("div",{className:"emp-table-avatar"},
+                      emp.photo?React.createElement("img",{src:emp.photo,alt:""}):initials
+                    ),
+                    React.createElement("div",{className:"emp-table-info"},
+                      React.createElement("div",{className:"emp-table-fullname"},emp.fullName||emp.lastName+" "+emp.firstName),
+                      React.createElement("div",{className:"emp-table-email"},safeKey(emp.fullName||"")+"@boshqarma.uz")
+                    )
+                  )
+                ),
+                React.createElement("td",null,React.createElement("span",{className:"emp-position-badge"},emp.position||"—")),
+                React.createElement("td",null,React.createElement("span",{className:"emp-dept-badge"},emp.department||"—")),
+                React.createElement("td",null,emp.phone?React.createElement("span",{className:"emp-phone-text"},emp.phone):React.createElement("span",{style:{color:"var(--t5)",fontSize:11}},"—")),
+                React.createElement("td",null,React.createElement("span",{className:"emp-schedule-text"},emp.schedule||"—")),
+                canEdit&&React.createElement("td",{style:{textAlign:"center"}},
+                  React.createElement("div",{style:{display:"flex",gap:4,justifyContent:"center"}},
+                    React.createElement("button",{className:"emp-action-btn",onClick:function(){openEdit(emp)},title:"Tahrirlash"},"✏️"),
+                    isAdmin&&React.createElement("button",{className:"emp-action-btn danger",onClick:function(){handleDelete(emp)},title:"O'chirish"},"🗑")
+                  )
+                )
+              );
+            })
+          )
+        )
+      )
+    ),
+
+    editModal&&React.createElement("div",{className:"modal-overlay",onClick:function(){setEditModal(null)}},
+      React.createElement("div",{className:"modal-box",onClick:function(e){e.stopPropagation()},style:{maxWidth:600}},
+        React.createElement("button",{className:"modal-close",onClick:function(){setEditModal(null)}},"✕"),
+        React.createElement("div",{style:{fontSize:17,fontWeight:700,color:"var(--navy)",marginBottom:6}},editModal.isNew?"Yangi xodim qo'shish":"Xodimni tahrirlash"),
+        React.createElement("div",{style:{fontSize:12,color:"var(--t4)",marginBottom:22}},editModal.isNew?"Ma'lumotlarni kiriting":"Ma'lumotlarni yangilang"),
+
+        React.createElement("div",{className:"emp-photo-upload full-row",style:{marginBottom:18}},
+          React.createElement("div",{className:"emp-photo-preview"},
+            formData.photo?React.createElement("img",{src:formData.photo,alt:""}):React.createElement("span",null,"👤")
+          ),
+          React.createElement("div",{className:"emp-photo-actions"},
+            React.createElement("input",{ref:fileInputRef,type:"file",accept:"image/*",style:{display:"none"},onChange:handlePhotoSelect}),
+            React.createElement("button",{className:"emp-photo-btn primary",onClick:function(){fileInputRef.current&&fileInputRef.current.click()}},"📷 Rasm yuklash"),
+            formData.photo&&React.createElement("button",{className:"emp-photo-btn",onClick:removePhoto},"✕ Rasmni olib tashlash"),
+            React.createElement("div",{style:{fontSize:10,color:"var(--t4)",marginTop:4}},"JPEG/PNG, max 5MB. Auto compress: 120×144px")
+          )
+        ),
+
+        React.createElement("div",{className:"emp-modal-form"},
+          React.createElement("div",{className:"emp-modal-field"},
+            React.createElement("label",null,"Ism"),
+            React.createElement("input",{value:formData.firstName,onChange:function(e){updateField("firstName",e.target.value)},placeholder:"Ism kiriting"})
+          ),
+          React.createElement("div",{className:"emp-modal-field"},
+            React.createElement("label",null,"Familiya"),
+            React.createElement("input",{value:formData.lastName,onChange:function(e){updateField("lastName",e.target.value)},placeholder:"Familiya kiriting"})
+          ),
+          React.createElement("div",{className:"emp-modal-field"},
+            React.createElement("label",null,"Lavozim"),
+            React.createElement("input",{value:formData.position,onChange:function(e){updateField("position",e.target.value)},placeholder:"Masalan: Mutaxassis"})
+          ),
+          React.createElement("div",{className:"emp-modal-field"},
+            React.createElement("label",null,"Bo'lim"),
+            React.createElement("input",{value:formData.department,onChange:function(e){updateField("department",e.target.value)},placeholder:"Masalan: IT, Moliya",list:"dept-list"}),
+            React.createElement("datalist",{id:"dept-list"},departments.map(function(d){return React.createElement("option",{key:d,value:d})}))
+          ),
+          React.createElement("div",{className:"emp-modal-field"},
+            React.createElement("label",null,"Telefon"),
+            React.createElement("input",{value:formData.phone,onChange:function(e){updateField("phone",e.target.value)},placeholder:"+998 90 123 45 67"})
+          ),
+          React.createElement("div",{className:"emp-modal-field"},
+            React.createElement("label",null,"Jadval"),
+            React.createElement("select",{value:formData.schedule,onChange:function(e){updateField("schedule",e.target.value)}},
+              React.createElement("option",{value:"Dush-Jum 09:00-18:00"},"Dush-Jum 09:00-18:00"),
+              React.createElement("option",{value:"Dush-Shan 09:00-18:00"},"Dush-Shan 09:00-18:00"),
+              React.createElement("option",{value:"Dush-Jum 08:00-17:00"},"Dush-Jum 08:00-17:00"),
+              React.createElement("option",{value:"Smenali"},"Smenali")
+            )
+          )
+        ),
+
+        React.createElement("div",{style:{display:"flex",gap:10,marginTop:22,justifyContent:"flex-end"}},
+          React.createElement("button",{className:"action-btn",onClick:function(){setEditModal(null)}},"Bekor qilish"),
+          React.createElement("button",{className:"emp-add-btn",onClick:handleSave,disabled:saving},saving?"Saqlanmoqda...":"💾 Saqlash")
+        )
+      )
+    )
+  );
+}
+
 /* ═══ E'LONLAR PANELI ═══ */
 function AnnouncementsView({user,isAdmin}){
   const[anns,setAnns]=useState([]);
@@ -7214,6 +7560,7 @@ function App(){
   const adminNav=[
     {k:"davomat",icon:"📅",label:"Davomat"},
     {k:"stats",icon:"📊",label:"Statistika"},
+    {k:"employees",icon:"👥",label:"Xodimlar"},
     {k:"announcements",icon:"📢",label:"E'lonlar"},
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
@@ -7231,7 +7578,7 @@ function App(){
     {k:"empNotes",icon:"✏️",label:"Izoh yozish"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={davomat:"Davomat",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={davomat:"Davomat",employees:"Xodimlar Bo'limi",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":isObserver?"Kuzatuvchi":"Xodim";
 
   return(
@@ -7316,7 +7663,7 @@ function App(){
 
       {/* MOBILE BOTTOM NAV */}
       <div className="mobile-bottom-nav">
-        {(canManage?[{k:"davomat",icon:"\u{1F4C5}",label:"Davomat"},{k:"stats",icon:"\u{1F4CA}",label:"Statistika"},{k:"selfie",icon:"\u{1F4F8}",label:"Selfie"},{k:"empNotes",icon:"\u270F\uFE0F",label:"Izohlar"},{k:"announcements",icon:"\u{1F4E2}",label:"E'lonlar"}]:navItems).map(({k,icon,label})=>{
+        {(canManage?[{k:"davomat",icon:"\u{1F4C5}",label:"Davomat"},{k:"employees",icon:"\u{1F465}",label:"Xodimlar"},{k:"stats",icon:"\u{1F4CA}",label:"Statistika"},{k:"selfie",icon:"\u{1F4F8}",label:"Selfie"},{k:"empNotes",icon:"\u270F\uFE0F",label:"Izohlar"}]:navItems).map(({k,icon,label})=>{
           const shortLabels={davomat:"Davomat",daily:"Kunlik",weekly:"Hafta",monthly:"Oylik",stats:"Tahlil",birthdays:"Tug'ilgan",selfieHistory:"Tarix",selfie:"Selfie",myStats:"Kabinet",accounts:"Akkaunt"};
           return(
             <button key={k} className={`mob-nav-btn ${view===k?"active":""}`} onClick={()=>setView(k)}>
@@ -7395,6 +7742,7 @@ function App(){
                   {davomatTab==="monthly"&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 </>}
                 {view==="stats"&&canManage&&<StatsView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
+                {view==="employees"&&canManage&&<EmployeesManageView user={user} showToast={showToast}/>}
                 {view==="rankings"&&canManage&&<RankingsView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="announcements"&&<AnnouncementsView user={user} isAdmin={isAdmin}/>}
                 {view==="selfieHistory"&&isAdmin&&<SelfieHistoryView checkinsData={checkinsData}/>}
