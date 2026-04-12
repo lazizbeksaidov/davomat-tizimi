@@ -2292,6 +2292,46 @@
       .emp-photo-upload { flex-direction:column; text-align:center; }
     }
 
+    /* ─── ANALYTICS / ANALITIKA ─── */
+    .anl-chart-wrap { background:var(--white); border:1px solid var(--border); border-radius:var(--rl); padding:24px; box-shadow:var(--s1); margin-bottom:20px; }
+    .anl-chart-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:18px; gap:12px; flex-wrap:wrap; }
+    .anl-chart-title { font-size:18px; font-weight:700; color:var(--t1); }
+    .anl-chart-sub { font-size:12px; color:var(--t3); margin-top:3px; }
+    .anl-chart-legend { display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+    .anl-legend-item { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:500; color:var(--t2); cursor:pointer; padding:4px 10px; border-radius:20px; transition:all .15s; }
+    .anl-legend-item:hover { background:var(--surface2); }
+    .anl-legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .anl-chart-svg { width:100%; overflow-x:auto; }
+    .anl-chart-tooltip { position:absolute; background:var(--white); border:1px solid var(--border); border-radius:10px; padding:10px 14px; box-shadow:var(--s3); font-size:12px; pointer-events:none; z-index:100; min-width:140px; }
+    .anl-chart-tooltip-title { font-weight:700; color:var(--t1); margin-bottom:6px; font-size:13px; }
+    .anl-chart-tooltip-row { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+    .anl-chart-tooltip-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .anl-chart-tooltip-val { font-family:'JetBrains Mono',monospace; font-weight:700; }
+    .anl-ranking-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }
+    .anl-ranking-card { background:var(--white); border:1px solid var(--border); border-radius:var(--rl); box-shadow:var(--s1); overflow:hidden; }
+    .anl-ranking-head { display:flex; align-items:center; gap:10px; padding:16px 20px; border-bottom:1px solid var(--border); }
+    .anl-ranking-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+    .anl-ranking-title { font-size:15px; font-weight:700; color:var(--t1); }
+    .anl-ranking-sub { font-size:11px; color:var(--t3); margin-top:1px; }
+    .anl-ranking-list { padding:8px 0; max-height:320px; overflow-y:auto; }
+    .anl-ranking-row { display:flex; align-items:center; gap:12px; padding:10px 20px; transition:background .1s; }
+    .anl-ranking-row:hover { background:var(--surface2); }
+    .anl-ranking-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--navy),var(--navy-lt)); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; overflow:hidden; }
+    .anl-ranking-avatar img { width:100%; height:100%; object-fit:cover; }
+    .anl-ranking-info { flex:1; min-width:0; }
+    .anl-ranking-name { font-size:13px; font-weight:600; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .anl-ranking-pos { font-size:10.5px; color:var(--t4); margin-top:1px; }
+    .anl-ranking-badge { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+    .anl-ranking-empty { padding:24px; text-align:center; color:var(--t4); font-size:12px; }
+    .anl-summary-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:20px; }
+    .anl-summary-card { display:flex; align-items:center; gap:14px; padding:18px 20px; background:var(--white); border:1px solid var(--border); border-radius:var(--rl); box-shadow:var(--s1); }
+    .anl-summary-icon { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+    .anl-summary-val { font-size:24px; font-weight:800; font-family:'JetBrains Mono',monospace; color:var(--t1); line-height:1.1; }
+    .anl-summary-label { font-size:11.5px; color:var(--t3); font-weight:500; margin-top:2px; }
+    .anl-summary-trend { font-size:11px; font-weight:700; margin-top:3px; }
+    @media(max-width:900px){ .anl-ranking-grid { grid-template-columns:1fr; } }
+    @media(max-width:640px){ .anl-summary-row { grid-template-columns:1fr 1fr; } .anl-chart-header { flex-direction:column; } }
+
     /* ─── DASHBOARD CHARTS ────────────────────── */
     .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
     .chart-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--rl); padding: 20px; box-shadow: var(--s1); }
@@ -3866,6 +3906,290 @@ function MonthlyView({attendanceData,checkinsData,onEmpClick}){
             <td className="th-right">{s.lateMins>0?<span className="late-val">{fmtMins(s.lateMins)}</span>:<span className="zero-val">—</span>}</td>
           </tr>);
         })}</tbody></table></div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ ANALYTICS VIEW ═══ */
+function AnalyticsView({attendanceData,checkinsData,onEmpClick}){
+  const today=new Date();
+  const [range,setRange]=useState(30);
+  const [tooltip,setTooltip]=useState(null);
+  const chartRef=useRef(null);
+
+  /* Generate date range for chart */
+  const chartDates=useMemo(()=>{
+    var arr=[];
+    var d=new Date(today);
+    d.setDate(d.getDate()-range+1);
+    while(d<=today){
+      if(isWorkday(d))arr.push(new Date(d));
+      d.setDate(d.getDate()+1);
+    }
+    return arr;
+  },[range]);
+
+  /* Daily aggregated data */
+  const dailyData=useMemo(()=>{
+    return chartDates.map(function(d){
+      var dk=fmtDate(d);
+      var present=0,late=0,absent=0,sick=0,other=0;
+      EMPLOYEES.forEach(function(emp){
+        var st=attendanceData[dk]?.[safeKey(emp)]?.status||"present";
+        if(st==="present")present++;
+        else if(st==="late"){late++;present++}
+        else if(st==="absent")absent++;
+        else if(st==="sick")sick++;
+        else other++;
+      });
+      return{date:d,dk:dk,present:present,late:late,absent:absent,sick:sick,other:other};
+    });
+  },[chartDates,attendanceData]);
+
+  /* Employee rankings */
+  const empRankings=useMemo(()=>{
+    var map={};
+    EMPLOYEES.forEach(function(emp){map[emp]={present:0,late:0,absent:0,lateMins:0,ontime:0}});
+    chartDates.forEach(function(d){
+      var dk=fmtDate(d);
+      EMPLOYEES.forEach(function(emp){
+        var rec=attendanceData[dk]?.[safeKey(emp)];
+        var st=rec?.status||"present";
+        var mins=(rec?.morning||0)+(rec?.afternoon||0);
+        if(st==="present"){map[emp].present++;map[emp].ontime++}
+        else if(st==="late"){map[emp].late++;map[emp].present++;map[emp].lateMins+=mins}
+        else if(st==="absent")map[emp].absent++;
+      });
+    });
+    return map;
+  },[chartDates,attendanceData]);
+
+  var lateRanking=Object.entries(empRankings).map(function(e){return{emp:e[0],count:e[1].late,mins:e[1].lateMins}}).filter(function(r){return r.count>0}).sort(function(a,b){return b.count-a.count}).slice(0,8);
+  var absentRanking=Object.entries(empRankings).map(function(e){return{emp:e[0],count:e[1].absent}}).filter(function(r){return r.count>0}).sort(function(a,b){return b.count-a.count}).slice(0,8);
+  var ontimeRanking=Object.entries(empRankings).map(function(e){return{emp:e[0],count:e[1].ontime}}).sort(function(a,b){return b.count-a.count}).slice(0,8);
+
+  /* Summary stats */
+  var totalPresent=dailyData.reduce(function(s,d){return s+d.present},0);
+  var totalLate=dailyData.reduce(function(s,d){return s+d.late},0);
+  var totalAbsent=dailyData.reduce(function(s,d){return s+d.absent},0);
+  var totalDays=chartDates.length;
+  var avgAttendance=Math.round(totalPresent/Math.max(1,totalDays*EMPLOYEES.length)*100);
+  var avgLatePerDay=(totalLate/Math.max(1,totalDays)).toFixed(1);
+
+  /* SVG Line Chart dimensions */
+  var W=Math.max(800,dailyData.length*48);
+  var H=260;
+  var padL=40,padR=20,padT=30,padB=40;
+  var cW=W-padL-padR;
+  var cH=H-padT-padB;
+  var maxVal=Math.max(5,...dailyData.map(function(d){return Math.max(d.present,d.late,d.absent)}));
+
+  function x(i){return padL+(i/(Math.max(1,dailyData.length-1)))*cW}
+  function y(v){return padT+cH-(v/maxVal)*cH}
+
+  function makePath(key){
+    return dailyData.map(function(d,i){return(i===0?"M":"L")+x(i).toFixed(1)+","+y(d[key]).toFixed(1)}).join(" ");
+  }
+
+  function getInitials(name){var p=name.split(" ");return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():name.slice(0,2).toUpperCase()}
+
+  /* Tooltip handler */
+  function onChartHover(e,i){
+    if(!chartRef.current)return;
+    var rect=chartRef.current.getBoundingClientRect();
+    var d=dailyData[i];
+    var dp=d.dk.split("-");
+    setTooltip({x:e.clientX-rect.left,y:e.clientY-rect.top,d:d,label:dp[2]+"."+dp[1]+"."+dp[0]});
+  }
+
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Analitika</div>
+          <div className="page-subtitle">Xodimlar davomati bo'yicha chuqur tahlil va trendlar</div>
+        </div>
+        <div className="page-actions">
+          {[{v:14,l:"2 hafta"},{v:30,l:"1 oy"},{v:60,l:"2 oy"},{v:90,l:"3 oy"}].map(function(r){
+            return <button key={r.v} className={"sort-btn "+(range===r.v?"active":"")} onClick={function(){setRange(r.v)}}>{r.l}</button>;
+          })}
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div className="anl-summary-row">
+        <div className="anl-summary-card">
+          <div className="anl-summary-icon" style={{background:"var(--emerald-bg)",color:"var(--emerald)"}}>📊</div>
+          <div>
+            <div className="anl-summary-val">{avgAttendance}%</div>
+            <div className="anl-summary-label">O'rtacha davomat darajasi</div>
+          </div>
+        </div>
+        <div className="anl-summary-card">
+          <div className="anl-summary-icon" style={{background:"var(--gold-pale)",color:"var(--navy)"}}>👥</div>
+          <div>
+            <div className="anl-summary-val">{totalPresent}</div>
+            <div className="anl-summary-label">Jami kelgan ({totalDays} kun)</div>
+          </div>
+        </div>
+        <div className="anl-summary-card">
+          <div className="anl-summary-icon" style={{background:"var(--amber-bg)",color:"var(--amber)"}}>⏰</div>
+          <div>
+            <div className="anl-summary-val">{totalLate}</div>
+            <div className="anl-summary-label">Kechikishlar (kuniga ~{avgLatePerDay})</div>
+          </div>
+        </div>
+        <div className="anl-summary-card">
+          <div className="anl-summary-icon" style={{background:"var(--ruby-bg)",color:"var(--ruby)"}}>✗</div>
+          <div>
+            <div className="anl-summary-val">{totalAbsent}</div>
+            <div className="anl-summary-label">Sababsiz yo'qlik</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Line Chart */}
+      <div className="anl-chart-wrap" ref={chartRef} style={{position:"relative"}}>
+        <div className="anl-chart-header">
+          <div>
+            <div className="anl-chart-title">Xodimlar davomat grafigi</div>
+            <div className="anl-chart-sub">Xodimlar davomatidagi trendlarni kuzating</div>
+          </div>
+          <div className="anl-chart-legend">
+            <div className="anl-legend-item"><div className="anl-legend-dot" style={{background:"#f79009"}}/> Kech qolish</div>
+            <div className="anl-legend-item"><div className="anl-legend-dot" style={{background:"#f04438"}}/> Ishga kelmaslik</div>
+            <div className="anl-legend-item"><div className="anl-legend-dot" style={{background:"#12b76a"}}/> Kelgan</div>
+          </div>
+        </div>
+        <div className="anl-chart-svg" style={{overflowX:"auto"}}>
+          <svg width={W} height={H} style={{display:"block"}}>
+            {/* Grid lines */}
+            {[0,1,2,3,4].map(function(gi){
+              var val=Math.round(maxVal*(1-gi/4));
+              var yy=padT+(gi/4)*cH;
+              return <g key={gi}>
+                <line x1={padL} y1={yy} x2={W-padR} y2={yy} stroke="var(--border)" strokeDasharray="4,4" strokeWidth="0.8"/>
+                <text x={padL-8} y={yy+4} textAnchor="end" fontSize="10" fill="var(--t4)" fontFamily="JetBrains Mono,monospace">{val}</text>
+              </g>;
+            })}
+
+            {/* X axis labels */}
+            {dailyData.map(function(d,i){
+              var show=dailyData.length<=20||i%Math.ceil(dailyData.length/20)===0;
+              if(!show)return null;
+              var dp=d.dk.split("-");
+              var label=MONTHS[parseInt(dp[1])-1].slice(0,3)+" "+parseInt(dp[2]);
+              return <text key={i} x={x(i)} y={H-8} textAnchor="middle" fontSize="9.5" fill="var(--t4)" fontFamily="Inter,sans-serif">{label}</text>;
+            })}
+
+            {/* Late line (orange) */}
+            <path d={makePath("late")} fill="none" stroke="#f79009" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" opacity="0.9"/>
+            {/* Absent line (red) */}
+            <path d={makePath("absent")} fill="none" stroke="#f04438" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" opacity="0.9"/>
+            {/* Present line (green) */}
+            <path d={makePath("present")} fill="none" stroke="#12b76a" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
+
+            {/* Data points + hover zones */}
+            {dailyData.map(function(d,i){
+              return <g key={i}>
+                {/* Present dot */}
+                <circle cx={x(i)} cy={y(d.present)} r="4" fill="#12b76a" stroke="#fff" strokeWidth="2"/>
+                <text x={x(i)} y={y(d.present)-10} textAnchor="middle" fontSize="10" fill="var(--t2)" fontWeight="600" fontFamily="JetBrains Mono,monospace">{d.present}</text>
+                {/* Late dot */}
+                {d.late>0&&<circle cx={x(i)} cy={y(d.late)} r="3.5" fill="#f79009" stroke="#fff" strokeWidth="1.5"/>}
+                {d.late>0&&<text x={x(i)} y={y(d.late)-9} textAnchor="middle" fontSize="9" fill="#f79009" fontWeight="600" fontFamily="JetBrains Mono,monospace">{d.late}</text>}
+                {/* Absent dot */}
+                {d.absent>0&&<circle cx={x(i)} cy={y(d.absent)} r="3.5" fill="#f04438" stroke="#fff" strokeWidth="1.5"/>}
+                {d.absent>0&&<text x={x(i)} y={y(d.absent)-9} textAnchor="middle" fontSize="9" fill="#f04438" fontWeight="600" fontFamily="JetBrains Mono,monospace">{d.absent}</text>}
+                {/* Invisible hover zone */}
+                <rect x={x(i)-15} y={padT} width="30" height={cH} fill="transparent" style={{cursor:"pointer"}}
+                  onMouseEnter={function(e){onChartHover(e,i)}} onMouseLeave={function(){setTooltip(null)}}/>
+              </g>;
+            })}
+          </svg>
+        </div>
+
+        {/* Tooltip */}
+        {tooltip&&<div className="anl-chart-tooltip" style={{left:Math.min(tooltip.x+12,chartRef.current?.offsetWidth-180||400),top:tooltip.y-80}}>
+          <div className="anl-chart-tooltip-title">{tooltip.label}</div>
+          <div className="anl-chart-tooltip-row"><div className="anl-chart-tooltip-dot" style={{background:"#12b76a"}}/> Kelgan <span className="anl-chart-tooltip-val" style={{marginLeft:"auto",color:"#12b76a"}}>{tooltip.d.present}</span></div>
+          <div className="anl-chart-tooltip-row"><div className="anl-chart-tooltip-dot" style={{background:"#f79009"}}/> Kech qolish <span className="anl-chart-tooltip-val" style={{marginLeft:"auto",color:"#f79009"}}>{tooltip.d.late}</span></div>
+          <div className="anl-chart-tooltip-row"><div className="anl-chart-tooltip-dot" style={{background:"#f04438"}}/> Ishga kelmaslik <span className="anl-chart-tooltip-val" style={{marginLeft:"auto",color:"#f04438"}}>{tooltip.d.absent}</span></div>
+        </div>}
+      </div>
+
+      {/* Rankings grid */}
+      <div className="anl-ranking-grid">
+        {/* Late ranking */}
+        <div className="anl-ranking-card">
+          <div className="anl-ranking-head">
+            <div className="anl-ranking-icon" style={{background:"var(--amber-bg)",color:"var(--amber)"}}>⏰</div>
+            <div>
+              <div className="anl-ranking-title">Kech qolish</div>
+              <div className="anl-ranking-sub">Ishga kech qolgan xodimlar reytingi</div>
+            </div>
+          </div>
+          <div className="anl-ranking-list">
+            {lateRanking.length===0?<div className="anl-ranking-empty">Kechikish qayd etilmagan ✓</div>:
+              lateRanking.map(function(r){
+                return <div key={r.emp} className="anl-ranking-row" onClick={function(){onEmpClick&&onEmpClick(r.emp)}}>
+                  <div className="anl-ranking-avatar">{getInitials(r.emp)}</div>
+                  <div className="anl-ranking-info">
+                    <div className="anl-ranking-name">{r.emp}</div>
+                  </div>
+                  <div className="anl-ranking-badge" style={{background:"var(--amber-bg)",color:"var(--amber)"}}>{r.count} marta</div>
+                </div>;
+              })
+            }
+          </div>
+        </div>
+
+        {/* Absent ranking */}
+        <div className="anl-ranking-card">
+          <div className="anl-ranking-head">
+            <div className="anl-ranking-icon" style={{background:"var(--ruby-bg)",color:"var(--ruby)"}}>✗</div>
+            <div>
+              <div className="anl-ranking-title">Ishga kelmaslik</div>
+              <div className="anl-ranking-sub">Besabab kelmaganlar reytingi</div>
+            </div>
+          </div>
+          <div className="anl-ranking-list">
+            {absentRanking.length===0?<div className="anl-ranking-empty">Sababsiz yo'qlik yo'q ✓</div>:
+              absentRanking.map(function(r){
+                return <div key={r.emp} className="anl-ranking-row" onClick={function(){onEmpClick&&onEmpClick(r.emp)}}>
+                  <div className="anl-ranking-avatar">{getInitials(r.emp)}</div>
+                  <div className="anl-ranking-info">
+                    <div className="anl-ranking-name">{r.emp}</div>
+                  </div>
+                  <div className="anl-ranking-badge" style={{background:"var(--ruby-bg)",color:"var(--ruby)"}}>{r.count} marta</div>
+                </div>;
+              })
+            }
+          </div>
+        </div>
+
+        {/* On-time ranking */}
+        <div className="anl-ranking-card">
+          <div className="anl-ranking-head">
+            <div className="anl-ranking-icon" style={{background:"var(--emerald-bg)",color:"var(--emerald)"}}>✓</div>
+            <div>
+              <div className="anl-ranking-title">O'z vaqtida kelish</div>
+              <div className="anl-ranking-sub">Intizomli xodimlar reytingi</div>
+            </div>
+          </div>
+          <div className="anl-ranking-list">
+            {ontimeRanking.map(function(r){
+              return <div key={r.emp} className="anl-ranking-row" onClick={function(){onEmpClick&&onEmpClick(r.emp)}}>
+                <div className="anl-ranking-avatar">{getInitials(r.emp)}</div>
+                <div className="anl-ranking-info">
+                  <div className="anl-ranking-name">{r.emp}</div>
+                </div>
+                <div className="anl-ranking-badge" style={{background:"var(--emerald-bg)",color:"var(--emerald)"}}>{r.count} marta</div>
+              </div>;
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -7929,6 +8253,7 @@ function App(){
   const canEdit=isAdmin||isBoss;
   const adminNav=[
     {k:"davomat",icon:"📅",label:"Davomat"},
+    {k:"analytics",icon:"📈",label:"Analitika"},
     {k:"stats",icon:"📊",label:"Statistika"},
     {k:"employees",icon:"👥",label:"Xodimlar"},
     {k:"holidays",icon:"🎉",label:"Bayramlar"},
@@ -7949,7 +8274,7 @@ function App(){
     {k:"empNotes",icon:"✏️",label:"Izoh yozish"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={davomat:"Davomat",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":isObserver?"Kuzatuvchi":"Xodim";
 
   return(
@@ -8112,6 +8437,7 @@ function App(){
                   {davomatTab==="weekly"&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                   {davomatTab==="monthly"&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 </>}
+                {view==="analytics"&&canManage&&<AnalyticsView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="stats"&&canManage&&<StatsView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="employees"&&canManage&&<EmployeesManageView user={user} showToast={showToast}/>}
                 {view==="holidays"&&canManage&&<HolidaysView user={user} showToast={showToast}/>}
