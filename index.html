@@ -7371,9 +7371,9 @@ function EmployeesManageView({user,showToast}){
       ),
       React.createElement("button",{className:"action-btn",onClick:function(){
         if(!empList.length)return;
-        var rows=filtered.map(function(e,i){return{"№":i+1,"Familiya":e.lastName,"Ism":e.firstName,"Lavozim":e.position,"Bo'lim":e.department,"Telefon":e.phone,"Jadval":e.schedule}});
+        var rows=filtered.map(function(e,i){return{"№":i+1,"Familiya":e.lastName,"Ism":e.firstName,"Lavozim":e.position,"Bo'lim":e.department,"Telefon":e.phone}});
         var ws=XLSX.utils.json_to_sheet(rows);
-        ws["!cols"]=[{wch:4},{wch:20},{wch:18},{wch:20},{wch:16},{wch:16},{wch:22}];
+        ws["!cols"]=[{wch:4},{wch:20},{wch:18},{wch:30},{wch:25},{wch:16}];
         var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Xodimlar");
         XLSX.writeFile(wb,"Xodimlar_royxati.xlsx");
         showToast("Excel yuklab olindi");
@@ -7431,13 +7431,12 @@ function EmployeesManageView({user,showToast}){
               React.createElement("th",{style:{minWidth:140}},"Lavozim"),
               React.createElement("th",{style:{minWidth:110}},"Bo'lim"),
               React.createElement("th",{style:{minWidth:130}},"Telefon"),
-              React.createElement("th",{style:{minWidth:160}},"Jadval"),
               canEdit&&React.createElement("th",{style:{width:100,textAlign:"center"}},"Amallar")
             )
           ),
           React.createElement("tbody",null,
             filtered.length===0&&React.createElement("tr",null,
-              React.createElement("td",{colSpan:7,style:{textAlign:"center",padding:30,color:"var(--t4)"}},"Xodim topilmadi")
+              React.createElement("td",{colSpan:6,style:{textAlign:"center",padding:30,color:"var(--t4)"}},"Xodim topilmadi")
             ),
             filtered.map(function(emp,i){
               var initials=((emp.firstName||"").charAt(0)+(emp.lastName||"").charAt(0)).toUpperCase();
@@ -7457,7 +7456,6 @@ function EmployeesManageView({user,showToast}){
                 React.createElement("td",null,React.createElement("span",{className:"emp-position-badge"},emp.position||"—")),
                 React.createElement("td",null,React.createElement("span",{className:"emp-dept-badge"},emp.department||"—")),
                 React.createElement("td",null,emp.phone?React.createElement("span",{className:"emp-phone-text"},emp.phone):React.createElement("span",{style:{color:"var(--t5)",fontSize:11}},"—")),
-                React.createElement("td",null,React.createElement("span",{className:"emp-schedule-text"},emp.schedule||"—")),
                 canEdit&&React.createElement("td",{style:{textAlign:"center"}},
                   React.createElement("div",{style:{display:"flex",gap:4,justifyContent:"center"}},
                     React.createElement("button",{className:"emp-action-btn",onClick:function(){openEdit(emp)},title:"Tahrirlash"},"✏️"),
@@ -7511,15 +7509,7 @@ function EmployeesManageView({user,showToast}){
             React.createElement("label",null,"Telefon"),
             React.createElement("input",{value:formData.phone,onChange:function(e){updateField("phone",e.target.value)},placeholder:"+998 90 123 45 67"})
           ),
-          React.createElement("div",{className:"emp-modal-field"},
-            React.createElement("label",null,"Jadval"),
-            React.createElement("select",{value:formData.schedule,onChange:function(e){updateField("schedule",e.target.value)}},
-              React.createElement("option",{value:"Dush-Jum 09:00-18:00"},"Dush-Jum 09:00-18:00"),
-              React.createElement("option",{value:"Dush-Shan 09:00-18:00"},"Dush-Shan 09:00-18:00"),
-              React.createElement("option",{value:"Dush-Jum 08:00-17:00"},"Dush-Jum 08:00-17:00"),
-              React.createElement("option",{value:"Smenali"},"Smenali")
-            )
-          )
+          React.createElement("div",null)
         ),
 
         React.createElement("div",{style:{display:"flex",gap:10,marginTop:22,justifyContent:"flex-end"}},
