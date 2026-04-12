@@ -2162,13 +2162,7 @@
     .rank-bar { height:100%; border-radius:99px; transition:width .6s ease; }
 
     /* ─── WEATHER WIDGET ──────────────────────── */
-    .weather-box { padding:10px 14px; margin:0 10px 8px; border-radius:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1); }
-    .weather-row { display:flex; align-items:center; gap:8px; }
-    .weather-icon { font-size:20px; }
-    .weather-temp { font-size:16px; font-weight:700; color:rgba(255,255,255,.85); font-family:'JetBrains Mono',monospace; }
-    .weather-desc { font-size:10px; color:rgba(255,255,255,.35); margin-top:2px; }
-    .weather-details { display:flex; gap:10px; margin-top:6px; }
-    .weather-detail { font-size:9.5px; color:rgba(255,255,255,.28); display:flex; align-items:center; gap:3px; }
+    /* weather removed */
 
     @media(max-width:768px){
       .reminder-card { flex-wrap:wrap; padding:14px 16px; gap:12px; }
@@ -7767,36 +7761,7 @@ function MobSearch({data, onPick}){
 }
 
 
-function WeatherWidget(){
-  const[w,setW]=useState(null);
-  useEffect(()=>{
-    function fetchW(){
-      fetch("https://api.open-meteo.com/v1/forecast?latitude=40.1&longitude=65.37&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=Asia/Tashkent")
-        .then(r=>r.json()).then(d=>{if(d.current)setW(d.current);}).catch(()=>{});
-    }
-    fetchW();
-    const t=setInterval(fetchW,1800000);
-    return()=>clearInterval(t);
-  },[]);
-  if(!w)return null;
-  const codes={0:"☀️ Ochiq",1:"🌤 Az bulutli",2:"⛅ Bulutli",3:"☁️ To'liq bulutli",45:"🌫 Tuman",48:"🌫 Tuman",51:"🌧 Yengil yomg'ir",53:"🌧 Yomg'ir",55:"🌧 Kuchli yomg'ir",61:"🌧 Yomg'ir",63:"🌧 O'rtacha",65:"🌧 Kuchli",71:"🌨 Qor",73:"🌨 Qor",75:"🌨 Kuchli qor",77:"🌨 Don",80:"🌦 Yomg'ir",81:"🌦 Yomg'ir",82:"⛈ Dovul",85:"🌨 Qor",86:"🌨 Qor",95:"⛈ Momaqaldiroq",96:"⛈ Do'l",99:"⛈ Do'l"};
-  const desc=codes[w.weather_code]||"🌤 Oddiy";
-  const icon=desc.split(" ")[0];
-  return(
-    <div className="weather-box">
-      <div className="weather-row">
-        <div className="weather-icon">{icon}</div>
-        <div>
-          <div className="weather-temp">{Math.round(w.temperature_2m)}°C</div>
-          <div className="weather-desc">Navoiy · {desc.split(" ").slice(1).join(" ")}</div>
-        </div>
-      </div>
-      <div className="weather-details">
-        <div className="weather-detail">💧 {w.relative_humidity_2m}%</div>
-        <div className="weather-detail">💨 {Math.round(w.wind_speed_10m)} km/s</div>
-      </div>
-    </div>
-  );
+function WeatherWidget(){return null;
 }
 
 /* ═══ NOTIFICATION SYSTEM ═══ */
@@ -8305,7 +8270,6 @@ function App(){
           ))}
         </div>
 
-        <WeatherWidget/>
         <div className="sidebar-footer">
           <div className="sidebar-user">
             <div className="sidebar-avatar">{user.name.charAt(0)}</div>
