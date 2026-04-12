@@ -3987,6 +3987,7 @@ function AnalyticsView({attendanceData,checkinsData,onEmpClick}){
   }
 
   function getInitials(name){var p=name.split(" ");return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():name.slice(0,2).toUpperCase()}
+  function empAvatar(name){var prof=EMPLOYEE_PROFILES[name];return prof&&prof.photo?<img src={prof.photo} alt={name}/>:getInitials(name)}
 
   /* Tooltip handler */
   function onChartHover(e,i){
@@ -4128,7 +4129,7 @@ function AnalyticsView({attendanceData,checkinsData,onEmpClick}){
             {lateRanking.length===0?<div className="anl-ranking-empty">Kechikish qayd etilmagan ✓</div>:
               lateRanking.map(function(r){
                 return <div key={r.emp} className="anl-ranking-row" onClick={function(){onEmpClick&&onEmpClick(r.emp)}}>
-                  <div className="anl-ranking-avatar">{getInitials(r.emp)}</div>
+                  <div className="anl-ranking-avatar">{empAvatar(r.emp)}</div>
                   <div className="anl-ranking-info">
                     <div className="anl-ranking-name">{r.emp}</div>
                   </div>
@@ -4152,7 +4153,7 @@ function AnalyticsView({attendanceData,checkinsData,onEmpClick}){
             {absentRanking.length===0?<div className="anl-ranking-empty">Sababsiz yo'qlik yo'q ✓</div>:
               absentRanking.map(function(r){
                 return <div key={r.emp} className="anl-ranking-row" onClick={function(){onEmpClick&&onEmpClick(r.emp)}}>
-                  <div className="anl-ranking-avatar">{getInitials(r.emp)}</div>
+                  <div className="anl-ranking-avatar">{empAvatar(r.emp)}</div>
                   <div className="anl-ranking-info">
                     <div className="anl-ranking-name">{r.emp}</div>
                   </div>
@@ -4175,7 +4176,7 @@ function AnalyticsView({attendanceData,checkinsData,onEmpClick}){
           <div className="anl-ranking-list">
             {ontimeRanking.map(function(r){
               return <div key={r.emp} className="anl-ranking-row" onClick={function(){onEmpClick&&onEmpClick(r.emp)}}>
-                <div className="anl-ranking-avatar">{getInitials(r.emp)}</div>
+                <div className="anl-ranking-avatar">{empAvatar(r.emp)}</div>
                 <div className="anl-ranking-info">
                   <div className="anl-ranking-name">{r.emp}</div>
                 </div>
