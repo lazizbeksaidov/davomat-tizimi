@@ -5670,7 +5670,8 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
 .emp-hero{background:linear-gradient(135deg,#0a1628 0%,var(--navy) 40%,var(--navy-mid) 80%);border-radius:20px;padding:24px;margin-bottom:20px;position:relative;overflow:hidden;color:#fff}\
 .emp-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(200,150,42,.15),transparent 70%)}\
 .emp-hero-top{display:flex;align-items:center;gap:16px;position:relative;z-index:1}\
-.emp-hero-avatar{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--gold),var(--gold-lt));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;box-shadow:0 8px 24px rgba(200,150,42,.4);flex-shrink:0}\
+.emp-hero-avatar{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--gold),var(--gold-lt));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;box-shadow:0 8px 24px rgba(200,150,42,.4);flex-shrink:0;overflow:hidden}\
+.emp-hero-avatar img{width:100%;height:100%;object-fit:cover}\
 .emp-hero-info h2{font-size:18px;font-weight:800;margin:0;letter-spacing:-.3px}\
 .emp-hero-info p{font-size:11px;color:rgba(255,255,255,.5);margin:4px 0 0}\
 .emp-hero-score{margin-left:auto;text-align:center;position:relative;z-index:1}\
@@ -5704,10 +5705,10 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
       {/* HERO */}
       <div className="emp-hero">
         <div className="emp-hero-top">
-          <div className="emp-hero-avatar">{empName.charAt(0)}</div>
+          <div className="emp-hero-avatar">{profile&&profile.photo?<img src={profile.photo} alt={empName}/>:empName.charAt(0)}</div>
           <div className="emp-hero-info">
             <h2>{inModal?empName:"Shaxsiy Kabinetim"}</h2>
-            <p>{empName} · {MONTHS[mon]} {yr} · {monthDates.length} ish kuni</p>
+            <p>{profile&&profile.position?profile.position+" · ":""}{MONTHS[mon]} {yr} · {monthDates.length} ish kuni</p>
           </div>
           <div className="emp-hero-score">
             <div className="emp-hero-score-num" style={{color:scColor}}>{stats.score}</div>
