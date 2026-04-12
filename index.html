@@ -7185,7 +7185,7 @@ function EmployeesManageView({user,showToast}){
     var ref=db.ref("employees");
     ref.on("value",function(snap){
       var d=snap.val()||{};
-      var arr=Object.entries(d).filter(function(e){return e[0]!=="__seed_v"}).map(function(e){return Object.assign({id:e[0]},e[1])});
+      var arr=Object.entries(d).map(function(e){return Object.assign({id:e[0]},e[1])});
       arr.sort(function(a,b){return(a.lastName||"").localeCompare(b.lastName||"")});
       setEmpList(arr);
     });
@@ -7194,14 +7194,22 @@ function EmployeesManageView({user,showToast}){
 
   useEffect(function(){
     if(!isAdmin)return;
-    db.ref("employees/__seed_v").once("value").then(function(snap){
-      if(snap.val()>=2)return;
-      var batch={__seed_v:2};
+    var SEED_KEY="emp_seed_v3";
+    try{if(localStorage.getItem(SEED_KEY)==="done")return}catch(e){}
+    db.ref("employees").once("value").then(function(snap){
+      var existing=snap.val()||{};
+      var needsSeed=Object.keys(existing).length<EMPLOYEES.length;
+      if(!needsSeed){
+        var first=Object.values(existing)[0];
+        if(first&&(first.position==="Mutaxassis"||!first.fullName))needsSeed=true;
+      }
+      if(!needsSeed){try{localStorage.setItem(SEED_KEY,"done")}catch(e){}return}
+      var pending=EMPLOYEES.length;var failed=0;
       EMPLOYEES.forEach(function(name){
         var parts=name.split(" ");
         var key=safeKey(name);
         var prof=EMPLOYEE_PROFILES[name]||{};
-        batch[key]={
+        var data={
           firstName:parts[1]||"",lastName:parts[0]||"",
           position:prof.position||"Mutaxassis",
           department:prof.department||"Boshqarma",
@@ -7210,8 +7218,14 @@ function EmployeesManageView({user,showToast}){
           photo:prof.photo||"",
           fullName:prof.fullName||name
         };
+        db.ref("employees/"+key).set(data).then(function(){
+          pending--;
+          if(pending<=0){try{localStorage.setItem(SEED_KEY,"done")}catch(e){}}
+        }).catch(function(err){
+          failed++;pending--;
+          console.error("Seed error for "+name+":",err.message);
+        });
       });
-      db.ref("employees").set(batch).then(function(){console.log("Employees seeded v2 with profiles")});
     });
   },[isAdmin]);
 
