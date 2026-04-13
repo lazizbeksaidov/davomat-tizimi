@@ -5290,29 +5290,47 @@ function IjroView({showToast}){
   var[selCat,setSelCat]=useState(null);
   var _today=new Date();
   var[selMonth,setSelMonth]=useState(_today.getFullYear()+"-"+String(_today.getMonth()+1).padStart(2,"0"));
+  var[selDay,setSelDay]=useState(_today.getDate());
 
-  var ijroPrefix="ijro_"+selMonth+"_";
+  var mp=selMonth.split("-"),monthName=MONTHS[+mp[1]-1]||"",yearNum=mp[0];
+  var selDateStr=selMonth+"-"+String(selDay).padStart(2,"0");
+  var todayDay=_today.getDate();
+
   useEffect(function(){
     setLoading(true);
-    var q=db.ref("employee_notes").orderByKey().startAt(ijroPrefix).endAt(ijroPrefix+"\uf8ff");
+    var curPrefix="ijro_"+selDateStr+"_";
+    var q=db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff");
     var onVal=q.on("value",function(snap){
       var d={};
-      snap.forEach(function(ch){d[ch.key.replace(ijroPrefix,"")]=ch.val()});
-      setIjroData(d);
-      setLoading(false);
+      snap.forEach(function(ch){d[ch.key.replace(curPrefix,"")]=ch.val()});
+      if(Object.keys(d).length>0){
+        setIjroData(d);
+        setLoading(false);
+      }else{
+        var parts=selDateStr.split("-");
+        var prev=new Date(+parts[0],+parts[1]-1,+parts[2]);
+        prev.setDate(prev.getDate()-1);
+        var ps=prev.getFullYear()+"-"+String(prev.getMonth()+1).padStart(2,"0")+"-"+String(prev.getDate()).padStart(2,"0");
+        var pp="ijro_"+ps+"_";
+        db.ref("employee_notes").orderByKey().startAt(pp).endAt(pp+"\uf8ff").once("value",function(psnap){
+          var pd={};
+          psnap.forEach(function(ch){pd[ch.key.replace(pp,"")]=ch.val()});
+          setIjroData(pd);
+          setLoading(false);
+        },function(){setIjroData({});setLoading(false)});
+      }
     },function(err){
       console.error("Ijro load error:",err.code,err.message);
       setIjroData({});
       setLoading(false);
     });
     return function(){q.off("value",onVal)};
-  },[selMonth]);
+  },[selDateStr]);
 
-  function prevMonth(){var p=selMonth.split("-"),y=+p[0],m=+p[1];m--;if(m<1){m=12;y--}setSelMonth(y+"-"+String(m).padStart(2,"0"))}
-  function nextMonth(){var p=selMonth.split("-"),y=+p[0],m=+p[1];m++;if(m>12){m=1;y++}setSelMonth(y+"-"+String(m).padStart(2,"0"))}
-
-  var mp=selMonth.split("-"),monthName=MONTHS[+mp[1]-1]||"",yearNum=mp[0];
-  var todayDay=_today.getDate();
+  function prevMonth(){var p=selMonth.split("-"),y=+p[0],m=+p[1];m--;if(m<1){m=12;y--}setSelMonth(y+"-"+String(m).padStart(2,"0"));setSelDay(1)}
+  function nextMonth(){var p=selMonth.split("-"),y=+p[0],m=+p[1];m++;if(m>12){m=1;y++}setSelMonth(y+"-"+String(m).padStart(2,"0"));setSelDay(1)}
+  function prevDay(){var d=new Date(+mp[0],+mp[1]-1,selDay);d.setDate(d.getDate()-1);setSelMonth(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));setSelDay(d.getDate())}
+  function nextDay(){var d=new Date(+mp[0],+mp[1]-1,selDay);d.setDate(d.getDate()+1);setSelMonth(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));setSelDay(d.getDate())}
 
   function openEdit(emp){
     var ek=safeKey(emp.name),cur=ijroData[ek]||{},form={};
@@ -5340,7 +5358,7 @@ function IjroView({showToast}){
     rec.jami_toplar=tT;
     rec.name=editEmp.name;
     rec.lavozimi=editEmp.lavozimi;
-    var noteKey="ijro_"+selMonth+"_"+ek;
+    var noteKey="ijro_"+selDateStr+"_"+ek;
     var noteData=Object.assign({empName:editEmp.name,text:"ijro",timestamp:Date.now()},rec);
     db.ref("employee_notes/"+noteKey).set(noteData).then(function(){
       showToast("Saqlandi");setSaving(false);setEditEmp(null);
@@ -5390,12 +5408,20 @@ function IjroView({showToast}){
     React.createElement("div",{className:"page-header"},
       React.createElement("div",null,
         React.createElement("div",{className:"page-title"},"Ijro Intizomi"),
-        React.createElement("div",{className:"page-subtitle"},"Edo.ijro.uz \u2014 "+monthName+" "+yearNum+" oylik ma\u2018lumot")
+        React.createElement("div",{className:"page-subtitle"},"Edo.ijro.uz \u2014 "+selDay+"-"+monthName+" "+yearNum)
       ),
-      React.createElement("div",{className:"page-actions",style:{display:"flex",alignItems:"center",gap:6}},
-        React.createElement("button",{onClick:prevMonth,style:{width:36,height:36,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:16,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25C0"),
-        React.createElement("div",{style:{padding:"6px 16px",borderRadius:8,background:"var(--cobalt)",color:"#fff",fontWeight:700,fontSize:13,fontFamily:"JetBrains Mono,monospace",minWidth:140,textAlign:"center"}},monthName+" "+yearNum),
-        React.createElement("button",{onClick:nextMonth,style:{width:36,height:36,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:16,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25B6"))
+      React.createElement("div",{className:"page-actions",style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+          React.createElement("button",{onClick:prevMonth,style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25C0"),
+          React.createElement("div",{style:{padding:"5px 14px",borderRadius:8,background:"var(--cobalt)",color:"#fff",fontWeight:700,fontSize:12,fontFamily:"JetBrains Mono,monospace",minWidth:120,textAlign:"center"}},monthName+" "+yearNum),
+          React.createElement("button",{onClick:nextMonth,style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25B6")
+        ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+          React.createElement("button",{onClick:prevDay,style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25C0"),
+          React.createElement("div",{style:{padding:"5px 14px",borderRadius:8,background:"#059669",color:"#fff",fontWeight:700,fontSize:12,fontFamily:"JetBrains Mono,monospace",minWidth:120,textAlign:"center"}},selDay+"-"+monthName),
+          React.createElement("button",{onClick:nextDay,style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25B6")
+        )
+      )
     ),
 
     /* === TOPSHIRIQLAR IJRO HOLATI - Category cards === */
@@ -5432,7 +5458,7 @@ function IjroView({showToast}){
         React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#f59e0b"}},monthName+" muddatli")),
       React.createElement("div",{style:{flex:"1 1 120px",padding:"14px 16px",borderRadius:12,background:"#ecfdf5",border:"1px solid #a7f3d0"}},
         React.createElement("div",{style:{fontSize:22,fontWeight:800,color:"#059669",fontFamily:"JetBrains Mono,monospace"}},summary.bugun_ijro),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#10b981"}},todayDay+"-"+monthName+" ijro etilgan"))
+        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#10b981"}},selDay+"-"+monthName+" ijro etilgan"))
     ),
 
     /* === BO'LIM RAHBARLARI === */
@@ -5484,7 +5510,7 @@ function IjroView({showToast}){
             React.createElement("div",{style:{display:"flex",gap:12,marginTop:10,padding:"10px 12px",borderRadius:8,background:"#ecfdf5",borderLeft:"3px solid #059669"}},
               React.createElement("div",null,
                 React.createElement("div",{style:{fontSize:16,fontWeight:800,color:"#059669",fontFamily:"JetBrains Mono,monospace"}},row.bugun_ijro),
-                React.createElement("div",{style:{fontSize:8,color:"#64748b",fontWeight:600}},todayDay+"-"+monthName+" ijro")),
+                React.createElement("div",{style:{fontSize:8,color:"#64748b",fontWeight:600}},selDay+"-"+monthName+" ijro")),
               React.createElement("div",null,
                 React.createElement("div",{style:{fontSize:16,fontWeight:800,color:row.bugun_otgan?"#dc2626":"#cbd5e1",fontFamily:"JetBrains Mono,monospace"}},row.bugun_otgan),
                 React.createElement("div",{style:{fontSize:8,color:"#64748b",fontWeight:600}},"shundan m. o\u2018tgan"))
@@ -5515,7 +5541,7 @@ function IjroView({showToast}){
           ),
           React.createElement("button",{onClick:function(){setEditEmp(null)},style:{width:28,height:28,borderRadius:7,border:"1px solid #e2e8f0",background:"#f8fafc",cursor:"pointer",fontSize:14,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center"}},"\u2715")
         ),
-        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#94a3b8",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}},monthName+" "+yearNum+" \u00b7 Topshiriqlar tarkibi"),
+        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#94a3b8",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}},selDay+"-"+monthName+" "+yearNum+" \u00b7 Topshiriqlar tarkibi"),
         IJRO_CATEGORIES.map(function(c){
           return React.createElement("div",{key:c.key,style:{marginBottom:8,padding:"10px 12px",borderRadius:10,border:"1px solid #e2e8f0",background:"#f8fafc",borderLeft:"3px solid "+c.color}},
             React.createElement("div",{style:{fontSize:11,fontWeight:700,color:c.color,marginBottom:6}},c.label),
@@ -5526,7 +5552,7 @@ function IjroView({showToast}){
           );
         }),
         React.createElement("div",{style:{marginTop:8,padding:"10px 12px",borderRadius:10,border:"1.5px solid #059669",background:"#ecfdf5"}},
-          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#059669",marginBottom:6}},todayDay+"-"+monthName+" ijro etilgan"),
+          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#059669",marginBottom:6}},selDay+"-"+monthName+" ijro etilgan"),
           React.createElement("div",{style:{display:"flex",gap:12}},
             numInput("bugun_ijro","Ijro soni"),
             numInput("bugun_otgan","Sh. muddati o\u2018tgan")
