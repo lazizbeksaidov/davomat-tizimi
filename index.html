@@ -5289,7 +5289,7 @@ function IjroView({showToast}){
   var[selectedDate,setSelectedDate]=useState(fmtDate(new Date()));
 
   useEffect(function(){
-    var ref=db.ref("ijro/"+selectedDate);
+    var ref=db.ref("telegram_config/ijro/"+selectedDate);
     var onVal=ref.on("value",function(snap){
       setIjroData(snap.val()||{});
       setLoading(false);
@@ -5326,7 +5326,7 @@ function IjroView({showToast}){
     rec.jami_toplar=tT;
     rec.name=editEmp.name;
     rec.lavozimi=editEmp.lavozimi;
-    db.ref("ijro/"+selectedDate+"/"+ek).set(rec).then(function(){
+    db.ref("telegram_config/ijro/"+selectedDate+"/"+ek).set(rec).then(function(){
       showToast("Saqlandi");setSaving(false);setEditEmp(null);
     }).catch(function(err){showToast("Xatolik: "+err.message);setSaving(false)});
   }
