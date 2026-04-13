@@ -2564,6 +2564,8 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div id="root"></div>
@@ -2677,13 +2679,31 @@ const STATUSES = {
 };
 
 /* ═══ SELFIE OFFICE GPS ═══ */
-const OFFICE_LOCATION = {
+var OFFICE_LOCATION = {
   lat: 40.1034,
   lng: 65.3740,
   radius: 200,
   name: "Investitsiyalar, sanoat va savdo boshqarmasi",
   address: "Navoiy sh., Amir Temur ko'chasi, 77A"
 };
+function loadOfficeLocation(){
+  return db.ref("office_location").once("value").then(function(snap){
+    var v=snap.val();
+    if(v){
+      OFFICE_LOCATION.lat=v.lat||OFFICE_LOCATION.lat;
+      OFFICE_LOCATION.lng=v.lng||OFFICE_LOCATION.lng;
+      OFFICE_LOCATION.radius=v.radius||OFFICE_LOCATION.radius;
+      OFFICE_LOCATION.name=v.name||OFFICE_LOCATION.name;
+      OFFICE_LOCATION.address=v.address||OFFICE_LOCATION.address;
+    }
+    return OFFICE_LOCATION;
+  }).catch(function(){return OFFICE_LOCATION});
+}
+function saveOfficeLocation(loc){
+  OFFICE_LOCATION=Object.assign(OFFICE_LOCATION,loc);
+  return db.ref("office_location").set({lat:loc.lat,lng:loc.lng,radius:loc.radius,name:loc.name,address:loc.address});
+}
+loadOfficeLocation();
 /* ═══ TELEGRAM BOT INTEGRATION ═══ */
 var _telegramConfig={chatId:"",enabled:false,notifyLate:true,notifyAbsent:true};
 function loadTelegramConfig(){
@@ -5234,6 +5254,188 @@ function AIAnalysisView({showToast}){
           </div>
         </div>
       </div>}
+    </div>
+  );
+}
+
+/* ═══ LOCATION SETTINGS (Hudud sozlamalari) ═══ */
+function LocationSettings({showToast}){
+  var{useState,useEffect,useRef,useCallback}=React;
+  var[loc,setLoc]=useState({lat:OFFICE_LOCATION.lat,lng:OFFICE_LOCATION.lng,radius:OFFICE_LOCATION.radius,name:OFFICE_LOCATION.name,address:OFFICE_LOCATION.address});
+  var[saving,setSaving]=useState(false);
+  var[loading,setLoading]=useState(true);
+  var mapRef=useRef(null);
+  var mapInstanceRef=useRef(null);
+  var markerRef=useRef(null);
+  var circleRef=useRef(null);
+
+  useEffect(function(){
+    loadOfficeLocation().then(function(ol){
+      setLoc({lat:ol.lat,lng:ol.lng,radius:ol.radius,name:ol.name,address:ol.address});
+      setLoading(false);
+    });
+  },[]);
+
+  /* Leaflet xarita */
+  useEffect(function(){
+    if(loading||!mapRef.current||mapInstanceRef.current)return;
+    var map=L.map(mapRef.current,{scrollWheelZoom:true,zoomControl:true}).setView([loc.lat,loc.lng],16);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      attribution:'&copy; OpenStreetMap',maxZoom:19
+    }).addTo(map);
+
+    var marker=L.marker([loc.lat,loc.lng],{draggable:true}).addTo(map);
+    var circle=L.circle([loc.lat,loc.lng],{radius:loc.radius,color:"#465fff",fillColor:"#465fff",fillOpacity:0.12,weight:2}).addTo(map);
+
+    marker.on("dragend",function(){
+      var p=marker.getLatLng();
+      circle.setLatLng(p);
+      setLoc(function(prev){return Object.assign({},prev,{lat:Math.round(p.lat*1000000)/1000000,lng:Math.round(p.lng*1000000)/1000000})});
+    });
+    map.on("click",function(e){
+      marker.setLatLng(e.latlng);
+      circle.setLatLng(e.latlng);
+      setLoc(function(prev){return Object.assign({},prev,{lat:Math.round(e.latlng.lat*1000000)/1000000,lng:Math.round(e.latlng.lng*1000000)/1000000})});
+    });
+
+    mapInstanceRef.current=map;
+    markerRef.current=marker;
+    circleRef.current=circle;
+
+    setTimeout(function(){map.invalidateSize()},200);
+    return function(){map.remove();mapInstanceRef.current=null};
+  },[loading]);
+
+  /* Radius o'zgarganda doirani yangilash */
+  useEffect(function(){
+    if(circleRef.current)circleRef.current.setRadius(loc.radius);
+  },[loc.radius]);
+
+  /* Marker/circle pozitsiyasini sync */
+  useEffect(function(){
+    if(markerRef.current&&mapInstanceRef.current){
+      markerRef.current.setLatLng([loc.lat,loc.lng]);
+      circleRef.current.setLatLng([loc.lat,loc.lng]);
+    }
+  },[loc.lat,loc.lng]);
+
+  function handleSave(){
+    if(!loc.name.trim()){showToast("Tashkilot nomini kiriting");return}
+    setSaving(true);
+    saveOfficeLocation(loc).then(function(){
+      showToast("Hudud sozlamalari saqlandi");setSaving(false);
+    }).catch(function(){showToast("Xatolik yuz berdi");setSaving(false)});
+  }
+
+  function handleLocateMe(){
+    if(!navigator.geolocation){showToast("GPS qo'llab-quvvatlanmaydi");return}
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var la=Math.round(pos.coords.latitude*1000000)/1000000;
+      var ln=Math.round(pos.coords.longitude*1000000)/1000000;
+      setLoc(function(prev){return Object.assign({},prev,{lat:la,lng:ln})});
+      if(mapInstanceRef.current)mapInstanceRef.current.setView([la,ln],17);
+    },function(){showToast("GPS ruxsati berilmadi")},{enableHighAccuracy:true});
+  }
+
+  if(loading)return React.createElement("div",{style:{padding:40,textAlign:"center"}},"Yuklanmoqda...");
+
+  var radiusOptions=[50,100,150,200,300,500];
+
+  return(
+    <div style={{animation:"fadeUp .35s ease"}}>
+      <div className="page-header">
+        <div><div className="page-title">Ishxona Hududi Sozlamalari</div><div className="page-subtitle">Selfie davomat uchun GPS chegarasini belgilang</div></div>
+      </div>
+
+      {/* Xarita */}
+      <div className="table-card" style={{marginBottom:16}}>
+        <div className="table-header">
+          <div><div className="table-title">📍 Xaritada joyni belgilang</div><div className="table-meta">Bosing yoki markerni suring</div></div>
+          <button className="action-btn" onClick={handleLocateMe} style={{fontSize:12}}>📡 Mening joylashuvim</button>
+        </div>
+        <div style={{padding:0,position:"relative"}}>
+          <div ref={mapRef} style={{height:400,width:"100%",borderRadius:"0 0 14px 14px",zIndex:1}}/>
+        </div>
+      </div>
+
+      {/* Radius */}
+      <div className="table-card" style={{marginBottom:16}}>
+        <div className="table-header">
+          <div><div className="table-title">📐 Ruxsat etilgan radius</div><div className="table-meta">Xodim shu doira ichida bo'lishi kerak</div></div>
+          <div style={{fontFamily:"JetBrains Mono,monospace",fontSize:18,fontWeight:800,color:"var(--navy)"}}>{loc.radius}m</div>
+        </div>
+        <div style={{padding:"18px 22px"}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>
+            {radiusOptions.map(function(r){
+              return <button key={r} onClick={function(){setLoc(function(p){return Object.assign({},p,{radius:r})})}}
+                className="action-btn" style={{
+                  background:loc.radius===r?"var(--navy)":"var(--surface)",
+                  color:loc.radius===r?"#fff":"var(--t2)",
+                  borderColor:loc.radius===r?"var(--navy)":"var(--border)",
+                  fontWeight:700,minWidth:60
+                }}>{r}m</button>
+            })}
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:11,color:"var(--t4)",fontWeight:600}}>Boshqa:</span>
+            <input type="number" value={loc.radius} min={10} max={1000} step={10}
+              onChange={function(e){var v=parseInt(e.target.value)||50;setLoc(function(p){return Object.assign({},p,{radius:Math.max(10,Math.min(1000,v))})})}}
+              className="text-input" style={{width:100,fontFamily:"JetBrains Mono,monospace",fontSize:13,textAlign:"center"}}/>
+            <span style={{fontSize:11,color:"var(--t4)"}}>metr</span>
+          </div>
+          <div style={{marginTop:14,padding:"10px 14px",borderRadius:8,background:loc.radius<=100?"var(--emerald-bg)":loc.radius<=200?"rgba(251,191,36,.08)":"rgba(231,76,60,.06)",
+            border:"1px solid "+(loc.radius<=100?"var(--emerald)":loc.radius<=200?"rgba(251,191,36,.3)":"rgba(231,76,60,.2)"),fontSize:12,color:"var(--t2)"}}>
+            {loc.radius<=50?"🔒 Juda qat'iy — faqat bino ichidagilar":
+             loc.radius<=100?"✅ Tavsiya etiladi — bino va hovli":
+             loc.radius<=200?"⚠️ O'rtacha — yaqin atrofni ham qamraydi":
+             "🔓 Keng — uzoqroq masofadan ham ruxsat beriladi"}
+          </div>
+        </div>
+      </div>
+
+      {/* Tashkilot ma'lumotlari */}
+      <div className="table-card" style={{marginBottom:16}}>
+        <div className="table-header">
+          <div><div className="table-title">🏢 Tashkilot ma'lumotlari</div><div className="table-meta">Hisobotlarda ko'rsatiladi</div></div>
+        </div>
+        <div style={{padding:"18px 22px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:14}}>
+            <div>
+              <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Tashkilot nomi</label>
+              <input type="text" value={loc.name} onChange={function(e){setLoc(function(p){return Object.assign({},p,{name:e.target.value})})}}
+                className="text-input" style={{fontSize:12}} placeholder="Boshqarma nomi"/>
+            </div>
+            <div>
+              <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Manzil</label>
+              <input type="text" value={loc.address} onChange={function(e){setLoc(function(p){return Object.assign({},p,{address:e.target.value})})}}
+                className="text-input" style={{fontSize:12}} placeholder="Ko'cha, uy raqami"/>
+            </div>
+          </div>
+          <div style={{marginTop:14,display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div>
+              <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Kenglik (Lat)</label>
+              <input type="number" step="0.000001" value={loc.lat} onChange={function(e){setLoc(function(p){return Object.assign({},p,{lat:parseFloat(e.target.value)||0})})}}
+                className="text-input" style={{fontFamily:"JetBrains Mono,monospace",fontSize:12}}/>
+            </div>
+            <div>
+              <label style={{display:"block",fontSize:11,fontWeight:700,color:"var(--t3)",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Uzunlik (Lng)</label>
+              <input type="number" step="0.000001" value={loc.lng} onChange={function(e){setLoc(function(p){return Object.assign({},p,{lng:parseFloat(e.target.value)||0})})}}
+                className="text-input" style={{fontFamily:"JetBrains Mono,monospace",fontSize:12}}/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Saqlash */}
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+        <button className="action-btn primary" onClick={handleSave} disabled={saving} style={{fontSize:13,padding:"10px 24px"}}>
+          {saving?"Saqlanmoqda...":"💾 Saqlash"}
+        </button>
+        <button className="action-btn" onClick={function(){
+          setLoc({lat:40.1034,lng:65.3740,radius:200,name:"Investitsiyalar, sanoat va savdo boshqarmasi",address:"Navoiy sh., Amir Temur ko'chasi, 77A"});
+          if(mapInstanceRef.current)mapInstanceRef.current.setView([40.1034,65.3740],16);
+        }}>🔄 Boshlang'ich holatga</button>
+      </div>
     </div>
   );
 }
@@ -8387,6 +8589,7 @@ function App(){
     {k:"selfie",icon:"📸",label:"Selfie Davomat"},
     {k:"empNotes",icon:"✏️",label:"Xodim Izohlari"},
     ...((isAdmin||isObserver)?[{k:"aiAnalysis",icon:"🤖",label:"AI Tahlil"}]:[]),
+    ...(isAdmin?[{k:"location",icon:"📍",label:"Hudud"}]:[]),
     ...(isAdmin?[{k:"telegram",icon:"📨",label:"Telegram Bot"}]:[]),
     ...(isAdmin?[{k:"accounts",icon:"🔑",label:"Akkauntlar"}]:[])
   ];
@@ -8398,7 +8601,7 @@ function App(){
     {k:"empNotes",icon:"✏️",label:"Izoh yozish"}
   ];
   const navItems=canManage?adminNav:empNav;
-  const viewLabels={davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",location:"Hudud Sozlamalari",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":isObserver?"Kuzatuvchi":"Xodim";
 
   return(
@@ -8583,6 +8786,7 @@ function App(){
                 {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
                 {view==="empNotes"&&<EmployeeNotesView user={user}/>}
                 {view==="aiAnalysis"&&(isAdmin||isObserver)&&<AIAnalysisView showToast={showToast}/>}
+                {view==="location"&&isAdmin&&<LocationSettings showToast={showToast}/>}
                 {view==="telegram"&&isAdmin&&<TelegramSettings showToast={showToast}/>}
                 {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
               </>

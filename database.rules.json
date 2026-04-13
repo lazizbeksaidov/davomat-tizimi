@@ -62,6 +62,11 @@
       ".read": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')",
       ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')"
     },
+    "office_location": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')",
+      ".validate": "newData.hasChild('lat') && newData.hasChild('lng') && newData.hasChild('radius')"
+    },
     "config": {
       ".read": false,
       ".write": false
