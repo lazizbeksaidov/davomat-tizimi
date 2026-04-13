@@ -6273,29 +6273,47 @@ function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
 
 /* ═══ SELFIE HISTORY VIEW ═══ */
 /* ═══ SELFIE MINI-MAP ═══ */
-function SelfieLocationMap({lat,lng,name,distance,gpsOk}){
+function SelfieLocationMap({lat,lng,name,distance,gpsOk,live}){
   var mapEl=React.useRef(null);
   var mapObj=React.useRef(null);
+  var empMarkerRef=React.useRef(null);
+  var empCircleRef=React.useRef(null);
+  var initDone=React.useRef(false);
+
+  /* Xarita yaratish (faqat 1 marta) */
   React.useEffect(function(){
-    if(!mapEl.current||mapObj.current)return;
+    if(!mapEl.current||initDone.current)return;
     if(!lat||!lng||lat===0)return;
-    var map=L.map(mapEl.current,{scrollWheelZoom:false,zoomControl:false,dragging:false,attributionControl:false}).setView([lat,lng],17);
+    initDone.current=true;
+    var map=L.map(mapEl.current,{scrollWheelZoom:false,zoomControl:false,dragging:!live,attributionControl:false}).setView([OFFICE_LOCATION.lat,OFFICE_LOCATION.lng],17);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(map);
     /* Ofis doirasi */
-    L.circle([OFFICE_LOCATION.lat,OFFICE_LOCATION.lng],{radius:OFFICE_LOCATION.radius,color:"#465fff",fillColor:"#465fff",fillOpacity:0.10,weight:1.5,dashArray:"6 4"}).addTo(map);
+    L.circle([OFFICE_LOCATION.lat,OFFICE_LOCATION.lng],{radius:OFFICE_LOCATION.radius,color:"#465fff",fillColor:"#465fff",fillOpacity:0.10,weight:2}).addTo(map);
     /* Ofis markeri */
-    L.circleMarker([OFFICE_LOCATION.lat,OFFICE_LOCATION.lng],{radius:5,color:"#465fff",fillColor:"#465fff",fillOpacity:1,weight:2}).addTo(map).bindTooltip("Ofis",{permanent:false,direction:"top",className:"leaflet-tooltip"});
-    /* Xodim joylashuvi */
+    L.circleMarker([OFFICE_LOCATION.lat,OFFICE_LOCATION.lng],{radius:6,color:"#465fff",fillColor:"#465fff",fillOpacity:1,weight:2}).addTo(map).bindTooltip("Ofis",{permanent:false,direction:"top"});
+    /* Xodim markeri */
     var empColor=gpsOk?"#0d7a5b":"#c0392b";
-    L.circleMarker([lat,lng],{radius:7,color:empColor,fillColor:empColor,fillOpacity:1,weight:2,className:"emp-gps-marker"}).addTo(map).bindTooltip(name+" ("+Math.round(distance)+"m)",{permanent:true,direction:"top",className:"leaflet-tooltip"});
-    /* Fit bounds: ofis + xodim */
-    try{map.fitBounds([[OFFICE_LOCATION.lat,OFFICE_LOCATION.lng],[lat,lng]],{padding:[30,30],maxZoom:18})}catch(e){}
+    var empMarker=L.circleMarker([lat,lng],{radius:8,color:empColor,fillColor:empColor,fillOpacity:1,weight:2}).addTo(map);
+    empMarker.bindTooltip(name+" ("+Math.round(distance)+"m)",{permanent:true,direction:"top",offset:[0,-10]});
+    empMarkerRef.current=empMarker;
+    /* Fit bounds */
+    try{map.fitBounds([[OFFICE_LOCATION.lat,OFFICE_LOCATION.lng],[lat,lng]],{padding:[35,35],maxZoom:18})}catch(e){}
     mapObj.current=map;
-    setTimeout(function(){map.invalidateSize()},150);
-    return function(){map.remove();mapObj.current=null};
+    setTimeout(function(){map.invalidateSize()},200);
+    return function(){map.remove();mapObj.current=null;initDone.current=false};
   },[]);
+
+  /* Marker pozitsiyasini yangilash (live rejimda GPS o'zgarganda) */
+  React.useEffect(function(){
+    if(!empMarkerRef.current||!lat||!lng)return;
+    var empColor=gpsOk?"#0d7a5b":"#c0392b";
+    empMarkerRef.current.setLatLng([lat,lng]);
+    empMarkerRef.current.setStyle({color:empColor,fillColor:empColor});
+    empMarkerRef.current.setTooltipContent(name+" ("+Math.round(distance)+"m)");
+  },[lat,lng,distance,gpsOk]);
+
   if(!lat||!lng||lat===0)return null;
-  return React.createElement("div",{style:{height:180,borderRadius:10,overflow:"hidden",border:"1px solid var(--border)",marginTop:8}},
+  return React.createElement("div",{style:{height:180,borderRadius:10,overflow:"hidden",border:"1px solid "+(gpsOk?"rgba(13,122,91,.2)":"rgba(192,57,43,.2)"),marginTop:8,marginBottom:live?14:0}},
     React.createElement("div",{ref:mapEl,style:{height:"100%",width:"100%"}})
   );
 }
@@ -6509,12 +6527,34 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
     if(!navigator.geolocation){setGpsStatus("unavailable");return;}
     if(!isSecure){setGpsStatus("insecure");return;}
 
+    var bestReading=null;
     function checkPos(){
       navigator.geolocation.getCurrentPosition(
         function(pos){
-          var dist=selfieCalcDist(pos.coords.latitude,pos.coords.longitude,OFFICE_LOCATION.lat,OFFICE_LOCATION.lng);
-          setGpsData({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:Math.round(pos.coords.accuracy),distance:Math.round(dist)});
-          setGpsStatus(dist<=OFFICE_LOCATION.radius?"ok":"far");
+          var acc=pos.coords.accuracy;
+          var lat=pos.coords.latitude;
+          var lng=pos.coords.longitude;
+          var dist=selfieCalcDist(lat,lng,OFFICE_LOCATION.lat,OFFICE_LOCATION.lng);
+          var distRound=Math.round(dist);
+          var accRound=Math.round(acc);
+          /* Eng yaxshi o'lchov (accuracy past bo'lsa) saqlanadi */
+          if(!bestReading||acc<bestReading.accuracy){
+            bestReading={lat:lat,lng:lng,accuracy:acc,distance:dist};
+          }
+          /* Xodimni hududda deb hisoblash:
+             - Agar masofa <= radius: aniq ichida
+             - Agar masofa <= radius + accuracy/2: GPS xatosi ichida (foyda xodimga)
+             - Agar eng yaxshi o'lchov radius ichida edi: o'sha saqlanadi */
+          var effectiveDist=dist;
+          if(bestReading.distance<dist&&bestReading.accuracy<acc){
+            effectiveDist=bestReading.distance;
+            lat=bestReading.lat;lng=bestReading.lng;
+            acc=bestReading.accuracy;accRound=Math.round(acc);
+            distRound=Math.round(effectiveDist);
+          }
+          var isInside=effectiveDist<=OFFICE_LOCATION.radius||(effectiveDist<=OFFICE_LOCATION.radius+Math.min(acc*0.5,30));
+          setGpsData({lat:lat,lng:lng,accuracy:accRound,distance:distRound});
+          setGpsStatus(isInside?"ok":"far");
         },
         function(err){
           if(err.code===1)setGpsStatus("denied");
@@ -6522,12 +6562,18 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           else if(err.code===3)setGpsStatus("timeout");
           else setGpsStatus("error");
         },
-        {enableHighAccuracy:true,timeout:10000,maximumAge:3000}
+        {enableHighAccuracy:true,timeout:15000,maximumAge:0}
       );
     }
     checkPos();
-    gpsTimerRef.current=setInterval(checkPos,5000);
-    return function(){if(gpsTimerRef.current)clearInterval(gpsTimerRef.current);};
+    /* Tez-tez tekshirish: dastlab har 3s, keyin har 5s */
+    var fastTimer=setInterval(checkPos,3000);
+    var slowTimer=setTimeout(function(){
+      clearInterval(fastTimer);
+      gpsTimerRef.current=setInterval(checkPos,5000);
+    },15000);
+    gpsTimerRef.current=fastTimer;
+    return function(){clearInterval(fastTimer);clearTimeout(slowTimer);if(gpsTimerRef.current)clearInterval(gpsTimerRef.current);};
   },[]);
 
   // Cleanup
@@ -6902,6 +6948,9 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           React.createElement("div",{style:{height:"100%",width:Math.min(100,Math.round(gpsData.distance/OFFICE_LOCATION.radius*100))+"%",background:gpsStatus==="ok"?"var(--emerald)":"var(--ruby)",transition:"width .4s"}})
         )
       ),
+
+      // Xodim joylashuvi mini-xarita (live — GPS yangilanganda marker harakatlanadi)
+      gpsData&&gpsData.lat&&React.createElement(SelfieLocationMap,{lat:gpsData.lat,lng:gpsData.lng,name:user.name,distance:gpsData.distance,gpsOk:gpsOk,live:true}),
 
       // Camera error
       cameraError&&React.createElement("div",{style:{padding:"14px",background:"var(--ruby-bg)",border:"1px solid rgba(192,57,43,.15)",borderRadius:"var(--r)",marginBottom:14,fontSize:12,color:"var(--ruby)",whiteSpace:"pre-line",lineHeight:1.6}},cameraError),
