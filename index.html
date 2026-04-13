@@ -5442,65 +5442,30 @@ function IjroView({showToast}){
   var selDateStr=selMonth+"-"+String(selDay).padStart(2,"0");
   var todayDay=_today.getDate();
 
-  useEffect(function(){
+  /* === Ko'chirish funksiyasi (manual tugma uchun ham ishlatiladi) === */
+  function doCopyFromPrev(targetDate,forceOverwrite){
     setLoading(true);
-    var cancelled=false;
-    var curPrefix="ijro_"+selDateStr+"_";
-    var _liveRef=null,_liveHandler=null;
+    var targetPrefix="ijro_"+targetDate+"_";
 
-    function startLive(){
-      _liveRef=db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff");
-      _liveHandler=_liveRef.on("value",function(snap){
-        if(cancelled)return;
-        var d={};
-        snap.forEach(function(ch){d[ch.key.replace(curPrefix,"")]=ch.val()});
-        if(Object.keys(d).length>0)setIjroData(d);
-      });
-    }
-
-    console.log("[IJRO] "+selDateStr+" uchun ma'lumot tekshirilmoqda...");
-    db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff")
-      .once("value").then(function(snap){
-        if(cancelled)return;
-        var d={};
-        snap.forEach(function(ch){d[ch.key.replace(curPrefix,"")]=ch.val()});
-        console.log("[IJRO] "+selDateStr+": topilgan yozuvlar="+Object.keys(d).length);
-        if(Object.keys(d).length>0){
-          setIjroData(d);
-          setLoading(false);
-          startLive();
-        }else{
-          console.log("[IJRO] Ma'lumot yo'q, oldingi kundan ko'chirish boshlanmoqda...");
-          findAndCopy(1);
-        }
-      }).catch(function(err){
-        console.error("[IJRO] Yuklash xato:",err);
-        if(!cancelled){setIjroData({});setLoading(false);}
-      });
-
-    function findAndCopy(daysBack){
-      if(cancelled)return;
-      if(daysBack>7){
-        console.log("[IJRO] 7 kun ichida ma'lumot topilmadi");
-        setIjroData({});setLoading(false);startLive();return;
-      }
-      var parts=selDateStr.split("-");
+    function tryDay(daysBack){
+      if(daysBack>14){setIjroData({});setLoading(false);showToast("14 kun ichida ma'lumot topilmadi");return}
+      var parts=targetDate.split("-");
       var base=new Date(+parts[0],+parts[1]-1,+parts[2]);
       base.setDate(base.getDate()-daysBack);
       var ps=base.getFullYear()+"-"+String(base.getMonth()+1).padStart(2,"0")+"-"+String(base.getDate()).padStart(2,"0");
       var pp="ijro_"+ps+"_";
-      console.log("[IJRO] "+daysBack+" kun orqaga tekshirish: "+ps);
+      console.log("[COPY] "+daysBack+" kun orqaga: "+ps);
       db.ref("employee_notes").orderByKey().startAt(pp).endAt(pp+"\uf8ff")
         .once("value").then(function(psnap){
-          if(cancelled)return;
-          if(!psnap.exists()||psnap.numChildren()===0){
-            console.log("[IJRO] "+ps+" da ma'lumot yo'q, keyingisiga o'tilmoqda...");
-            findAndCopy(daysBack+1);return;
-          }
-          console.log("[IJRO] "+ps+" da "+psnap.numChildren()+" ta yozuv topildi! Ko'chirish...");
+          if(!psnap.exists()||psnap.numChildren()===0){tryDay(daysBack+1);return}
+          var validCount=0;
+          psnap.forEach(function(ch){var v=ch.val();if(v&&(v.empName||v.name))validCount++});
+          if(validCount<3){tryDay(daysBack+1);return}
+          console.log("[COPY] "+ps+" da "+psnap.numChildren()+" yozuv topildi, ko'chirilmoqda...");
           var pd={},ts=Date.now(),promises=[];
           psnap.forEach(function(ch){
             var oldRec=ch.val();
+            if(!oldRec||(!oldRec.empName&&!oldRec.name))return;
             var ek=ch.key.replace(pp,"");
             var rec={
               empName:oldRec.empName||oldRec.name||ek.replace(/_/g," "),
@@ -5515,31 +5480,92 @@ function IjroView({showToast}){
             });
             var tO=0,tT=0;
             IJRO_CATEGORIES.forEach(function(c){tO+=(rec[c.key+"_o"]||0);tT+=(rec[c.key+"_t"]||0)});
-            rec.jami=tO+tT;
-            rec.jami_otgan=tO;
-            rec.jami_toplar=tT;
-            rec.bugun_ijro=0;
-            rec.bugun_otgan=0;
+            rec.jami=tO+tT;rec.jami_otgan=tO;rec.jami_toplar=tT;
+            rec.bugun_ijro=0;rec.bugun_otgan=0;
             pd[ek]=rec;
-            var newKey="ijro_"+selDateStr+"_"+ek;
-            promises.push(db.ref("employee_notes/"+newKey).set(rec));
+            promises.push(db.ref("employee_notes/ijro_"+targetDate+"_"+ek).set(rec));
           });
+          if(promises.length===0){tryDay(daysBack+1);return}
           setIjroData(pd);
           setLoading(false);
-          showToast(ps+" dan ko\u2018chirildi (bugun_ijro: 0)");
+          showToast(ps+" dan "+promises.length+" xodim ko\u2018chirildi \u2705");
           Promise.all(promises).then(function(){
-            console.log("[IJRO] "+selDateStr+": "+promises.length+" ta yozuv Firebase ga saqlandi!");
-            if(!cancelled)startLive();
+            console.log("[COPY] Firebase ga "+promises.length+" yozuv saqlandi!");
           }).catch(function(e){
-            console.error("[IJRO] Firebase yozish xato:",e.message);
+            console.error("[COPY] Xato:",e.message);
             showToast("Firebase xato: "+e.message);
-            if(!cancelled)startLive();
           });
-        }).catch(function(e){
-          console.error("[IJRO] "+ps+" o'qish xato:",e);
-          findAndCopy(daysBack+1);
-        });
+        }).catch(function(e){console.error("[COPY] O'qish xato:",e);tryDay(daysBack+1)});
     }
+
+    if(forceOverwrite){
+      tryDay(1);
+    }else{
+      db.ref("employee_notes").orderByKey().startAt(targetPrefix).endAt(targetPrefix+"\uf8ff")
+        .once("value").then(function(snap){
+          var validCount=0;
+          snap.forEach(function(ch){var v=ch.val();if(v&&(v.empName||v.name)&&v.jami!==undefined)validCount++});
+          console.log("[COPY] "+targetDate+": mavjud to'liq yozuvlar="+validCount+"/"+IJRO_EMPLOYEES.length);
+          if(validCount>=IJRO_EMPLOYEES.length){
+            var d={};
+            snap.forEach(function(ch){d[ch.key.replace(targetPrefix,"")]=ch.val()});
+            setIjroData(d);setLoading(false);
+          }else{
+            console.log("[COPY] To'liq emas ("+validCount+"/"+IJRO_EMPLOYEES.length+"), ko'chirish...");
+            tryDay(1);
+          }
+        }).catch(function(){tryDay(1)});
+    }
+  }
+
+  useEffect(function(){
+    var cancelled=false;
+    var curPrefix="ijro_"+selDateStr+"_";
+    var _liveRef=null,_liveHandler=null;
+
+    function startLive(){
+      _liveRef=db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff");
+      _liveHandler=_liveRef.on("value",function(snap){
+        if(cancelled)return;
+        var d={};
+        snap.forEach(function(ch){d[ch.key.replace(curPrefix,"")]=ch.val()});
+        if(Object.keys(d).length>0)setIjroData(d);
+      });
+    }
+
+    setLoading(true);
+    console.log("[IJRO] "+selDateStr+" yuklanmoqda...");
+    db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff")
+      .once("value").then(function(snap){
+        if(cancelled)return;
+        /* Yozuvlarni tekshir: haqiqiy (empName bor, jami mavjud) va noto'liq */
+        var validCount=0,d={};
+        snap.forEach(function(ch){
+          var v=ch.val();
+          d[ch.key.replace(curPrefix,"")]=v;
+          if(v&&(v.empName||v.name)&&v.jami!==undefined)validCount++;
+        });
+        console.log("[IJRO] "+selDateStr+": to'liq="+validCount+", jami="+Object.keys(d).length);
+        if(validCount>=IJRO_EMPLOYEES.length){
+          setIjroData(d);
+          setLoading(false);
+          startLive();
+        }else if(validCount>0&&validCount<IJRO_EMPLOYEES.length){
+          /* Qisman data bor — oldingi kundan to'ldirish */
+          console.log("[IJRO] Qisman data bor ("+validCount+"/"+IJRO_EMPLOYEES.length+"), to'ldirish...");
+          setIjroData(d);
+          setLoading(false);
+          startLive();
+        }else{
+          /* Data yo'q yoki hammasi bo'sh — ko'chirish */
+          console.log("[IJRO] Data yo'q, oldingi kundan ko'chirish...");
+          doCopyFromPrev(selDateStr,false);
+          setTimeout(function(){if(!cancelled)startLive()},3000);
+        }
+      }).catch(function(err){
+        console.error("[IJRO] Xato:",err);
+        if(!cancelled){setIjroData({});setLoading(false);}
+      });
 
     return function(){
       cancelled=true;
@@ -5828,7 +5854,10 @@ function IjroView({showToast}){
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
             React.createElement("button",{onClick:prevDay,style:_nb},"\u25C0"),
             React.createElement("div",{onClick:openDayCal,style:{padding:"5px 14px",borderRadius:8,background:"#059669",color:"#fff",fontWeight:700,fontSize:12,fontFamily:"JetBrains Mono,monospace",minWidth:120,textAlign:"center",cursor:"pointer"}},selDay+"-"+monthName+" \u25BE"),
-            React.createElement("button",{onClick:nextDay,style:_nb},"\u25B6")
+            React.createElement("button",{onClick:nextDay,style:_nb},"\u25B6"),
+            React.createElement("button",{onClick:function(){doCopyFromPrev(selDateStr,true)},
+              style:{marginLeft:6,padding:"5px 10px",borderRadius:8,border:"none",background:"#f59e0b",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}},
+              "\uD83D\uDD04 Ko\u2018chirish")
           ),
           showDayCal&&React.createElement("div",{style:_dp},
             React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}},
