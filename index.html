@@ -5440,55 +5440,70 @@ function IjroView({showToast}){
   useEffect(function(){
     setLoading(true);
     var curPrefix="ijro_"+selDateStr+"_";
-    var q=db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff");
-    var onVal=q.on("value",function(snap){
-      var d={};
-      snap.forEach(function(ch){d[ch.key.replace(curPrefix,"")]=ch.val()});
-      if(Object.keys(d).length>0){
-        setIjroData(d);
-        setLoading(false);
-      }else{
-        /* Oldingi kunlardan ma'lumot izlash (7 kungacha) */
-        var parts=selDateStr.split("-");
-        var baseDate=new Date(+parts[0],+parts[1]-1,+parts[2]);
-        function tryPrev(daysBack){
-          if(daysBack>7){setIjroData({});setLoading(false);return}
-          var prev=new Date(baseDate);
-          prev.setDate(prev.getDate()-daysBack);
-          var ps=prev.getFullYear()+"-"+String(prev.getMonth()+1).padStart(2,"0")+"-"+String(prev.getDate()).padStart(2,"0");
-          var pp="ijro_"+ps+"_";
-          db.ref("employee_notes").orderByKey().startAt(pp).endAt(pp+"\uf8ff").once("value",function(psnap){
-            if(!psnap.exists()||psnap.numChildren()===0){tryPrev(daysBack+1);return}
-            var pd={};
-            var upd={};
-            var ts=Date.now();
-            psnap.forEach(function(ch){
-              var rec=Object.assign({},ch.val());
-              var ek=ch.key.replace(pp,"");
-              if(rec){
-                rec.bugun_ijro=0;
-                rec.bugun_otgan=0;
-                rec.timestamp=ts;
-              }
-              pd[ek]=rec;
-              upd["employee_notes/ijro_"+selDateStr+"_"+ek]=rec;
-            });
-            /* Yangi kunga avtomatik saqlash */
-            db.ref().update(upd).then(function(){
-              console.log(selDateStr+": "+ps+" dan ko\u2018chirildi");
-            }).catch(function(){});
-            setIjroData(pd);
-            setLoading(false);
-          },function(){tryPrev(daysBack+1)});
+    var _liveRef=null,_liveHandler=null;
+
+    /* Real-time listener (faqat data bor bo'lganda ishga tushadi) */
+    function startLive(){
+      _liveRef=db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff");
+      _liveHandler=_liveRef.on("value",function(snap){
+        var d={};
+        snap.forEach(function(ch){d[ch.key.replace(curPrefix,"")]=ch.val()});
+        if(Object.keys(d).length>0)setIjroData(d);
+      });
+    }
+
+    /* 1-qadam: bugungi kunni tekshir */
+    db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff")
+      .once("value").then(function(snap){
+        var d={};
+        snap.forEach(function(ch){d[ch.key.replace(curPrefix,"")]=ch.val()});
+        if(Object.keys(d).length>0){
+          setIjroData(d);
+          setLoading(false);
+          startLive();
+        }else{
+          findAndCopy(1);
         }
-        tryPrev(1);
-      }
-    },function(err){
-      console.error("Ijro load error:",err.code,err.message);
-      setIjroData({});
-      setLoading(false);
-    });
-    return function(){q.off("value",onVal)};
+      }).catch(function(err){
+        console.error("Ijro load:",err);
+        setIjroData({});setLoading(false);
+      });
+
+    /* 2-qadam: oldingi kunlardan izlash va ko'chirish */
+    function findAndCopy(daysBack){
+      if(daysBack>7){setIjroData({});setLoading(false);startLive();return}
+      var parts=selDateStr.split("-");
+      var base=new Date(+parts[0],+parts[1]-1,+parts[2]);
+      base.setDate(base.getDate()-daysBack);
+      var ps=base.getFullYear()+"-"+String(base.getMonth()+1).padStart(2,"0")+"-"+String(base.getDate()).padStart(2,"0");
+      var pp="ijro_"+ps+"_";
+      db.ref("employee_notes").orderByKey().startAt(pp).endAt(pp+"\uf8ff")
+        .once("value").then(function(psnap){
+          if(!psnap.exists()||psnap.numChildren()===0){findAndCopy(daysBack+1);return}
+          var pd={},upd={},ts=Date.now();
+          psnap.forEach(function(ch){
+            var rec=Object.assign({},ch.val());
+            var ek=ch.key.replace(pp,"");
+            rec.bugun_ijro=0;
+            rec.bugun_otgan=0;
+            rec.timestamp=ts;
+            pd[ek]=rec;
+            upd["employee_notes/ijro_"+selDateStr+"_"+ek]=rec;
+          });
+          setIjroData(pd);
+          setLoading(false);
+          showToast(ps+" dan ko\u2018chirildi (bugun ijro: 0)");
+          db.ref().update(upd).then(function(){
+            console.log(selDateStr+": "+ps+" dan saqlandi");
+            startLive();
+          }).catch(function(e){
+            console.error("Ko\u2018chirish xato:",e.message);
+            startLive();
+          });
+        }).catch(function(){findAndCopy(daysBack+1)});
+    }
+
+    return function(){if(_liveRef&&_liveHandler)_liveRef.off("value",_liveHandler)};
   },[selDateStr]);
 
   /* === Oldingi kun ma'lumotlarini taqqoslash uchun yuklash === */
