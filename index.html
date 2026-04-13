@@ -5279,19 +5279,70 @@ var IJRO_CATEGORIES=[
   {key:"yuqori",label:"Yuqori turuvchi (nazorat)",short:"Yuqori t.",color:"#0891b2"},
   {key:"murojaat",label:"Murojaat",short:"Murojaat",color:"#7c3aed"}
 ];
-/* ── Avatar (xodim rasmi yoki fallback) ── */
+/* ── Avatar (xodim rasmi — canvas thumbnail) ── */
 var _AVG=[["#667eea","#764ba2"],["#f093fb","#f5576c"],["#4facfe","#00f2fe"],["#43e97b","#38f9d7"],["#fa709a","#fee140"],["#a18cd1","#fbc2eb"],["#fccb90","#d57eeb"],["#e0c3fc","#8ec5fc"],["#30cfd0","#330867"],["#a8edea","#fed6e3"],["#5ee7df","#b490ca"],["#d299c2","#fef9d7"],["#89f7fe","#66a6ff"],["#fddb92","#d1fdff"],["#f6d365","#fda085"],["#fbc2eb","#a6c1ee"],["#fdcbf1","#e6dee9"],["#a1c4fd","#c2e9fb"],["#d4fc79","#96e6a1"],["#84fab0","#8fd3f4"],["#cfd9df","#e2ebf0"]];
 function _avHash(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0}return Math.abs(h)}
-function empAvatar(name,size){
-  var sz=size||34;
-  var prof=EMPLOYEE_PROFILES[name];
-  if(prof&&prof.photo){
-    return React.createElement("img",{src:prof.photo,alt:name,style:{width:sz,height:sz,minWidth:sz,borderRadius:sz/2,objectFit:"cover",flexShrink:0,border:"2px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,.12)"}});
+
+/* Thumbnail cache — katta base64 rasmlardan kichik 80x80 rasm yasab saqlaydi */
+var _thumbCache={};
+var _thumbReady=false;
+var _thumbCallbacks=[];
+(function initThumbs(){
+  var names=Object.keys(EMPLOYEE_PROFILES);
+  var done=0,total=0;
+  names.forEach(function(name){
+    var prof=EMPLOYEE_PROFILES[name];
+    if(!prof||!prof.photo)return;
+    total++;
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var c=document.createElement("canvas");
+        c.width=80;c.height=80;
+        var ctx=c.getContext("2d");
+        var mn=Math.min(img.naturalWidth||img.width,img.naturalHeight||img.height);
+        var sx=((img.naturalWidth||img.width)-mn)/2;
+        var sy=((img.naturalHeight||img.height)-mn)/2;
+        ctx.drawImage(img,sx,sy,mn,mn,0,0,80,80);
+        _thumbCache[name]=c.toDataURL("image/jpeg",0.65);
+      }catch(e){}
+      done++;
+      if(done>=total){_thumbReady=true;_thumbCallbacks.forEach(function(fn){fn()});_thumbCallbacks=[];}
+    };
+    img.onerror=function(){done++;if(done>=total){_thumbReady=true;_thumbCallbacks.forEach(function(fn){fn()});_thumbCallbacks=[];}};
+    img.src=prof.photo;
+  });
+  if(total===0){_thumbReady=true;}
+})();
+
+/* EmpAvatar — React component: gradient → foto */
+function EmpAvatar(props){
+  var{useState:uS,useEffect:uE}=React;
+  var name=props.name;
+  var sz=props.size||34;
+  var[thumb,setThumb]=uS(_thumbCache[name]||null);
+
+  uE(function(){
+    if(thumb)return;
+    if(_thumbCache[name]){setThumb(_thumbCache[name]);return;}
+    if(_thumbReady)return;
+    var cb=function(){if(_thumbCache[name])setThumb(_thumbCache[name])};
+    _thumbCallbacks.push(cb);
+    return function(){var i=_thumbCallbacks.indexOf(cb);if(i>=0)_thumbCallbacks.splice(i,1)};
+  },[name]);
+
+  if(thumb){
+    return React.createElement("img",{src:thumb,alt:name,width:sz,height:sz,decoding:"async",
+      style:{width:sz,height:sz,minWidth:sz,borderRadius:sz/2,objectFit:"cover",flexShrink:0,border:"2px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,.12)"}});
   }
   var g=_AVG[_avHash(name)%_AVG.length];
   var parts=name.split(" ");
   var initials=(parts[0]?parts[0][0]:"")+(parts[1]?parts[1][0]:"");
   return React.createElement("div",{style:{width:sz,height:sz,minWidth:sz,borderRadius:sz/2,background:"linear-gradient(135deg,"+g[0]+","+g[1]+")",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:sz*0.38,fontWeight:800,fontFamily:"system-ui,sans-serif",textTransform:"uppercase",boxShadow:"0 2px 8px "+g[0]+"44",letterSpacing:".5px",flexShrink:0}},initials);
+}
+
+function empAvatar(name,size){
+  return React.createElement(EmpAvatar,{name:name,size:size||34});
 }
 
 /* ── AnimNum — counting animation ── */
