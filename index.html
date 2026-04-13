@@ -5260,16 +5260,27 @@ function AIAnalysisView({showToast}){
 }
 
 /* ═══ IJRO INTIZOMI ═══ */
+var IJRO_EMPLOYEES=[
+  {name:"Umrzoqov Bunyod",lavozimi:"Yig\u2018ma axborot-tahlil shu\u2018basi"},
+  {name:"Axadov Izzatullo",lavozimi:"Investitsiya dasturlarini shakllantirish, monitoring va postmonitoring qilish shu\u2018basi"},
+  {name:"Qurbonov Shavkat",lavozimi:"Investitsiyalarni o\u2018zlashtirishni ta\u2018minlash shu\u2018basi"},
+  {name:"Barnoqulov Shahzod",lavozimi:"Investorlar bilan ishlash, investitsiyalar portfelini shakllantirish va monitoring qilish shu\u2018basi"},
+  {name:"Nazarov Muzaffar",lavozimi:"Tashqi savdo shu\u2018basi"},
+  {name:"Narzullayev Rustam",lavozimi:"Loyihalarni ishlab chiqish shu\u2018ba"},
+  {name:"Pirbayev Berdiyor",lavozimi:"Buxgalteriya"},
+  {name:"Saidov Lazizbek",lavozimi:"Yurist"},
+  {name:"Jaynakov Temur",lavozimi:"Inson resurslarini rivojlantirish va boshqarish bo\u2018yicha bosh mutaxassis"}
+];
 var IJRO_CATEGORIES=[
-  {key:"prezident",label:"Prezident",short:"Prez",color:"#dc2626"},
-  {key:"prezAdmin",label:"Prezident Admin",short:"PA",color:"#ea580c"},
-  {key:"vazirlar",label:"Vazirlar Mahkamasi",short:"VM",color:"#d97706"},
-  {key:"hukumat",label:"Hukumat komissiyasi",short:"HK",color:"#65a30d"},
-  {key:"yuqori",label:"Yuqori turuvchi (nazorat)",short:"YT",color:"#0891b2"},
-  {key:"murojaat",label:"Murojaat",short:"Mur",color:"#7c3aed"}
+  {key:"prez",label:"Prezident topshiriqlari",short:"Prezident",color:"#dc2626"},
+  {key:"prezAdmin",label:"Prezident Administratsiyasi",short:"Prez.Admin",color:"#ea580c"},
+  {key:"vazirlar",label:"Vazirlar Mahkamasi",short:"Vaz.Mahk",color:"#d97706"},
+  {key:"hukumat",label:"Hukumat komissiyasi",short:"Huk.Kom",color:"#65a30d"},
+  {key:"yuqori",label:"Yuqori turuvchi (nazorat)",short:"Yuqori t.",color:"#0891b2"},
+  {key:"murojaat",label:"Murojaat",short:"Murojaat",color:"#7c3aed"}
 ];
 function IjroView({showToast}){
-  var{useState,useEffect,useMemo,useCallback}=React;
+  var{useState,useEffect,useMemo}=React;
   var[ijroData,setIjroData]=useState({});
   var[loading,setLoading]=useState(true);
   var[saving,setSaving]=useState(false);
@@ -5286,16 +5297,17 @@ function IjroView({showToast}){
     return function(){ref.off("value",onVal)};
   },[selectedDate]);
 
+  var dd=selectedDate.split("-"),dateDisp=dd[2]+"."+dd[1]+"."+dd[0];
+  var monthName=MONTHS[parseInt(dd[1])-1]||"";
+
   function openEdit(emp){
-    var ek=safeKey(emp);
-    var cur=ijroData[ek]||{};
-    var form={};
+    var ek=safeKey(emp.name),cur=ijroData[ek]||{},form={};
     IJRO_CATEGORIES.forEach(function(c){
-      form[c.key+"_done"]=cur[c.key+"_done"]||0;
-      form[c.key+"_due"]=cur[c.key+"_due"]||0;
-      form[c.key+"_overdue"]=cur[c.key+"_overdue"]||0;
+      form[c.key+"_o"]=cur[c.key+"_o"]||0;
+      form[c.key+"_t"]=cur[c.key+"_t"]||0;
     });
-    form.todayDone=cur.todayDone||0;
+    form.bugun_ijro=cur.bugun_ijro||0;
+    form.bugun_otgan=cur.bugun_otgan||0;
     setEditForm(form);
     setEditEmp(emp);
   }
@@ -5303,192 +5315,183 @@ function IjroView({showToast}){
   function saveEdit(){
     if(!editEmp)return;
     setSaving(true);
-    var ek=safeKey(editEmp);
-    var rec=Object.assign({},editForm);
-    /* Jami hisoblash */
-    var totalAll=0,totalOverdue=0,totalDue=0;
+    var ek=safeKey(editEmp.name),rec=Object.assign({},editForm);
+    var tO=0,tT=0;
     IJRO_CATEGORIES.forEach(function(c){
-      totalAll+=(rec[c.key+"_done"]||0)+(rec[c.key+"_due"]||0)+(rec[c.key+"_overdue"]||0);
-      totalOverdue+=(rec[c.key+"_overdue"]||0);
-      totalDue+=(rec[c.key+"_due"]||0);
+      tO+=(rec[c.key+"_o"]||0);
+      tT+=(rec[c.key+"_t"]||0);
     });
-    rec.jami=totalAll;
-    rec.jamiOverdue=totalOverdue;
-    rec.jamiDue=totalDue;
-    rec.name=editEmp;
-    var prof=EMPLOYEE_PROFILES[editEmp];
-    rec.position=prof?prof.position:"";
+    rec.jami=tO+tT;
+    rec.jami_otgan=tO;
+    rec.jami_toplar=tT;
+    rec.name=editEmp.name;
+    rec.lavozimi=editEmp.lavozimi;
     db.ref("ijro/"+selectedDate+"/"+ek).set(rec).then(function(){
       showToast("Saqlandi");setSaving(false);setEditEmp(null);
-    }).catch(function(){showToast("Xatolik");setSaving(false)});
+    }).catch(function(err){showToast("Xatolik: "+err.message);setSaving(false)});
   }
 
-  /* Summary */
   var summary=useMemo(function(){
-    var s={jami:0,overdue:0,due:0,todayDone:0,emps:0};
+    var s={jami:0,otgan:0,toplar:0,bugun_ijro:0,bugun_otgan:0,cats:{}};
+    IJRO_CATEGORIES.forEach(function(c){s.cats[c.key]={o:0,t:0}});
     Object.keys(ijroData).forEach(function(k){
       var r=ijroData[k];if(!r||!r.name)return;
       s.jami+=(r.jami||0);
-      s.overdue+=(r.jamiOverdue||0);
-      s.due+=(r.jamiDue||0);
-      s.todayDone+=(r.todayDone||0);
-      s.emps++;
+      s.otgan+=(r.jami_otgan||0);
+      s.toplar+=(r.jami_toplar||0);
+      s.bugun_ijro+=(r.bugun_ijro||0);
+      s.bugun_otgan+=(r.bugun_otgan||0);
+      IJRO_CATEGORIES.forEach(function(c){
+        s.cats[c.key].o+=(r[c.key+"_o"]||0);
+        s.cats[c.key].t+=(r[c.key+"_t"]||0);
+      });
     });
     return s;
   },[ijroData]);
 
-  /* Rows sorted by jami desc */
-  var rows=useMemo(function(){
-    return EMPLOYEES.map(function(emp){
-      var ek=safeKey(emp);
-      var r=ijroData[ek]||{};
-      var prof=EMPLOYEE_PROFILES[emp]||{};
-      return{name:emp,key:ek,position:prof.position||"",photo:prof.photo,data:r,jami:r.jami||0,overdue:r.jamiOverdue||0,due:r.jamiDue||0,todayDone:r.todayDone||0};
-    }).sort(function(a,b){return b.jami-a.jami});
-  },[ijroData]);
+  var rows=IJRO_EMPLOYEES.map(function(emp,i){
+    var ek=safeKey(emp.name),r=ijroData[ek]||{};
+    return{idx:i+1,emp:emp,ek:ek,d:r,jami:r.jami||0,otgan:r.jami_otgan||0,toplar:r.jami_toplar||0,bugun_ijro:r.bugun_ijro||0,bugun_otgan:r.bugun_otgan||0};
+  });
 
-  var dateDisp=selectedDate.split("-").reverse().join(".");
-
-  function numInput(key,label,max){
-    return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-      React.createElement("label",{style:{fontSize:11,color:"var(--t3)",minWidth:80,fontWeight:600}},label),
-      React.createElement("input",{type:"number",min:0,max:max||999,value:editForm[key]||0,
+  function numInput(key,label){
+    return React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:4}},
+      React.createElement("label",{style:{fontSize:10,color:"#64748b",minWidth:76,fontWeight:600}},label),
+      React.createElement("input",{type:"number",min:0,max:999,value:editForm[key]||0,
         onChange:function(e){var v=Math.max(0,parseInt(e.target.value)||0);setEditForm(function(p){var n=Object.assign({},p);n[key]=v;return n})},
-        className:"text-input",style:{width:70,textAlign:"center",fontFamily:"JetBrains Mono,monospace",fontSize:13,padding:"6px 8px"}})
+        style:{width:60,textAlign:"center",fontFamily:"JetBrains Mono,monospace",fontSize:12,padding:"5px 6px",border:"1px solid #d1d5db",borderRadius:6,outline:"none"}})
     );
   }
+
+  var thS={padding:"7px 5px",textAlign:"center",fontSize:9,fontWeight:700,whiteSpace:"nowrap",border:"1px solid #94a3b8",color:"#1e293b"};
+  var tdS={padding:"6px 5px",textAlign:"center",fontSize:11,fontFamily:"JetBrains Mono,monospace",border:"1px solid #e2e8f0"};
+  function cv(v,color){return v?React.createElement("span",{style:{fontWeight:700,color:color||"#1e293b"}},v):React.createElement("span",{style:{color:"#d1d5db"}},"-")}
+
+  if(loading)return React.createElement("div",{style:{textAlign:"center",padding:60,color:"#94a3b8"}},"Yuklanmoqda...");
 
   return React.createElement("div",{style:{animation:"fadeUp .35s ease"}},
     React.createElement("div",{className:"page-header"},
       React.createElement("div",null,
         React.createElement("div",{className:"page-title"},"Ijro Intizomi"),
-        React.createElement("div",{className:"page-subtitle"},"Edo.ijro.uz — topshiriqlar holati · "+dateDisp)
+        React.createElement("div",{className:"page-subtitle"},"Edo.ijro.uz \u2014 "+dateDisp+" kunlik ma\u2018lumot")
       ),
       React.createElement("div",{className:"page-actions"},
-        React.createElement("input",{type:"date",className:"date-input",value:selectedDate,onChange:function(e){setSelectedDate(e.target.value)}})
-      )
+        React.createElement("input",{type:"date",className:"date-input",value:selectedDate,onChange:function(e){setSelectedDate(e.target.value)}}))
     ),
 
-    /* Summary cards */
     React.createElement("div",{className:"stats-grid"},
       React.createElement("div",{className:"stat-card c-cobalt"},React.createElement("div",{className:"stat-accent"}),React.createElement("div",{className:"stat-card-inner"},
-        React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"📋")),
+        React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"\uD83D\uDCCB")),
         React.createElement("div",{className:"stat-num"},summary.jami),React.createElement("div",{className:"stat-label"},"Jami topshiriqlar"))),
       React.createElement("div",{className:"stat-card c-ruby"},React.createElement("div",{className:"stat-accent"}),React.createElement("div",{className:"stat-card-inner"},
-        React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"⚠️")),
-        React.createElement("div",{className:"stat-num"},summary.overdue),React.createElement("div",{className:"stat-label"},"Muddati o'tgan"))),
+        React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"\u26A0\uFE0F")),
+        React.createElement("div",{className:"stat-num"},summary.otgan),React.createElement("div",{className:"stat-label"},"Muddati o\u2018tgan"))),
       React.createElement("div",{className:"stat-card c-amber"},React.createElement("div",{className:"stat-accent"}),React.createElement("div",{className:"stat-card-inner"},
-        React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"📅")),
-        React.createElement("div",{className:"stat-num"},summary.due),React.createElement("div",{className:"stat-label"},"Muddati bo'lgan"))),
+        React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"\uD83D\uDCC5")),
+        React.createElement("div",{className:"stat-num"},summary.toplar),React.createElement("div",{className:"stat-label"},monthName+" muddatli toplar"))),
       React.createElement("div",{className:"stat-card c-green"},React.createElement("div",{className:"stat-accent"}),React.createElement("div",{className:"stat-card-inner"},
-        React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"✅")),
-        React.createElement("div",{className:"stat-num"},summary.todayDone),React.createElement("div",{className:"stat-label"},"Bugun ijro etilgan")))
+        React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"\u2705")),
+        React.createElement("div",{className:"stat-num"},summary.bugun_ijro),React.createElement("div",{className:"stat-label"},"Bugun ijro etilgan")))
     ),
 
-    /* Table */
     React.createElement("div",{className:"table-card",style:{marginBottom:16}},
       React.createElement("div",{className:"table-header"},
         React.createElement("div",null,
-          React.createElement("div",{className:"table-title"},"Xodimlar bo'yicha topshiriqlar"),
-          React.createElement("div",{className:"table-meta"},rows.filter(function(r){return r.jami>0}).length+" ta xodimda topshiriq mavjud")
-        )
+          React.createElement("div",{className:"table-title"},"Bo\u2018lim rahbarlari bo\u2018yicha topshiriqlar"),
+          React.createElement("div",{className:"table-meta"},IJRO_EMPLOYEES.length+" ta bo\u2018lim rahbari"))
       ),
-      React.createElement("div",{style:{overflowX:"auto"}},
-        React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+      React.createElement("div",{style:{overflowX:"auto",WebkitOverflowScrolling:"touch"}},
+        React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:1050}},
           React.createElement("thead",null,
-            React.createElement("tr",{style:{background:"var(--surface2)"}},
-              React.createElement("th",{style:{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"var(--t3)",fontSize:10,textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}},"#"),
-              React.createElement("th",{style:{padding:"10px 12px",textAlign:"left",fontWeight:700,color:"var(--t3)",fontSize:10,textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}},"Xodim"),
-              React.createElement("th",{style:{padding:"10px 12px",textAlign:"center",fontWeight:700,color:"var(--navy)",fontSize:11,whiteSpace:"nowrap"}},"Jami"),
-              React.createElement("th",{style:{padding:"10px 12px",textAlign:"center",fontWeight:700,color:"var(--ruby)",fontSize:11,whiteSpace:"nowrap"}},"Muddati o'tgan"),
-              React.createElement("th",{style:{padding:"10px 12px",textAlign:"center",fontWeight:700,color:"var(--amber)",fontSize:11,whiteSpace:"nowrap"}},"Muddatli"),
-              IJRO_CATEGORIES.map(function(c){
-                return React.createElement("th",{key:c.key,style:{padding:"10px 8px",textAlign:"center",fontWeight:700,color:c.color,fontSize:10,whiteSpace:"nowrap",minWidth:50}},c.short);
-              }),
-              React.createElement("th",{style:{padding:"10px 12px",textAlign:"center",fontWeight:700,color:"var(--emerald)",fontSize:11,whiteSpace:"nowrap"}},"Bugun"),
-              React.createElement("th",{style:{padding:"10px 8px",textAlign:"center",fontWeight:700,color:"var(--t3)",fontSize:10,whiteSpace:"nowrap"}},"")
-            )
+            React.createElement("tr",{style:{background:"#1e3a5f"}},
+              React.createElement("th",{rowSpan:2,style:Object.assign({},thS,{color:"#fff",background:"#1e3a5f",width:30})},"T/r"),
+              React.createElement("th",{rowSpan:2,style:Object.assign({},thS,{color:"#fff",background:"#1e3a5f",textAlign:"left",minWidth:120})},"F.I.Sh"),
+              React.createElement("th",{rowSpan:2,style:Object.assign({},thS,{color:"#fff",background:"#1e3a5f",textAlign:"left",minWidth:150})},"Lavozimi"),
+              React.createElement("th",{rowSpan:2,style:Object.assign({},thS,{color:"#fde68a",background:"#1e3a5f",width:42,fontSize:10})},"Jami"),
+              React.createElement("th",{colSpan:2,style:Object.assign({},thS,{color:"#fde68a",background:"#334155",borderBottom:"1px solid #475569",fontSize:8})},"JAMI topshiriqlar"),
+              IJRO_CATEGORIES.map(function(c){return React.createElement("th",{key:c.key,colSpan:2,style:Object.assign({},thS,{color:"#fff",background:c.color,borderBottom:"1px solid "+c.color,fontSize:7.5})},c.short)}),
+              React.createElement("th",{colSpan:2,style:Object.assign({},thS,{color:"#6ee7b7",background:"#064e3b",borderBottom:"1px solid #065f46",fontSize:8})},"Bugun ijro"),
+              React.createElement("th",{rowSpan:2,style:Object.assign({},thS,{color:"#fff",background:"#1e3a5f",width:32})},"")),
+            React.createElement("tr",{style:{background:"#f1f5f9"}},
+              React.createElement("th",{style:Object.assign({},thS,{fontSize:7,color:"#dc2626",background:"#fff1f2"})},"Muddati\no\u2018tgan"),
+              React.createElement("th",{style:Object.assign({},thS,{fontSize:7,color:"#059669",background:"#ecfdf5"})},dd[2]+"-"+mn+"\ntoplar"),
+              IJRO_CATEGORIES.map(function(c){return[
+                React.createElement("th",{key:c.key+"o",style:Object.assign({},thS,{fontSize:6.5,color:"#dc2626",background:"#fff5f5"})},"m.o\u2018tg"),
+                React.createElement("th",{key:c.key+"t",style:Object.assign({},thS,{fontSize:6.5,color:c.color,background:"#f8fafc"})},"toplar")
+              ]}),
+              React.createElement("th",{style:Object.assign({},thS,{fontSize:7,color:"#059669",background:"#ecfdf5"})},"ijro"),
+              React.createElement("th",{style:Object.assign({},thS,{fontSize:7,color:"#dc2626",background:"#fff1f2"})},"sh.m\no\u2018tg"))
           ),
           React.createElement("tbody",null,
-            rows.map(function(row,i){
-              var hasData=row.jami>0;
-              return React.createElement("tr",{key:row.key,style:{borderBottom:"1px solid var(--border)",background:i%2===0?"transparent":"var(--surface2)",opacity:hasData?1:.5}},
-                React.createElement("td",{style:{padding:"10px 12px",fontSize:11,color:"var(--t4)",fontFamily:"JetBrains Mono,monospace"}},i+1),
-                React.createElement("td",{style:{padding:"10px 12px"}},
-                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-                    row.photo?React.createElement("img",{src:row.photo,style:{width:28,height:28,borderRadius:8,objectFit:"cover",border:"1px solid var(--border)",flexShrink:0}}):
-                    React.createElement("div",{style:{width:28,height:28,borderRadius:8,background:"var(--surface3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"var(--t3)",flexShrink:0}},row.name.split(" ").map(function(w){return w[0]}).join("")),
-                    React.createElement("div",{style:{minWidth:0}},
-                      React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"var(--navy)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},row.name.split(" ")[0]+" "+(row.name.split(" ")[1]||"").charAt(0)+"."),
-                      React.createElement("div",{style:{fontSize:9.5,color:"var(--t4)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:160}},row.position)
-                    )
-                  )
-                ),
-                React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontWeight:800,fontSize:14,color:"var(--navy)",fontFamily:"JetBrains Mono,monospace"}},row.jami||""),
-                React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontWeight:700,fontSize:13,color:row.overdue>0?"#fff":"var(--t4)",background:row.overdue>0?"var(--ruby)":"transparent",borderRadius:6,fontFamily:"JetBrains Mono,monospace"}},row.overdue||""),
-                React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontWeight:700,fontSize:13,color:row.due>0?"var(--amber)":"var(--t4)",fontFamily:"JetBrains Mono,monospace"}},row.due||""),
+            rows.map(function(row){
+              var has=row.jami>0;
+              return React.createElement("tr",{key:row.ek,style:{background:has?"#fffbeb":"#fff",transition:"background .2s"}},
+                React.createElement("td",{style:Object.assign({},tdS,{fontWeight:700,color:"#64748b",fontSize:10})},row.idx),
+                React.createElement("td",{style:Object.assign({},tdS,{textAlign:"left",fontWeight:600,color:"#1e293b",fontFamily:"Inter,sans-serif",fontSize:11,whiteSpace:"nowrap"})},row.emp.name),
+                React.createElement("td",{style:Object.assign({},tdS,{textAlign:"left",fontSize:8.5,color:"#64748b",fontFamily:"Inter,sans-serif",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"})},row.emp.lavozimi),
+                React.createElement("td",{style:Object.assign({},tdS,{fontWeight:800,fontSize:13,color:"#1e40af",background:has?"#dbeafe":"transparent"})},cv(row.jami,"#1e40af")),
+                React.createElement("td",{style:Object.assign({},tdS,{fontWeight:700,color:"#dc2626",background:row.otgan?"#fee2e2":"transparent"})},cv(row.otgan,"#dc2626")),
+                React.createElement("td",{style:Object.assign({},tdS,{fontWeight:700,color:"#16a34a",background:row.toplar?"#dcfce7":"transparent"})},cv(row.toplar,"#16a34a")),
                 IJRO_CATEGORIES.map(function(c){
-                  var val=(row.data[c.key+"_done"]||0)+(row.data[c.key+"_due"]||0)+(row.data[c.key+"_overdue"]||0);
-                  var ov=row.data[c.key+"_overdue"]||0;
-                  return React.createElement("td",{key:c.key,style:{padding:"10px 6px",textAlign:"center",fontSize:11,fontFamily:"JetBrains Mono,monospace",color:ov>0?c.color:"var(--t4)"}},
-                    val>0?(ov>0?React.createElement("span",null,React.createElement("span",{style:{fontWeight:700}},val),React.createElement("sup",{style:{color:"var(--ruby)",fontSize:8,fontWeight:800}}," "+ov)):val):""
-                  );
+                  var co=row.d[c.key+"_o"]||0,ct=row.d[c.key+"_t"]||0;
+                  return[
+                    React.createElement("td",{key:c.key+"o",style:Object.assign({},tdS,{color:"#dc2626",fontWeight:co?700:400,background:co?"#fee2e2":"transparent"})},cv(co,"#dc2626")),
+                    React.createElement("td",{key:c.key+"t",style:Object.assign({},tdS,{color:c.color,fontWeight:ct?700:400,background:ct?c.color+"15":"transparent"})},cv(ct,c.color))
+                  ];
                 }),
-                React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontWeight:700,fontSize:13,color:row.todayDone>0?"#fff":"var(--t4)",background:row.todayDone>0?"var(--emerald)":"transparent",borderRadius:6,fontFamily:"JetBrains Mono,monospace"}},row.todayDone||""),
-                React.createElement("td",{style:{padding:"6px 8px",textAlign:"center"}},
-                  React.createElement("button",{onClick:function(){openEdit(row.name)},style:{padding:"5px 10px",fontSize:10,fontWeight:700,color:"var(--cobalt)",background:"rgba(70,95,255,.06)",border:"1px solid rgba(70,95,255,.15)",borderRadius:6,cursor:"pointer",fontFamily:"Inter,sans-serif",whiteSpace:"nowrap"}},"✏️")
-                )
+                React.createElement("td",{style:Object.assign({},tdS,{fontWeight:700,color:"#059669",background:row.bugun_ijro?"#d1fae5":"transparent"})},cv(row.bugun_ijro,"#059669")),
+                React.createElement("td",{style:Object.assign({},tdS,{fontWeight:700,color:"#dc2626",background:row.bugun_otgan?"#fee2e2":"transparent"})},cv(row.bugun_otgan,"#dc2626")),
+                React.createElement("td",{style:Object.assign({},tdS,{padding:"3px"})},
+                  React.createElement("button",{onClick:function(){openEdit(row.emp)},style:{padding:"4px 8px",fontSize:9,fontWeight:700,color:"#465fff",background:"rgba(70,95,255,.07)",border:"1px solid rgba(70,95,255,.15)",borderRadius:5,cursor:"pointer"}},"\u270F\uFE0F"))
               );
             }),
-            /* Jami row */
-            React.createElement("tr",{style:{background:"var(--navy)",color:"#fff"}},
-              React.createElement("td",{colSpan:2,style:{padding:"10px 12px",fontWeight:800,fontSize:12}},"Jami:"),
-              React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontWeight:800,fontSize:14,fontFamily:"JetBrains Mono,monospace"}},summary.jami),
-              React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontWeight:800,fontSize:13,fontFamily:"JetBrains Mono,monospace",color:"#fca5a5"}},summary.overdue),
-              React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontWeight:800,fontSize:13,fontFamily:"JetBrains Mono,monospace",color:"#fbbf24"}},summary.due),
-              IJRO_CATEGORIES.map(function(c){
-                var catTotal=0;
-                Object.keys(ijroData).forEach(function(k){var r=ijroData[k];if(r)catTotal+=(r[c.key+"_done"]||0)+(r[c.key+"_due"]||0)+(r[c.key+"_overdue"]||0)});
-                return React.createElement("td",{key:c.key,style:{padding:"10px 6px",textAlign:"center",fontWeight:700,fontSize:11,fontFamily:"JetBrains Mono,monospace"}},catTotal||"");
-              }),
-              React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontWeight:800,fontSize:13,fontFamily:"JetBrains Mono,monospace",color:"#6ee7b7"}},summary.todayDone),
-              React.createElement("td",null)
+            React.createElement("tr",{style:{background:"#1e3a5f",color:"#fff"}},
+              React.createElement("td",{colSpan:3,style:Object.assign({},tdS,{textAlign:"left",color:"#fff",fontWeight:800,fontSize:12,border:"1px solid #334155",fontFamily:"Inter,sans-serif"})},"Jami:"),
+              React.createElement("td",{style:Object.assign({},tdS,{color:"#fde68a",fontWeight:800,fontSize:14,border:"1px solid #334155"})},summary.jami),
+              React.createElement("td",{style:Object.assign({},tdS,{color:"#fca5a5",fontWeight:800,border:"1px solid #334155"})},summary.otgan),
+              React.createElement("td",{style:Object.assign({},tdS,{color:"#86efac",fontWeight:800,border:"1px solid #334155"})},summary.toplar),
+              IJRO_CATEGORIES.map(function(c){return[
+                React.createElement("td",{key:c.key+"o",style:Object.assign({},tdS,{color:"#fca5a5",fontWeight:700,fontSize:10,border:"1px solid #334155"})},summary.cats[c.key].o||""),
+                React.createElement("td",{key:c.key+"t",style:Object.assign({},tdS,{color:"#e2e8f0",fontWeight:700,fontSize:10,border:"1px solid #334155"})},summary.cats[c.key].t||"")
+              ]}),
+              React.createElement("td",{style:Object.assign({},tdS,{color:"#6ee7b7",fontWeight:800,border:"1px solid #334155"})},summary.bugun_ijro),
+              React.createElement("td",{style:Object.assign({},tdS,{color:"#fca5a5",fontWeight:800,border:"1px solid #334155"})},summary.bugun_otgan),
+              React.createElement("td",{style:Object.assign({},tdS,{border:"1px solid #334155"})})
             )
           )
         )
       )
     ),
 
-    /* Edit modal */
-    editEmp&&React.createElement("div",{style:{position:"fixed",inset:0,zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}},
-      React.createElement("div",{onClick:function(){setEditEmp(null)},style:{position:"absolute",inset:0,background:"rgba(0,0,0,.4)"}}),
-      React.createElement("div",{style:{position:"relative",background:"var(--white)",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"85vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.15)",padding:24}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}},
+    editEmp&&React.createElement("div",{style:{position:"fixed",inset:0,zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
+      React.createElement("div",{onClick:function(){setEditEmp(null)},style:{position:"absolute",inset:0,background:"rgba(0,0,0,.45)"}}),
+      React.createElement("div",{style:{position:"relative",background:"#fff",borderRadius:16,width:"100%",maxWidth:460,maxHeight:"85vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)",padding:20}},
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}},
           React.createElement("div",null,
-            React.createElement("div",{style:{fontSize:16,fontWeight:800,color:"var(--navy)"}},editEmp),
-            React.createElement("div",{style:{fontSize:11,color:"var(--t4)",marginTop:2}},(EMPLOYEE_PROFILES[editEmp]||{}).position||"")
+            React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#1e293b"}},editEmp.name),
+            React.createElement("div",{style:{fontSize:10,color:"#64748b",marginTop:2}},editEmp.lavozimi)
           ),
-          React.createElement("button",{onClick:function(){setEditEmp(null)},style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:16,color:"var(--t3)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u2715")
+          React.createElement("button",{onClick:function(){setEditEmp(null)},style:{width:28,height:28,borderRadius:7,border:"1px solid #e2e8f0",background:"#f8fafc",cursor:"pointer",fontSize:14,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center"}},"\u2715")
         ),
-
+        React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#94a3b8",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}},dateDisp+" \u00b7 Topshiriqlar tarkibi"),
         IJRO_CATEGORIES.map(function(c){
-          return React.createElement("div",{key:c.key,style:{marginBottom:14,padding:"12px 14px",borderRadius:10,border:"1px solid var(--border)",background:"var(--surface2)"}},
-            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:c.color,marginBottom:8}},c.label),
-            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}},
-              numInput(c.key+"_done","Bajarildi"),
-              numInput(c.key+"_due","Muddatli"),
-              numInput(c.key+"_overdue","O'tgan")
+          return React.createElement("div",{key:c.key,style:{marginBottom:8,padding:"10px 12px",borderRadius:10,border:"1px solid #e2e8f0",background:"#f8fafc"}},
+            React.createElement("div",{style:{fontSize:11,fontWeight:700,color:c.color,marginBottom:6}},c.label),
+            React.createElement("div",{style:{display:"flex",gap:12}},
+              numInput(c.key+"_o","Muddati o\u2018tgan"),
+              numInput(c.key+"_t",monthName+" toplar")
             )
           );
         }),
-
-        React.createElement("div",{style:{marginTop:8,padding:"12px 14px",borderRadius:10,border:"1.5px solid var(--emerald)",background:"var(--emerald-bg)"}},
-          React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"var(--emerald)",marginBottom:8}},"Bugun ijro etilgan"),
-          numInput("todayDone","Soni")
+        React.createElement("div",{style:{marginTop:8,padding:"10px 12px",borderRadius:10,border:"1.5px solid #059669",background:"#ecfdf5"}},
+          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#059669",marginBottom:6}},"Bugun ijro etilgan"),
+          React.createElement("div",{style:{display:"flex",gap:12}},
+            numInput("bugun_ijro","Ijro soni"),
+            numInput("bugun_otgan","Sh. muddati o\u2018tgan")
+          )
         ),
-
-        React.createElement("div",{style:{display:"flex",gap:10,marginTop:18}},
-          React.createElement("button",{className:"action-btn primary",onClick:saveEdit,disabled:saving,style:{flex:1}},saving?"Saqlanmoqda...":"💾 Saqlash"),
+        React.createElement("div",{style:{display:"flex",gap:8,marginTop:14}},
+          React.createElement("button",{className:"action-btn primary",onClick:saveEdit,disabled:saving,style:{flex:1}},saving?"Saqlanmoqda...":"\uD83D\uDCBE Saqlash"),
           React.createElement("button",{className:"action-btn",onClick:function(){setEditEmp(null)},style:{flex:1}},"Bekor qilish")
         )
       )
