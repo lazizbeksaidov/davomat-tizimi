@@ -5318,7 +5318,11 @@ function IjroView({showToast}){
         var pp="ijro_"+ps+"_";
         db.ref("employee_notes").orderByKey().startAt(pp).endAt(pp+"\uf8ff").once("value",function(psnap){
           var pd={};
-          psnap.forEach(function(ch){pd[ch.key.replace(pp,"")]=ch.val()});
+          psnap.forEach(function(ch){
+            var rec=ch.val();
+            if(rec){rec.bugun_ijro=0;rec.bugun_otgan=0}
+            pd[ch.key.replace(pp,"")]=rec;
+          });
           setIjroData(pd);
           setLoading(false);
         },function(){setIjroData({});setLoading(false)});
