@@ -5289,9 +5289,14 @@ function IjroView({showToast}){
   var[selectedDate,setSelectedDate]=useState(fmtDate(new Date()));
 
   useEffect(function(){
+    setLoading(true);
     var ref=db.ref("telegram_config/ijro/"+selectedDate);
     var onVal=ref.on("value",function(snap){
       setIjroData(snap.val()||{});
+      setLoading(false);
+    },function(err){
+      console.error("Ijro load error:",err.code,err.message);
+      setIjroData({});
       setLoading(false);
     });
     return function(){ref.off("value",onVal)};
