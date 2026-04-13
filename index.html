@@ -6686,6 +6686,10 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   // Confirm
   var confirmCheckin=useCallback(function(){
     if(!capturedPhoto||submitting)return;
+    if(gpsStatus!=="ok"){
+      showToast("📍 Selfie faqat ishxona hududida ("+OFFICE_LOCATION.radius+"m) olinadi! Hozirgi masofa: "+(gpsData?gpsData.distance+"m":"noma'lum"));
+      return;
+    }
     setSubmitting(true);
     var now=new Date();
     var tStr=now.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
@@ -6957,9 +6961,9 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
           ),
           React.createElement("div",{className:"selfie-preview-actions"},
             React.createElement("button",{className:"selfie-retake-btn",onClick:function(){setCapturedPhoto(null);setEmpNote("");startCamera();}},"\u{1F504} Qayta"),
-            React.createElement("button",{className:"selfie-confirm-btn",onClick:confirmCheckin,disabled:submitting},submitting?"\u23F3 Saqlanmoqda...":"\u2705 Tasdiqlash")
+            React.createElement("button",{className:"selfie-confirm-btn",onClick:confirmCheckin,disabled:submitting||gpsStatus!=="ok",style:gpsStatus!=="ok"?{opacity:.5,cursor:"not-allowed"}:{}},submitting?"\u23F3 Saqlanmoqda...":gpsStatus!=="ok"?"\u{1F6AB} Hudud tashqarida":"\u2705 Tasdiqlash")
           ),
-          gpsStatus==="far"&&React.createElement("div",{style:{padding:"8px 14px",background:"rgba(192,57,43,.15)",fontSize:11,color:"#fca5a5",textAlign:"center"}},"\u26A0 Ofisdan "+(gpsData?gpsData.distance:0)+"m uzoqda")
+          gpsStatus==="far"&&React.createElement("div",{style:{padding:"10px 14px",background:"rgba(192,57,43,.15)",borderRadius:10,fontSize:12,color:"#fca5a5",textAlign:"center",lineHeight:1.6}},"\u{1F6AB} Ofisdan <b>"+(gpsData?gpsData.distance:0)+"m</b> uzoqdasiz. Selfie faqat <b>"+OFFICE_LOCATION.radius+"m</b> ichida mumkin.")
         )
       )
     ):null,
