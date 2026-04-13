@@ -3519,33 +3519,43 @@ function DashboardCharts({dateKey,attendanceData,checkinsData,counts}){
     return{...s,dash,gap,offset:o};
   });
 
-  // Weekly trend: last 5 workdays
+  // Weekly trend: oxirgi 5 HAFTA (har hafta o'rtacha davomat %)
   const weekTrend=useMemo(()=>{
-    const days=[];
-    const dayNames=["Yak","Dush","Sesh","Chor","Pay","Jum","Shan"];
+    const weeks=[];
+    const mn=["Yan","Fev","Mar","Apr","May","Iyn","Iyl","Avg","Sen","Okt","Noy","Dek"];
     const d=new Date(dateKey+"T12:00:00");
-    let found=0,iter=0;
-    while(found<5&&iter<14){
-      const check=new Date(d);
-      check.setDate(check.getDate()-iter);
-      const dow=check.getDay();
-      if(dow>=1&&dow<=5){
-        const dk=fmtDate(check);
-        let presentCount=0;
+    const dow=d.getDay();
+    const monOff=dow===0?6:dow-1;
+    const curMon=new Date(d);
+    curMon.setDate(d.getDate()-monOff);
+    for(let w=0;w<5;w++){
+      const weekMon=new Date(curMon);
+      weekMon.setDate(curMon.getDate()-(w*7));
+      let totalP=0,totalD=0;
+      for(let day=0;day<5;day++){
+        const cd=new Date(weekMon);
+        cd.setDate(weekMon.getDate()+day);
+        const dk=fmtDate(cd);
+        if(!attendanceData[dk]&&!(checkinsData&&checkinsData[dk]))continue;
+        let pc=0;
         EMPLOYEES.forEach(emp=>{
           const ek=safeKey(emp);
           const rec=attendanceData[dk]?.[ek];
           const ci=checkinsData[dk]?.[ek];
           const hasSelfie=ci&&(ci.morning||ci.afternoon);
-          const st=rec?.status||"present";
-          if(hasSelfie||st==="present"||st==="late") presentCount++;
+          const st=rec?.status||"";
+          if(hasSelfie||st==="present"||st==="late")pc++;
         });
-        days.unshift({name:dayNames[dow],pct:Math.round((presentCount/EMPLOYEES.length)*100),dk});
-        found++;
+        totalP+=pc;totalD++;
       }
-      iter++;
+      if(totalD>0){
+        const avgPct=Math.round((totalP/(totalD*EMPLOYEES.length))*100);
+        const weekFri=new Date(weekMon);weekFri.setDate(weekMon.getDate()+4);
+        const label=weekMon.getDate()+"-"+weekFri.getDate()+" "+mn[weekMon.getMonth()];
+        weeks.unshift({name:label,pct:avgPct});
+      }
     }
-    return days;
+    return weeks;
   },[dateKey,attendanceData,checkinsData]);
 
   // SVG line chart dimensions
