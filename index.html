@@ -5438,21 +5438,40 @@ function IjroView({showToast}){
         setIjroData(d);
         setLoading(false);
       }else{
+        /* Oldingi kunlardan ma'lumot izlash (7 kungacha) */
         var parts=selDateStr.split("-");
-        var prev=new Date(+parts[0],+parts[1]-1,+parts[2]);
-        prev.setDate(prev.getDate()-1);
-        var ps=prev.getFullYear()+"-"+String(prev.getMonth()+1).padStart(2,"0")+"-"+String(prev.getDate()).padStart(2,"0");
-        var pp="ijro_"+ps+"_";
-        db.ref("employee_notes").orderByKey().startAt(pp).endAt(pp+"\uf8ff").once("value",function(psnap){
-          var pd={};
-          psnap.forEach(function(ch){
-            var rec=ch.val();
-            if(rec){rec.bugun_ijro=0;rec.bugun_otgan=0}
-            pd[ch.key.replace(pp,"")]=rec;
-          });
-          setIjroData(pd);
-          setLoading(false);
-        },function(){setIjroData({});setLoading(false)});
+        var baseDate=new Date(+parts[0],+parts[1]-1,+parts[2]);
+        function tryPrev(daysBack){
+          if(daysBack>7){setIjroData({});setLoading(false);return}
+          var prev=new Date(baseDate);
+          prev.setDate(prev.getDate()-daysBack);
+          var ps=prev.getFullYear()+"-"+String(prev.getMonth()+1).padStart(2,"0")+"-"+String(prev.getDate()).padStart(2,"0");
+          var pp="ijro_"+ps+"_";
+          db.ref("employee_notes").orderByKey().startAt(pp).endAt(pp+"\uf8ff").once("value",function(psnap){
+            if(!psnap.exists()||psnap.numChildren()===0){tryPrev(daysBack+1);return}
+            var pd={};
+            var upd={};
+            var ts=Date.now();
+            psnap.forEach(function(ch){
+              var rec=Object.assign({},ch.val());
+              var ek=ch.key.replace(pp,"");
+              if(rec){
+                rec.bugun_ijro=0;
+                rec.bugun_otgan=0;
+                rec.timestamp=ts;
+              }
+              pd[ek]=rec;
+              upd["employee_notes/ijro_"+selDateStr+"_"+ek]=rec;
+            });
+            /* Yangi kunga avtomatik saqlash */
+            db.ref().update(upd).then(function(){
+              console.log(selDateStr+": "+ps+" dan ko\u2018chirildi");
+            }).catch(function(){});
+            setIjroData(pd);
+            setLoading(false);
+          },function(){tryPrev(daysBack+1)});
+        }
+        tryPrev(1);
       }
     },function(err){
       console.error("Ijro load error:",err.code,err.message);
