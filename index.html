@@ -5291,18 +5291,21 @@ function IjroView({showToast}){
   var _today=new Date();
   var[selMonth,setSelMonth]=useState(_today.getFullYear()+"-"+String(_today.getMonth()+1).padStart(2,"0"));
 
+  var ijroPrefix="ijro_"+selMonth+"_";
   useEffect(function(){
     setLoading(true);
-    var ref=db.ref("telegram_config/ijro/"+selMonth);
-    var onVal=ref.on("value",function(snap){
-      setIjroData(snap.val()||{});
+    var q=db.ref("employee_notes").orderByKey().startAt(ijroPrefix).endAt(ijroPrefix+"\uf8ff");
+    var onVal=q.on("value",function(snap){
+      var d={};
+      snap.forEach(function(ch){d[ch.key.replace(ijroPrefix,"")]=ch.val()});
+      setIjroData(d);
       setLoading(false);
     },function(err){
       console.error("Ijro load error:",err.code,err.message);
       setIjroData({});
       setLoading(false);
     });
-    return function(){ref.off("value",onVal)};
+    return function(){q.off("value",onVal)};
   },[selMonth]);
 
   function prevMonth(){var p=selMonth.split("-"),y=+p[0],m=+p[1];m--;if(m<1){m=12;y--}setSelMonth(y+"-"+String(m).padStart(2,"0"))}
@@ -5337,7 +5340,9 @@ function IjroView({showToast}){
     rec.jami_toplar=tT;
     rec.name=editEmp.name;
     rec.lavozimi=editEmp.lavozimi;
-    db.ref("telegram_config/ijro/"+selMonth+"/"+ek).set(rec).then(function(){
+    var noteKey="ijro_"+selMonth+"_"+ek;
+    var noteData=Object.assign({empName:editEmp.name,text:"ijro",timestamp:Date.now()},rec);
+    db.ref("employee_notes/"+noteKey).set(noteData).then(function(){
       showToast("Saqlandi");setSaving(false);setEditEmp(null);
     }).catch(function(err){showToast("Xatolik: "+err.message);setSaving(false)});
   }
