@@ -5279,6 +5279,74 @@ var IJRO_CATEGORIES=[
   {key:"yuqori",label:"Yuqori turuvchi (nazorat)",short:"Yuqori t.",color:"#0891b2"},
   {key:"murojaat",label:"Murojaat",short:"Murojaat",color:"#7c3aed"}
 ];
+/* ── Avatar ranglari ── */
+var _AVG=[["#667eea","#764ba2"],["#f093fb","#f5576c"],["#4facfe","#00f2fe"],["#43e97b","#38f9d7"],["#fa709a","#fee140"],["#a18cd1","#fbc2eb"],["#fccb90","#d57eeb"],["#e0c3fc","#8ec5fc"],["#30cfd0","#330867"],["#a8edea","#fed6e3"],["#5ee7df","#b490ca"],["#d299c2","#fef9d7"],["#89f7fe","#66a6ff"],["#fddb92","#d1fdff"],["#f6d365","#fda085"],["#fbc2eb","#a6c1ee"],["#fdcbf1","#e6dee9"],["#a1c4fd","#c2e9fb"],["#d4fc79","#96e6a1"],["#84fab0","#8fd3f4"],["#cfd9df","#e2ebf0"]];
+function _avHash(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0}return Math.abs(h)}
+function empAvatar(name,size){
+  var sz=size||34;
+  var g=_AVG[_avHash(name)%_AVG.length];
+  var parts=name.split(" ");
+  var initials=(parts[0]?parts[0][0]:"")+(parts[1]?parts[1][0]:"");
+  return React.createElement("div",{style:{width:sz,height:sz,minWidth:sz,borderRadius:sz/2,background:"linear-gradient(135deg,"+g[0]+","+g[1]+")",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:sz*0.38,fontWeight:800,fontFamily:"system-ui,sans-serif",textTransform:"uppercase",boxShadow:"0 2px 8px "+g[0]+"44",letterSpacing:".5px",flexShrink:0}},initials);
+}
+
+/* ── AnimNum — counting animation ── */
+function AnimNum(props){
+  var{useState:uS,useEffect:uE,useRef:uR}=React;
+  var val=props.value||0;
+  var dur=props.duration||700;
+  var suffix=props.suffix||"";
+  var ref=uR({start:0,startTime:0,raf:0,prev:0});
+  var[disp,setDisp]=uS(val);
+  uE(function(){
+    if(ref.current.prev===val){setDisp(val);return}
+    var from=ref.current.prev;
+    ref.current.prev=val;
+    if(ref.current.raf)cancelAnimationFrame(ref.current.raf);
+    var t0=performance.now();
+    function tick(now){
+      var p=Math.min((now-t0)/dur,1);
+      var ease=1-Math.pow(1-p,3);
+      setDisp(Math.round(from+(val-from)*ease));
+      if(p<1)ref.current.raf=requestAnimationFrame(tick);
+    }
+    ref.current.raf=requestAnimationFrame(tick);
+    return function(){if(ref.current.raf)cancelAnimationFrame(ref.current.raf)};
+  },[val]);
+  var st=Object.assign({fontFamily:"JetBrains Mono,monospace",fontWeight:800,transition:"color .3s"},props.style||{});
+  return React.createElement("div",{style:st},disp+suffix);
+}
+
+/* ── DonutChart — SVG donut ── */
+function DonutChart(props){
+  var data=props.data||[];
+  var size=props.size||140;
+  var stroke=props.stroke||18;
+  var r=(size-stroke)/2;
+  var circ=2*Math.PI*r;
+  var total=0;
+  data.forEach(function(d){total+=d.value});
+  var offset=0;
+  var centerPct=total>0?props.centerPct:0;
+  return React.createElement("div",{style:{position:"relative",width:size,height:size,flexShrink:0}},
+    React.createElement("svg",{width:size,height:size,viewBox:"0 0 "+size+" "+size,style:{transform:"rotate(-90deg)"}},
+      React.createElement("circle",{cx:size/2,cy:size/2,r:r,fill:"none",stroke:"#e2e8f0",strokeWidth:stroke}),
+      data.map(function(d,i){
+        if(!d.value||total===0)return null;
+        var pct=d.value/total;
+        var dashLen=circ*pct;
+        var dashOff=circ*offset;
+        offset+=pct;
+        return React.createElement("circle",{key:i,cx:size/2,cy:size/2,r:r,fill:"none",stroke:d.color,strokeWidth:stroke,strokeDasharray:dashLen+" "+(circ-dashLen),strokeDashoffset:-dashOff,strokeLinecap:"round",style:{transition:"stroke-dasharray .6s ease, stroke-dashoffset .6s ease"}});
+      })
+    ),
+    React.createElement("div",{style:{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}},
+      React.createElement("div",{style:{fontSize:size*0.18,fontWeight:800,color:"var(--navy)",fontFamily:"JetBrains Mono,monospace",lineHeight:1}},centerPct!=null?centerPct+"%":total),
+      props.centerLabel?React.createElement("div",{style:{fontSize:size*0.08,color:"#94a3b8",fontWeight:600,marginTop:2}},props.centerLabel):null
+    )
+  );
+}
+
 function IjroView({showToast}){
   var{useState,useEffect,useMemo,useRef}=React;
   var[ijroData,setIjroData]=useState({});
@@ -5297,6 +5365,8 @@ function IjroView({showToast}){
   var[mpYear,setMpYear]=useState(_today.getFullYear());
   var[sortMode,setSortMode]=useState("default");
   var[prevData,setPrevData]=useState({});
+  var _touchRef=useRef({x:0,y:0,t:0});
+  var _swipeRef=useRef(null);
 
   var mp=selMonth.split("-"),monthName=MONTHS[+mp[1]-1]||"",yearNum=mp[0];
   var selDateStr=selMonth+"-"+String(selDay).padStart(2,"0");
@@ -5394,6 +5464,18 @@ function IjroView({showToast}){
   function calNext(){var p=(calYM||selMonth).split("-"),y=+p[0],m=+p[1];m++;if(m>12){m=1;y++}setCalYM(y+"-"+String(m).padStart(2,"0"))}
   function pickDay(d){setSelMonth(calYM||selMonth);setSelDay(d);setShowDayCal(false)}
   function pickMonth(m){setSelMonth(mpYear+"-"+String(m).padStart(2,"0"));setSelDay(1);setShowMonthPick(false)}
+
+  /* Swipe — mobil kunlar o'rtasida */
+  function onTouchStart(e){var t=e.touches[0];_touchRef.current={x:t.clientX,y:t.clientY,t:Date.now()}}
+  function onTouchEnd(e){
+    var t=e.changedTouches[0];
+    var dx=t.clientX-_touchRef.current.x;
+    var dy=t.clientY-_touchRef.current.y;
+    var dt=Date.now()-_touchRef.current.t;
+    if(dt>500||Math.abs(dy)>Math.abs(dx)*1.2)return;
+    if(dx<-60)nextDay();
+    else if(dx>60)prevDay();
+  }
 
   function openEdit(emp){
     var ek=safeKey(emp.name),cur=ijroData[ek]||{},form={};
@@ -5561,7 +5643,7 @@ function IjroView({showToast}){
 
   if(loading)return React.createElement("div",{style:{textAlign:"center",padding:60,color:"#94a3b8"}},"Yuklanmoqda...");
 
-  return React.createElement("div",{style:{animation:"fadeUp .35s ease"}},
+  return React.createElement("div",{ref:_swipeRef,onTouchStart:onTouchStart,onTouchEnd:onTouchEnd,style:{animation:"fadeUp .35s ease",touchAction:"pan-y"}},
     (showDayCal||showMonthPick)&&React.createElement("div",{onClick:function(){setShowDayCal(false);setShowMonthPick(false)},style:{position:"fixed",inset:0,zIndex:49}}),
 
     /* === HEADER === */
@@ -5627,6 +5709,10 @@ function IjroView({showToast}){
       )
     ),
 
+    /* Swipe hint (mobile) */
+    React.createElement("div",{style:{textAlign:"center",marginBottom:8,fontSize:9,color:"#94a3b8",fontWeight:600,letterSpacing:".3px"}},
+      "\u2190 swipe \u2192 kunlar o\u2018rtasida o\u2018tish"),
+
     /* === ACTION BUTTONS === */
     React.createElement("div",{style:{display:"flex",gap:6,marginBottom:12,justifyContent:"flex-end",flexWrap:"wrap"}},
       React.createElement("button",{onClick:exportIjroExcel,
@@ -5656,7 +5742,7 @@ function IjroView({showToast}){
           return React.createElement("div",{key:c.key,onClick:function(){setSelCat(isActive?null:c.key)},
             style:{padding:"12px 14px",borderRadius:10,background:isActive?"#fff":"rgba(255,255,255,.08)",border:isActive?"2px solid "+c.color:"2px solid transparent",cursor:"pointer",transition:"all .2s"}},
             React.createElement("div",{style:{fontSize:10,fontWeight:700,color:isActive?c.color:"#94a3b8",marginBottom:6,lineHeight:1.3}},c.short),
-            React.createElement("div",{style:{fontSize:24,fontWeight:800,color:isActive?"#1e293b":"#fff",marginBottom:4,fontFamily:"JetBrains Mono,monospace"}},total||0),
+            React.createElement(AnimNum,{value:total||0,style:{fontSize:24,color:isActive?"#1e293b":"#fff",marginBottom:4}}),
             React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
               co?React.createElement("span",{style:{fontSize:9,fontWeight:700,color:isActive?"#dc2626":"#fca5a5",background:isActive?"#fee2e2":"rgba(220,38,38,.15)",padding:"2px 6px",borderRadius:4}},co+" m. o\u2018tgan"):null,
               ct?React.createElement("span",{style:{fontSize:9,fontWeight:700,color:isActive?"#d97706":"#fcd34d",background:isActive?"#fef3c7":"rgba(217,119,6,.15)",padding:"2px 6px",borderRadius:4}},ct+" muddatli"):null,
@@ -5667,27 +5753,41 @@ function IjroView({showToast}){
       )
     ),
 
-    /* === UMUMIY KO'RSATKICHLAR === */
-    React.createElement("div",{style:{display:"flex",gap:12,flexWrap:"wrap",marginBottom:16}},
-      React.createElement("div",{style:{flex:"1 1 120px",padding:"14px 16px",borderRadius:12,background:"#eff6ff",border:"1px solid #bfdbfe"}},
-        React.createElement("div",{style:{fontSize:22,fontWeight:800,color:"#1e40af",fontFamily:"JetBrains Mono,monospace"}},summary.jami),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#3b82f6"}},"Jami topshiriqlar")),
-      React.createElement("div",{style:{flex:"1 1 120px",padding:"14px 16px",borderRadius:12,background:"#fef2f2",border:"1px solid #fecaca"}},
-        React.createElement("div",{style:{fontSize:22,fontWeight:800,color:"#dc2626",fontFamily:"JetBrains Mono,monospace"}},summary.otgan),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#ef4444"}},"Muddati o\u2018tgan")),
-      React.createElement("div",{style:{flex:"1 1 120px",padding:"14px 16px",borderRadius:12,background:"#fffbeb",border:"1px solid #fde68a"}},
-        React.createElement("div",{style:{fontSize:22,fontWeight:800,color:"#d97706",fontFamily:"JetBrains Mono,monospace"}},summary.toplar),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#f59e0b"}},monthName+" muddatli")),
-      React.createElement("div",{style:{flex:"1 1 120px",padding:"14px 16px",borderRadius:12,background:"#ecfdf5",border:"1px solid #a7f3d0"}},
-        React.createElement("div",{style:{fontSize:22,fontWeight:800,color:"#059669",fontFamily:"JetBrains Mono,monospace"}},summary.bugun_ijro),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#10b981"}},selDay+"-"+monthName+" ijro etilgan"))
+    /* === UMUMIY KO'RSATKICHLAR + DONUT === */
+    React.createElement("div",{style:{display:"flex",gap:16,marginBottom:16,flexWrap:"wrap",alignItems:"center"}},
+      React.createElement("div",{style:{flex:"1 1 300px",display:"flex",gap:10,flexWrap:"wrap"}},
+        React.createElement("div",{style:{flex:"1 1 120px",padding:"14px 16px",borderRadius:12,background:"#eff6ff",border:"1px solid #bfdbfe"}},
+          React.createElement(AnimNum,{value:summary.jami,style:{fontSize:22,color:"#1e40af"}}),
+          React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#3b82f6"}},"Jami topshiriqlar")),
+        React.createElement("div",{style:{flex:"1 1 120px",padding:"14px 16px",borderRadius:12,background:"#fef2f2",border:"1px solid #fecaca"}},
+          React.createElement(AnimNum,{value:summary.otgan,style:{fontSize:22,color:"#dc2626"}}),
+          React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#ef4444"}},"Muddati o\u2018tgan")),
+        React.createElement("div",{style:{flex:"1 1 120px",padding:"14px 16px",borderRadius:12,background:"#fffbeb",border:"1px solid #fde68a"}},
+          React.createElement(AnimNum,{value:summary.toplar,style:{fontSize:22,color:"#d97706"}}),
+          React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#f59e0b"}},monthName+" muddatli")),
+        React.createElement("div",{style:{flex:"1 1 120px",padding:"14px 16px",borderRadius:12,background:"#ecfdf5",border:"1px solid #a7f3d0"}},
+          React.createElement(AnimNum,{value:summary.bugun_ijro,style:{fontSize:22,color:"#059669"}}),
+          React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#10b981"}},selDay+"-"+monthName+" ijro etilgan"))
+      ),
+      /* Donut Chart */
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:6}},
+        React.createElement(DonutChart,{size:130,stroke:16,centerPct:ijroFoiz,centerLabel:"ijro",
+          data:IJRO_CATEGORIES.map(function(c){return{value:(summary.cats[c.key].o||0)+(summary.cats[c.key].t||0),color:c.color}})}),
+        React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",maxWidth:160}},
+          IJRO_CATEGORIES.map(function(c){
+            var v=(summary.cats[c.key].o||0)+(summary.cats[c.key].t||0);
+            return v?React.createElement("span",{key:c.key,style:{fontSize:7,fontWeight:700,color:c.color,display:"flex",alignItems:"center",gap:2}},
+              React.createElement("span",{style:{width:6,height:6,borderRadius:3,background:c.color,display:"inline-block"}}),c.short+" "+v):null;
+          })
+        )
+      )
     ),
 
     /* === UMUMIY IJRO FOIZI PROGRESS BAR === */
     React.createElement("div",{style:{padding:"14px 18px",borderRadius:12,background:"var(--white)",border:"1px solid var(--border)",marginBottom:16}},
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
         React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"var(--navy)"}},"Umumiy ijro foizi"),
-        React.createElement("div",{style:{fontSize:18,fontWeight:800,color:ijroFoiz>=70?"#059669":ijroFoiz>=40?"#d97706":"#dc2626",fontFamily:"JetBrains Mono,monospace"}},ijroFoiz+"%")
+        React.createElement(AnimNum,{value:ijroFoiz,suffix:"%",style:{fontSize:18,color:ijroFoiz>=70?"#059669":ijroFoiz>=40?"#d97706":"#dc2626"}})
       ),
       React.createElement("div",{style:{width:"100%",height:10,borderRadius:6,background:"#e2e8f0",overflow:"hidden"}},
         React.createElement("div",{style:{width:ijroFoiz+"%",height:"100%",borderRadius:6,background:ijroFoiz>=70?"linear-gradient(90deg,#10b981,#059669)":ijroFoiz>=40?"linear-gradient(90deg,#fbbf24,#d97706)":"linear-gradient(90deg,#f87171,#dc2626)",transition:"width .5s ease"}})
@@ -5714,7 +5814,7 @@ function IjroView({showToast}){
         return React.createElement("div",{key:row.ek,style:{marginBottom:8,borderRadius:12,border:"1px solid "+(isExp?"var(--cobalt)":"var(--border)"),background:"var(--white)",overflow:"hidden",boxShadow:isExp?"0 4px 16px rgba(70,95,255,.1)":"none",transition:"all .2s"}},
           /* Row header - always visible */
           React.createElement("div",{style:{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",background:isExp?"rgba(70,95,255,.03)":"transparent"},onClick:function(){setExpanded(isExp?null:row.ek)}},
-            React.createElement("div",{style:{width:26,height:26,borderRadius:8,background:hasData?"var(--navy)":"var(--surface3)",color:hasData?"#fff":"var(--t4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,fontFamily:"JetBrains Mono,monospace",flexShrink:0}},row.idx),
+            empAvatar(row.emp.name,34),
             React.createElement("div",{style:{flex:1,minWidth:0}},
               React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
                 React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"var(--navy)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},row.emp.name),
@@ -5782,9 +5882,11 @@ function IjroView({showToast}){
       React.createElement("div",{onClick:function(){setEditEmp(null)},style:{position:"absolute",inset:0,background:"rgba(0,0,0,.45)"}}),
       React.createElement("div",{style:{position:"relative",background:"#fff",borderRadius:16,width:"100%",maxWidth:460,maxHeight:"85vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)",padding:20}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}},
-          React.createElement("div",null,
-            React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#1e293b"}},editEmp.name),
-            React.createElement("div",{style:{fontSize:10,color:"#64748b",marginTop:2}},editEmp.lavozimi)
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12}},
+            empAvatar(editEmp.name,42),
+            React.createElement("div",null,
+              React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#1e293b"}},editEmp.name),
+              React.createElement("div",{style:{fontSize:10,color:"#64748b",marginTop:2}},editEmp.lavozimi))
           ),
           React.createElement("button",{onClick:function(){setEditEmp(null)},style:{width:28,height:28,borderRadius:7,border:"1px solid #e2e8f0",background:"#f8fafc",cursor:"pointer",fontSize:14,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center"}},"\u2715")
         ),
@@ -5908,22 +6010,24 @@ function DashboardView({showToast}){
     /* === KPI CARDS === */
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:18}},
       React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #059669",padding:"14px 16px"})},
-        React.createElement("div",{style:Object.assign({},_csn,{color:"#059669",fontSize:24})},davRows.present+"/"+davRows.total),
+        React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:2}},
+          React.createElement(AnimNum,{value:davRows.present,style:{fontSize:24,color:"#059669"}}),
+          React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#94a3b8",fontFamily:"JetBrains Mono,monospace"}},"/"+davRows.total)),
         React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#10b981",marginTop:2}},"Ish joyida")),
       React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #f59e0b",padding:"14px 16px"})},
-        React.createElement("div",{style:Object.assign({},_csn,{color:"#f59e0b",fontSize:24})},davRows.late),
+        React.createElement(AnimNum,{value:davRows.late,style:{fontSize:24,color:"#f59e0b"}}),
         React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#d97706",marginTop:2}},"Kechikkan")),
       React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #dc2626",padding:"14px 16px"})},
-        React.createElement("div",{style:Object.assign({},_csn,{color:"#dc2626",fontSize:24})},davRows.absent),
+        React.createElement(AnimNum,{value:davRows.absent,style:{fontSize:24,color:"#dc2626"}}),
         React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#ef4444",marginTop:2}},"Kelmagan")),
       React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #1e40af",padding:"14px 16px"})},
-        React.createElement("div",{style:Object.assign({},_csn,{color:"#1e40af",fontSize:24})},ijroRows.jami),
+        React.createElement(AnimNum,{value:ijroRows.jami,style:{fontSize:24,color:"#1e40af"}}),
         React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#3b82f6",marginTop:2}},"Jami topshiriqlar")),
       React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #dc2626",padding:"14px 16px"})},
-        React.createElement("div",{style:Object.assign({},_csn,{color:"#dc2626",fontSize:24})},ijroRows.otgan),
+        React.createElement(AnimNum,{value:ijroRows.otgan,style:{fontSize:24,color:"#dc2626"}}),
         React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#ef4444",marginTop:2}},"M. o\u2018tgan")),
       React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #7c3aed",padding:"14px 16px"})},
-        React.createElement("div",{style:Object.assign({},_csn,{color:"#7c3aed",fontSize:24})},ijroRows.foiz+"%"),
+        React.createElement(AnimNum,{value:ijroRows.foiz,suffix:"%",style:{fontSize:24,color:"#7c3aed"}}),
         React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#8b5cf6",marginTop:2}},"Ijro foizi"))
     ),
 
@@ -5977,7 +6081,7 @@ function DashboardView({showToast}){
         var isLate=row.st==="late";
         var totalMin=row.mornMin+row.aftMin;
         return React.createElement("div",{key:row.ek,style:{display:"grid",gridTemplateColumns:"36px 1fr 110px 90px 90px 70px",gap:4,padding:"10px 16px",borderBottom:"1px solid #f1f5f9",alignItems:"center",background:row.st==="absent"?"#fef2f2":isLate?"#fffbeb":"transparent",transition:"background .15s"}},
-          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#94a3b8",fontFamily:"JetBrains Mono,monospace"}},row.idx),
+          empAvatar(row.name,28),
           React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"var(--navy)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},row.name),
           React.createElement("div",null,
             React.createElement("span",{style:{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 10px",borderRadius:6,fontSize:10,fontWeight:700,background:row.info.bg,color:row.info.color}},
@@ -6024,7 +6128,7 @@ function DashboardView({showToast}){
       ),
       ijroRows.list.map(function(row){
         return React.createElement("div",{key:row.idx,style:{display:"grid",gridTemplateColumns:"36px 1fr 60px 60px 60px 80px",gap:4,padding:"10px 16px",borderBottom:"1px solid #f1f5f9",alignItems:"center",background:row.otgan>3?"#fef2f2":row.foiz>=80?"#f0fdf4":"transparent"}},
-          React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#94a3b8",fontFamily:"JetBrains Mono,monospace"}},row.idx),
+          empAvatar(row.name,28),
           React.createElement("div",{style:{minWidth:0}},
             React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"var(--navy)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},row.name),
             React.createElement("div",{style:{fontSize:9,color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},row.lavozimi),
