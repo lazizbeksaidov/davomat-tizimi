@@ -5336,6 +5336,7 @@ function IjroView({showToast}){
   },[selDateStr]);
 
   /* === 13-Aprel ma'lumotlarini bir martalik yuklash === */
+  var _backupRef=useRef(null);
   var _seedRef=useRef(false);
   useEffect(function(){
     if(loading||_seedRef.current||selDateStr!=="2026-04-13"||Object.keys(ijroData).length>0)return;
@@ -5409,6 +5410,34 @@ function IjroView({showToast}){
     db.ref("employee_notes/"+noteKey).set(noteData).then(function(){
       showToast("Saqlandi");setSaving(false);setEditEmp(null);
     }).catch(function(err){showToast("Xatolik: "+err.message);setSaving(false)});
+  }
+
+  function clearAllData(){
+    if(!confirm("Barcha ma\u2018lumotlarni 0 ga tushirasizmi?"))return;
+    _backupRef.current=JSON.parse(JSON.stringify(ijroData));
+    setSaving(true);
+    var upd={},ts=Date.now();
+    IJRO_EMPLOYEES.forEach(function(emp){
+      var ek=safeKey(emp.name);
+      var rec={empName:emp.name,text:"ijro",timestamp:ts,name:emp.name,lavozimi:emp.lavozimi};
+      IJRO_CATEGORIES.forEach(function(c){rec[c.key+"_o"]=0;rec[c.key+"_t"]=0});
+      rec.jami=0;rec.jami_otgan=0;rec.jami_toplar=0;rec.bugun_ijro=0;rec.bugun_otgan=0;
+      upd["employee_notes/ijro_"+selDateStr+"_"+ek]=rec;
+    });
+    db.ref().update(upd).then(function(){showToast("Barcha ma\u2018lumotlar tozalandi");setSaving(false)})
+    .catch(function(err){showToast("Xatolik: "+err.message);setSaving(false)});
+  }
+
+  function restoreData(){
+    if(!_backupRef.current||Object.keys(_backupRef.current).length===0){showToast("Qaytarish uchun ma\u2018lumot topilmadi");return}
+    if(!confirm("Oxirgi saqlangan holatga qaytarilsinmi?"))return;
+    setSaving(true);
+    var upd={},ts=Date.now();
+    Object.keys(_backupRef.current).forEach(function(ek){
+      upd["employee_notes/ijro_"+selDateStr+"_"+ek]=Object.assign({},_backupRef.current[ek],{timestamp:ts});
+    });
+    db.ref().update(upd).then(function(){showToast("Avvalgi holatga qaytarildi");_backupRef.current=null;setSaving(false)})
+    .catch(function(err){showToast("Xatolik: "+err.message);setSaving(false)});
   }
 
   var summary=useMemo(function(){
@@ -5525,6 +5554,16 @@ function IjroView({showToast}){
           )
         )
       )
+    ),
+
+    /* === ACTION BUTTONS === */
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12,justifyContent:"flex-end"}},
+      React.createElement("button",{onClick:restoreData,disabled:saving||!_backupRef.current,
+        style:{padding:"7px 14px",borderRadius:8,border:"1px solid "+(_backupRef.current?"#bfdbfe":"#e2e8f0"),background:_backupRef.current?"#eff6ff":"#f8fafc",color:_backupRef.current?"#1e40af":"#94a3b8",fontSize:11,fontWeight:700,cursor:_backupRef.current?"pointer":"default",display:"flex",alignItems:"center",gap:5,opacity:_backupRef.current?1:.5}},
+        "\u21A9 Qaytarish"),
+      React.createElement("button",{onClick:clearAllData,disabled:saving,
+        style:{padding:"7px 14px",borderRadius:8,border:"1px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:5}},
+        "\uD83D\uDDD1 Tozalash")
     ),
 
     /* === TOPSHIRIQLAR IJRO HOLATI - Category cards === */
