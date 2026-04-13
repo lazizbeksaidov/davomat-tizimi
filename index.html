@@ -5291,6 +5291,10 @@ function IjroView({showToast}){
   var _today=new Date();
   var[selMonth,setSelMonth]=useState(_today.getFullYear()+"-"+String(_today.getMonth()+1).padStart(2,"0"));
   var[selDay,setSelDay]=useState(_today.getDate());
+  var[showDayCal,setShowDayCal]=useState(false);
+  var[showMonthPick,setShowMonthPick]=useState(false);
+  var[calYM,setCalYM]=useState(null);
+  var[mpYear,setMpYear]=useState(_today.getFullYear());
 
   var mp=selMonth.split("-"),monthName=MONTHS[+mp[1]-1]||"",yearNum=mp[0];
   var selDateStr=selMonth+"-"+String(selDay).padStart(2,"0");
@@ -5331,6 +5335,13 @@ function IjroView({showToast}){
   function nextMonth(){var p=selMonth.split("-"),y=+p[0],m=+p[1];m++;if(m>12){m=1;y++}setSelMonth(y+"-"+String(m).padStart(2,"0"));setSelDay(1)}
   function prevDay(){var d=new Date(+mp[0],+mp[1]-1,selDay);d.setDate(d.getDate()-1);setSelMonth(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));setSelDay(d.getDate())}
   function nextDay(){var d=new Date(+mp[0],+mp[1]-1,selDay);d.setDate(d.getDate()+1);setSelMonth(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));setSelDay(d.getDate())}
+
+  function openDayCal(){setCalYM(selMonth);setShowDayCal(true);setShowMonthPick(false)}
+  function openMonthPick(){setMpYear(+yearNum);setShowMonthPick(true);setShowDayCal(false)}
+  function calPrev(){var p=(calYM||selMonth).split("-"),y=+p[0],m=+p[1];m--;if(m<1){m=12;y--}setCalYM(y+"-"+String(m).padStart(2,"0"))}
+  function calNext(){var p=(calYM||selMonth).split("-"),y=+p[0],m=+p[1];m++;if(m>12){m=1;y++}setCalYM(y+"-"+String(m).padStart(2,"0"))}
+  function pickDay(d){setSelMonth(calYM||selMonth);setSelDay(d);setShowDayCal(false)}
+  function pickMonth(m){setSelMonth(mpYear+"-"+String(m).padStart(2,"0"));setSelDay(1);setShowMonthPick(false)}
 
   function openEdit(emp){
     var ek=safeKey(emp.name),cur=ijroData[ek]||{},form={};
@@ -5401,9 +5412,23 @@ function IjroView({showToast}){
     return React.createElement("span",{style:{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:24,height:22,padding:"0 8px",borderRadius:12,fontSize:11,fontWeight:700,fontFamily:"JetBrains Mono,monospace",background:bg,color:col}},val);
   }
 
+  /* Calendar grid computation */
+  var _cvm=(calYM||selMonth).split("-"),_cvY=+_cvm[0],_cvM=+_cvm[1];
+  var _cvMN=MONTHS[_cvM-1]||"";
+  var _cvDIM=new Date(_cvY,_cvM,0).getDate();
+  var _cvFD=new Date(_cvY,_cvM-1,1).getDay();
+  var _cvOff=_cvFD===0?6:_cvFD-1;
+  var _calCells=(function(){var a=[];for(var i=0;i<_cvOff;i++)a.push(null);for(var i=1;i<=_cvDIM;i++)a.push(i);return a})();
+  var _dayN=["Du","Se","Cho","Pa","Ju","Sh","Ya"];
+  var _nb={width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"};
+  var _cn={width:28,height:28,borderRadius:7,border:"1px solid #e2e8f0",background:"#f8fafc",cursor:"pointer",fontSize:12,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center"};
+  var _dp={position:"absolute",top:"100%",right:0,marginTop:6,background:"#fff",borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,.18)",padding:16,zIndex:50,width:280};
+
   if(loading)return React.createElement("div",{style:{textAlign:"center",padding:60,color:"#94a3b8"}},"Yuklanmoqda...");
 
   return React.createElement("div",{style:{animation:"fadeUp .35s ease"}},
+    (showDayCal||showMonthPick)&&React.createElement("div",{onClick:function(){setShowDayCal(false);setShowMonthPick(false)},style:{position:"fixed",inset:0,zIndex:49}}),
+
     /* === HEADER === */
     React.createElement("div",{className:"page-header"},
       React.createElement("div",null,
@@ -5411,15 +5436,58 @@ function IjroView({showToast}){
         React.createElement("div",{className:"page-subtitle"},"Edo.ijro.uz \u2014 "+selDay+"-"+monthName+" "+yearNum)
       ),
       React.createElement("div",{className:"page-actions",style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
-          React.createElement("button",{onClick:prevMonth,style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25C0"),
-          React.createElement("div",{style:{padding:"5px 14px",borderRadius:8,background:"var(--cobalt)",color:"#fff",fontWeight:700,fontSize:12,fontFamily:"JetBrains Mono,monospace",minWidth:120,textAlign:"center"}},monthName+" "+yearNum),
-          React.createElement("button",{onClick:nextMonth,style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25B6")
+        /* --- Oy tanlash --- */
+        React.createElement("div",{style:{position:"relative",zIndex:showMonthPick?51:1}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+            React.createElement("button",{onClick:prevMonth,style:_nb},"\u25C0"),
+            React.createElement("div",{onClick:openMonthPick,style:{padding:"5px 14px",borderRadius:8,background:"var(--cobalt)",color:"#fff",fontWeight:700,fontSize:12,fontFamily:"JetBrains Mono,monospace",minWidth:120,textAlign:"center",cursor:"pointer"}},monthName+" "+yearNum+" \u25BE"),
+            React.createElement("button",{onClick:nextMonth,style:_nb},"\u25B6")
+          ),
+          showMonthPick&&React.createElement("div",{style:_dp},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
+              React.createElement("button",{onClick:function(){setMpYear(mpYear-1)},style:_cn},"\u25C0"),
+              React.createElement("div",{style:{fontWeight:800,fontSize:15,color:"#1e293b"}},mpYear),
+              React.createElement("button",{onClick:function(){setMpYear(mpYear+1)},style:_cn},"\u25B6")
+            ),
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}},
+              MONTHS.map(function(mn,i){
+                var isAct=selMonth===mpYear+"-"+String(i+1).padStart(2,"0");
+                return React.createElement("div",{key:i,onClick:function(){pickMonth(i+1)},
+                  style:{padding:"10px 6px",borderRadius:8,textAlign:"center",fontSize:12,fontWeight:isAct?800:600,
+                    background:isAct?"var(--cobalt)":"#f1f5f9",color:isAct?"#fff":"#334155",cursor:"pointer",transition:"all .15s"}},mn);
+              })
+            )
+          )
         ),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
-          React.createElement("button",{onClick:prevDay,style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25C0"),
-          React.createElement("div",{style:{padding:"5px 14px",borderRadius:8,background:"#059669",color:"#fff",fontWeight:700,fontSize:12,fontFamily:"JetBrains Mono,monospace",minWidth:120,textAlign:"center"}},selDay+"-"+monthName),
-          React.createElement("button",{onClick:nextDay,style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:14,color:"var(--t2)",display:"flex",alignItems:"center",justifyContent:"center"}},"\u25B6")
+        /* --- Kun tanlash --- */
+        React.createElement("div",{style:{position:"relative",zIndex:showDayCal?51:1}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+            React.createElement("button",{onClick:prevDay,style:_nb},"\u25C0"),
+            React.createElement("div",{onClick:openDayCal,style:{padding:"5px 14px",borderRadius:8,background:"#059669",color:"#fff",fontWeight:700,fontSize:12,fontFamily:"JetBrains Mono,monospace",minWidth:120,textAlign:"center",cursor:"pointer"}},selDay+"-"+monthName+" \u25BE"),
+            React.createElement("button",{onClick:nextDay,style:_nb},"\u25B6")
+          ),
+          showDayCal&&React.createElement("div",{style:_dp},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}},
+              React.createElement("button",{onClick:calPrev,style:_cn},"\u25C0"),
+              React.createElement("div",{style:{fontWeight:800,fontSize:14,color:"#1e293b"}},_cvMN+" "+_cvY),
+              React.createElement("button",{onClick:calNext,style:_cn},"\u25B6")
+            ),
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:4}},
+              _dayN.map(function(dn){return React.createElement("div",{key:dn,style:{textAlign:"center",fontSize:10,fontWeight:700,color:"#94a3b8",padding:"4px 0"}},dn)})
+            ),
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}},
+              _calCells.map(function(d,ci){
+                if(d===null)return React.createElement("div",{key:"e"+ci});
+                var isSel=(calYM||selMonth)===selMonth&&d===selDay;
+                var isT=(calYM||selMonth)===(_today.getFullYear()+"-"+String(_today.getMonth()+1).padStart(2,"0"))&&d===todayDay;
+                return React.createElement("div",{key:d,onClick:function(){pickDay(d)},
+                  style:{width:34,height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:12,fontWeight:isSel?800:isT?700:500,cursor:"pointer",margin:"0 auto",
+                    background:isSel?"#059669":isT?"#ecfdf5":"transparent",color:isSel?"#fff":isT?"#059669":"#334155",
+                    border:isT&&!isSel?"1.5px solid #059669":"1.5px solid transparent",transition:"all .15s"}},d);
+              })
+            )
+          )
         )
       )
     ),
