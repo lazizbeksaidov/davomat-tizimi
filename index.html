@@ -5393,7 +5393,7 @@ function IjroView({showToast}){
         React.createElement("div",{className:"stat-num"},summary.otgan),React.createElement("div",{className:"stat-label"},"Muddati o\u2018tgan"))),
       React.createElement("div",{className:"stat-card c-amber"},React.createElement("div",{className:"stat-accent"}),React.createElement("div",{className:"stat-card-inner"},
         React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"\uD83D\uDCC5")),
-        React.createElement("div",{className:"stat-num"},summary.toplar),React.createElement("div",{className:"stat-label"},monthName+" muddatli toplar"))),
+        React.createElement("div",{className:"stat-num"},summary.toplar),React.createElement("div",{className:"stat-label"},monthName+" muddatli"))),
       React.createElement("div",{className:"stat-card c-green"},React.createElement("div",{className:"stat-accent"}),React.createElement("div",{className:"stat-card-inner"},
         React.createElement("div",{className:"stat-top"},React.createElement("div",{className:"stat-icon-wrap"},"\u2705")),
         React.createElement("div",{className:"stat-num"},summary.bugun_ijro),React.createElement("div",{className:"stat-label"},"Bugun ijro etilgan")))
@@ -5419,10 +5419,10 @@ function IjroView({showToast}){
               React.createElement("th",{rowSpan:2,style:Object.assign({},thS,{color:"#fff",background:"#1e3a5f",width:32})},"")),
             React.createElement("tr",{style:{background:"#f1f5f9"}},
               React.createElement("th",{style:Object.assign({},thS,{fontSize:7,color:"#dc2626",background:"#fff1f2"})},"Muddati\no\u2018tgan"),
-              React.createElement("th",{style:Object.assign({},thS,{fontSize:7,color:"#059669",background:"#ecfdf5"})},dd[2]+"-"+monthName+"\ntoplar"),
+              React.createElement("th",{style:Object.assign({},thS,{fontSize:7,color:"#d97706",background:"#fffbeb"})},dd[2]+"-"+monthName+"\nmuddatli"),
               IJRO_CATEGORIES.map(function(c){return[
                 React.createElement("th",{key:c.key+"o",style:Object.assign({},thS,{fontSize:6.5,color:"#dc2626",background:"#fff5f5"})},"m.o\u2018tg"),
-                React.createElement("th",{key:c.key+"t",style:Object.assign({},thS,{fontSize:6.5,color:c.color,background:"#f8fafc"})},"toplar")
+                React.createElement("th",{key:c.key+"t",style:Object.assign({},thS,{fontSize:6.5,color:"#d97706",background:"#fffbeb"})},"muddatli")
               ]}),
               React.createElement("th",{style:Object.assign({},thS,{fontSize:7,color:"#059669",background:"#ecfdf5"})},"ijro"),
               React.createElement("th",{style:Object.assign({},thS,{fontSize:7,color:"#dc2626",background:"#fff1f2"})},"sh.m\no\u2018tg"))
@@ -5436,12 +5436,12 @@ function IjroView({showToast}){
                 React.createElement("td",{style:Object.assign({},tdS,{textAlign:"left",fontSize:8.5,color:"#64748b",fontFamily:"Inter,sans-serif",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"})},row.emp.lavozimi),
                 React.createElement("td",{style:Object.assign({},tdS,{fontWeight:800,fontSize:13,color:"#1e40af",background:has?"#dbeafe":"transparent"})},cv(row.jami,"#1e40af")),
                 React.createElement("td",{style:Object.assign({},tdS,{fontWeight:700,color:"#dc2626",background:row.otgan?"#fee2e2":"transparent"})},cv(row.otgan,"#dc2626")),
-                React.createElement("td",{style:Object.assign({},tdS,{fontWeight:700,color:"#16a34a",background:row.toplar?"#dcfce7":"transparent"})},cv(row.toplar,"#16a34a")),
+                React.createElement("td",{style:Object.assign({},tdS,{fontWeight:700,color:"#d97706",background:row.toplar?"#fef3c7":"transparent"})},cv(row.toplar,"#d97706")),
                 IJRO_CATEGORIES.map(function(c){
                   var co=row.d[c.key+"_o"]||0,ct=row.d[c.key+"_t"]||0;
                   return[
                     React.createElement("td",{key:c.key+"o",style:Object.assign({},tdS,{color:"#dc2626",fontWeight:co?700:400,background:co?"#fee2e2":"transparent"})},cv(co,"#dc2626")),
-                    React.createElement("td",{key:c.key+"t",style:Object.assign({},tdS,{color:c.color,fontWeight:ct?700:400,background:ct?c.color+"15":"transparent"})},cv(ct,c.color))
+                    React.createElement("td",{key:c.key+"t",style:Object.assign({},tdS,{color:"#d97706",fontWeight:ct?700:400,background:ct?"#fef3c7":"transparent"})},cv(ct,"#d97706"))
                   ];
                 }),
                 React.createElement("td",{style:Object.assign({},tdS,{fontWeight:700,color:"#059669",background:row.bugun_ijro?"#d1fae5":"transparent"})},cv(row.bugun_ijro,"#059669")),
@@ -5454,10 +5454,10 @@ function IjroView({showToast}){
               React.createElement("td",{colSpan:3,style:Object.assign({},tdS,{textAlign:"left",color:"#fff",fontWeight:800,fontSize:12,border:"1px solid #334155",fontFamily:"Inter,sans-serif"})},"Jami:"),
               React.createElement("td",{style:Object.assign({},tdS,{color:"#fde68a",fontWeight:800,fontSize:14,border:"1px solid #334155"})},summary.jami),
               React.createElement("td",{style:Object.assign({},tdS,{color:"#fca5a5",fontWeight:800,border:"1px solid #334155"})},summary.otgan),
-              React.createElement("td",{style:Object.assign({},tdS,{color:"#86efac",fontWeight:800,border:"1px solid #334155"})},summary.toplar),
+              React.createElement("td",{style:Object.assign({},tdS,{color:"#fbbf24",fontWeight:800,border:"1px solid #334155"})},summary.toplar),
               IJRO_CATEGORIES.map(function(c){return[
                 React.createElement("td",{key:c.key+"o",style:Object.assign({},tdS,{color:"#fca5a5",fontWeight:700,fontSize:10,border:"1px solid #334155"})},summary.cats[c.key].o||""),
-                React.createElement("td",{key:c.key+"t",style:Object.assign({},tdS,{color:"#e2e8f0",fontWeight:700,fontSize:10,border:"1px solid #334155"})},summary.cats[c.key].t||"")
+                React.createElement("td",{key:c.key+"t",style:Object.assign({},tdS,{color:"#fbbf24",fontWeight:700,fontSize:10,border:"1px solid #334155"})},summary.cats[c.key].t||"")
               ]}),
               React.createElement("td",{style:Object.assign({},tdS,{color:"#6ee7b7",fontWeight:800,border:"1px solid #334155"})},summary.bugun_ijro),
               React.createElement("td",{style:Object.assign({},tdS,{color:"#fca5a5",fontWeight:800,border:"1px solid #334155"})},summary.bugun_otgan),
@@ -5484,7 +5484,7 @@ function IjroView({showToast}){
             React.createElement("div",{style:{fontSize:11,fontWeight:700,color:c.color,marginBottom:6}},c.label),
             React.createElement("div",{style:{display:"flex",gap:12}},
               numInput(c.key+"_o","Muddati o\u2018tgan"),
-              numInput(c.key+"_t",monthName+" toplar")
+              numInput(c.key+"_t",monthName+" muddatli")
             )
           );
         }),
