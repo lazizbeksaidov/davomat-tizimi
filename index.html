@@ -3519,58 +3519,8 @@ function DashboardCharts({dateKey,attendanceData,checkinsData,counts}){
     return{...s,dash,gap,offset:o};
   });
 
-  // Weekly trend: oxirgi 5 HAFTA (har hafta o'rtacha davomat %)
-  const weekTrend=useMemo(()=>{
-    const weeks=[];
-    const mn=["Yan","Fev","Mar","Apr","May","Iyn","Iyl","Avg","Sen","Okt","Noy","Dek"];
-    const d=new Date(dateKey+"T12:00:00");
-    const dow=d.getDay();
-    const monOff=dow===0?6:dow-1;
-    const curMon=new Date(d);
-    curMon.setDate(d.getDate()-monOff);
-    for(let w=0;w<5;w++){
-      const weekMon=new Date(curMon);
-      weekMon.setDate(curMon.getDate()-(w*7));
-      let totalP=0,totalD=0;
-      for(let day=0;day<5;day++){
-        const cd=new Date(weekMon);
-        cd.setDate(weekMon.getDate()+day);
-        const dk=fmtDate(cd);
-        if(!attendanceData[dk]&&!(checkinsData&&checkinsData[dk]))continue;
-        let pc=0;
-        EMPLOYEES.forEach(emp=>{
-          const ek=safeKey(emp);
-          const rec=attendanceData[dk]?.[ek];
-          const ci=checkinsData[dk]?.[ek];
-          const hasSelfie=ci&&(ci.morning||ci.afternoon);
-          const st=rec?.status||"";
-          if(hasSelfie||st==="present"||st==="late")pc++;
-        });
-        totalP+=pc;totalD++;
-      }
-      if(totalD>0){
-        const avgPct=Math.round((totalP/(totalD*EMPLOYEES.length))*100);
-        const weekFri=new Date(weekMon);weekFri.setDate(weekMon.getDate()+4);
-        const label=weekMon.getDate()+"-"+weekFri.getDate()+" "+mn[weekMon.getMonth()];
-        weeks.unshift({name:label,pct:avgPct});
-      }
-    }
-    return weeks;
-  },[dateKey,attendanceData,checkinsData]);
-
-  // SVG line chart dimensions
-  const W=280,H=120,PX=30,PY=14;
-  const chartW=W-PX*2,chartH=H-PY*2;
-  const points=weekTrend.map((d,i)=>{
-    const x=PX+(weekTrend.length>1?i*(chartW/(weekTrend.length-1)):chartW/2);
-    const y=PY+chartH-(d.pct/100)*chartH;
-    return{x,y,...d};
-  });
-  const linePath=points.map((p,i)=>(i===0?"M":"L")+p.x+","+p.y).join(" ");
-  const areaPath=linePath+" L"+points[points.length-1]?.x+","+(PY+chartH)+" L"+points[0]?.x+","+(PY+chartH)+" Z";
-
   return(
-    <div className="charts-row">
+    <div style={{marginBottom:22}}>
       <div className="chart-card">
         <div className="chart-title">Bugungi davomat taqsimoti</div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -3594,34 +3544,6 @@ function DashboardCharts({dateKey,attendanceData,checkinsData,counts}){
             </div>
           ))}
         </div>
-      </div>
-      <div className="chart-card">
-        <div className="chart-title">Haftalik davomat trendi</div>
-        {weekTrend.length>1?(
-          <svg width="100%" viewBox={`0 0 ${W} ${H+18}`} preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--emerald)" stopOpacity="0.25"/>
-                <stop offset="100%" stopColor="var(--emerald)" stopOpacity="0.02"/>
-              </linearGradient>
-            </defs>
-            {[0,25,50,75,100].map(v=>{
-              const y=PY+chartH-(v/100)*chartH;
-              return <line key={v} x1={PX} y1={y} x2={W-PX} y2={y} stroke="var(--border)" strokeWidth=".5"/>;
-            })}
-            <path d={areaPath} fill="url(#trendFill)"/>
-            <path d={linePath} fill="none" stroke="var(--emerald)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            {points.map((p,i)=>(
-              <g key={i}>
-                <circle cx={p.x} cy={p.y} r="4" fill="var(--white)" stroke="var(--emerald)" strokeWidth="2"/>
-                <text x={p.x} y={p.y-10} textAnchor="middle" className="trend-value">{p.pct}%</text>
-                <text x={p.x} y={H+12} textAnchor="middle" className="trend-label">{p.name}</text>
-              </g>
-            ))}
-          </svg>
-        ):(
-          <div style={{textAlign:"center",color:"var(--t4)",padding:"30px 0",fontSize:12}}>Ma'lumot yetarli emas</div>
-        )}
       </div>
     </div>
   );
@@ -3909,8 +3831,90 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,checkinsDat
   );
 }
 
+/* ═══ WEEKLY TREND CHART ═══ */
+function WeeklyTrendChart({dateKey,attendanceData,checkinsData}){
+  const weekTrend=useMemo(()=>{
+    const weeks=[];
+    const mn=["Yan","Fev","Mar","Apr","May","Iyn","Iyl","Avg","Sen","Okt","Noy","Dek"];
+    const d=new Date(dateKey+"T12:00:00");
+    const dow=d.getDay();
+    const monOff=dow===0?6:dow-1;
+    const curMon=new Date(d);
+    curMon.setDate(d.getDate()-monOff);
+    for(let w=0;w<5;w++){
+      const weekMon=new Date(curMon);
+      weekMon.setDate(curMon.getDate()-(w*7));
+      let totalP=0,totalD=0;
+      for(let day=0;day<5;day++){
+        const cd=new Date(weekMon);
+        cd.setDate(weekMon.getDate()+day);
+        const dk=fmtDate(cd);
+        if(!attendanceData[dk]&&!(checkinsData&&checkinsData[dk]))continue;
+        let pc=0;
+        EMPLOYEES.forEach(emp=>{
+          const ek=safeKey(emp);
+          const rec=attendanceData[dk]?.[ek];
+          const ci=checkinsData?.[dk]?.[ek];
+          const hasSelfie=ci&&(ci.morning||ci.afternoon);
+          const st=rec?.status||"";
+          if(hasSelfie||st==="present"||st==="late")pc++;
+        });
+        totalP+=pc;totalD++;
+      }
+      if(totalD>0){
+        const avgPct=Math.round((totalP/(totalD*EMPLOYEES.length))*100);
+        const weekFri=new Date(weekMon);weekFri.setDate(weekMon.getDate()+4);
+        const label=weekMon.getDate()+"-"+weekFri.getDate()+" "+mn[weekMon.getMonth()];
+        weeks.unshift({name:label,pct:avgPct});
+      }
+    }
+    return weeks;
+  },[dateKey,attendanceData,checkinsData]);
+
+  const W=480,H=160,PX=40,PY=18;
+  const chartW=W-PX*2,chartH=H-PY*2;
+  const points=weekTrend.map((d,i)=>{
+    const x=PX+(weekTrend.length>1?i*(chartW/(weekTrend.length-1)):chartW/2);
+    const y=PY+chartH-(d.pct/100)*chartH;
+    return{x,y,...d};
+  });
+  const linePath=points.map((p,i)=>(i===0?"M":"L")+p.x+","+p.y).join(" ");
+  const areaPath=points.length>0?(linePath+" L"+points[points.length-1].x+","+(PY+chartH)+" L"+points[0].x+","+(PY+chartH)+" Z"):"";
+
+  return(
+    <div className="chart-card" style={{marginBottom:18}}>
+      <div className="chart-title">Haftalik davomat trendi</div>
+      {weekTrend.length>1?(
+        <svg width="100%" viewBox={`0 0 ${W} ${H+22}`} preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="wkTrendFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--emerald)" stopOpacity="0.25"/>
+              <stop offset="100%" stopColor="var(--emerald)" stopOpacity="0.02"/>
+            </linearGradient>
+          </defs>
+          {[0,25,50,75,100].map(v=>{
+            const y=PY+chartH-(v/100)*chartH;
+            return <line key={v} x1={PX} y1={y} x2={W-PX} y2={y} stroke="var(--border)" strokeWidth=".5"/>;
+          })}
+          <path d={areaPath} fill="url(#wkTrendFill)"/>
+          <path d={linePath} fill="none" stroke="var(--emerald)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          {points.map((p,i)=>(
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r="5" fill="var(--white)" stroke="var(--emerald)" strokeWidth="2.5"/>
+              <text x={p.x} y={p.y-12} textAnchor="middle" className="trend-value" style={{fontSize:11,fontWeight:700}}>{p.pct}%</text>
+              <text x={p.x} y={H+16} textAnchor="middle" className="trend-label" style={{fontSize:9}}>{p.name}</text>
+            </g>
+          ))}
+        </svg>
+      ):(
+        <div style={{textAlign:"center",color:"var(--t4)",padding:"30px 0",fontSize:12}}>Haftalik ma'lumot yetarli emas</div>
+      )}
+    </div>
+  );
+}
+
 /* ═══ WEEKLY VIEW ═══ */
-function WeeklyView({selectedDate,setSelectedDate,attendanceData,onEmpClick}){
+function WeeklyView({selectedDate,setSelectedDate,attendanceData,checkinsData,onEmpClick}){
   const weekDates=useMemo(()=>getWeekDates(selectedDate),[selectedDate]);
   const empStats=useMemo(()=>EMPLOYEES.map(emp=>{
     let present=0,late=0,absent=0,lateMins=0;
@@ -3946,6 +3950,7 @@ function WeeklyView({selectedDate,setSelectedDate,attendanceData,onEmpClick}){
         <div className="stat-card c-navy"><div className="stat-accent"/>
           <div className="stat-card-inner"><div className="stat-top"><div className="stat-icon-wrap">⏱</div></div><div className="stat-num">{empStats.reduce((s,r)=>s+r.lateMins,0)}<sup> d</sup></div><div className="stat-label">Jami kechikish</div></div></div>
       </div>
+      <WeeklyTrendChart dateKey={fmtDate(selectedDate)} attendanceData={attendanceData} checkinsData={checkinsData||{}}/>
       <div className="table-card">
         <div className="table-header">
           <div><div className="table-title">Haftalik Jadval</div><div className="table-meta">{EMPLOYEES.length} xodim × 5 ish kuni</div></div>
@@ -9892,7 +9897,7 @@ function App(){
                     })}
                   </div>
                   {davomatTab==="daily"&&<DailyView user={user} selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} checkinsData={checkinsData} updateRecord={dispatch} isHolidayDate={isHolidayDate} getHolidayInfo={getHolidayInfo}/>}
-                  {davomatTab==="weekly"&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
+                  {davomatTab==="weekly"&&<WeeklyView selectedDate={selDate} setSelectedDate={setSelDate} attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                   {davomatTab==="monthly"&&<MonthlyView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
                 </>}
                 {view==="analytics"&&canManage&&<AnalyticsView attendanceData={data} checkinsData={checkinsData} onEmpClick={emp=>setModalEmp(emp)}/>}
