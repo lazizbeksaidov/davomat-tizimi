@@ -5444,71 +5444,107 @@ function IjroView({showToast}){
 
   useEffect(function(){
     setLoading(true);
+    var cancelled=false;
     var curPrefix="ijro_"+selDateStr+"_";
     var _liveRef=null,_liveHandler=null;
 
-    /* Real-time listener (faqat data bor bo'lganda ishga tushadi) */
     function startLive(){
       _liveRef=db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff");
       _liveHandler=_liveRef.on("value",function(snap){
+        if(cancelled)return;
         var d={};
         snap.forEach(function(ch){d[ch.key.replace(curPrefix,"")]=ch.val()});
         if(Object.keys(d).length>0)setIjroData(d);
       });
     }
 
-    /* 1-qadam: bugungi kunni tekshir */
+    console.log("[IJRO] "+selDateStr+" uchun ma'lumot tekshirilmoqda...");
     db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix+"\uf8ff")
       .once("value").then(function(snap){
+        if(cancelled)return;
         var d={};
         snap.forEach(function(ch){d[ch.key.replace(curPrefix,"")]=ch.val()});
+        console.log("[IJRO] "+selDateStr+": topilgan yozuvlar="+Object.keys(d).length);
         if(Object.keys(d).length>0){
           setIjroData(d);
           setLoading(false);
           startLive();
         }else{
+          console.log("[IJRO] Ma'lumot yo'q, oldingi kundan ko'chirish boshlanmoqda...");
           findAndCopy(1);
         }
       }).catch(function(err){
-        console.error("Ijro load:",err);
-        setIjroData({});setLoading(false);
+        console.error("[IJRO] Yuklash xato:",err);
+        if(!cancelled){setIjroData({});setLoading(false);}
       });
 
-    /* 2-qadam: oldingi kunlardan izlash va ko'chirish */
     function findAndCopy(daysBack){
-      if(daysBack>7){setIjroData({});setLoading(false);startLive();return}
+      if(cancelled)return;
+      if(daysBack>7){
+        console.log("[IJRO] 7 kun ichida ma'lumot topilmadi");
+        setIjroData({});setLoading(false);startLive();return;
+      }
       var parts=selDateStr.split("-");
       var base=new Date(+parts[0],+parts[1]-1,+parts[2]);
       base.setDate(base.getDate()-daysBack);
       var ps=base.getFullYear()+"-"+String(base.getMonth()+1).padStart(2,"0")+"-"+String(base.getDate()).padStart(2,"0");
       var pp="ijro_"+ps+"_";
+      console.log("[IJRO] "+daysBack+" kun orqaga tekshirish: "+ps);
       db.ref("employee_notes").orderByKey().startAt(pp).endAt(pp+"\uf8ff")
         .once("value").then(function(psnap){
-          if(!psnap.exists()||psnap.numChildren()===0){findAndCopy(daysBack+1);return}
-          var pd={},upd={},ts=Date.now();
+          if(cancelled)return;
+          if(!psnap.exists()||psnap.numChildren()===0){
+            console.log("[IJRO] "+ps+" da ma'lumot yo'q, keyingisiga o'tilmoqda...");
+            findAndCopy(daysBack+1);return;
+          }
+          console.log("[IJRO] "+ps+" da "+psnap.numChildren()+" ta yozuv topildi! Ko'chirish...");
+          var pd={},ts=Date.now(),promises=[];
           psnap.forEach(function(ch){
-            var rec=Object.assign({},ch.val());
+            var oldRec=ch.val();
             var ek=ch.key.replace(pp,"");
+            var rec={
+              empName:oldRec.empName||oldRec.name||ek.replace(/_/g," "),
+              text:"ijro",
+              timestamp:ts,
+              name:oldRec.name||oldRec.empName||ek.replace(/_/g," "),
+              lavozimi:oldRec.lavozimi||""
+            };
+            IJRO_CATEGORIES.forEach(function(c){
+              rec[c.key+"_o"]=oldRec[c.key+"_o"]||0;
+              rec[c.key+"_t"]=oldRec[c.key+"_t"]||0;
+            });
+            var tO=0,tT=0;
+            IJRO_CATEGORIES.forEach(function(c){tO+=(rec[c.key+"_o"]||0);tT+=(rec[c.key+"_t"]||0)});
+            rec.jami=tO+tT;
+            rec.jami_otgan=tO;
+            rec.jami_toplar=tT;
             rec.bugun_ijro=0;
             rec.bugun_otgan=0;
-            rec.timestamp=ts;
             pd[ek]=rec;
-            upd["employee_notes/ijro_"+selDateStr+"_"+ek]=rec;
+            var newKey="ijro_"+selDateStr+"_"+ek;
+            promises.push(db.ref("employee_notes/"+newKey).set(rec));
           });
           setIjroData(pd);
           setLoading(false);
-          showToast(ps+" dan ko\u2018chirildi (bugun ijro: 0)");
-          db.ref().update(upd).then(function(){
-            console.log(selDateStr+": "+ps+" dan saqlandi");
-            startLive();
+          showToast(ps+" dan ko\u2018chirildi (bugun_ijro: 0)");
+          Promise.all(promises).then(function(){
+            console.log("[IJRO] "+selDateStr+": "+promises.length+" ta yozuv Firebase ga saqlandi!");
+            if(!cancelled)startLive();
           }).catch(function(e){
-            console.error("Ko\u2018chirish xato:",e.message);
-            startLive();
+            console.error("[IJRO] Firebase yozish xato:",e.message);
+            showToast("Firebase xato: "+e.message);
+            if(!cancelled)startLive();
           });
-        }).catch(function(){findAndCopy(daysBack+1)});
+        }).catch(function(e){
+          console.error("[IJRO] "+ps+" o'qish xato:",e);
+          findAndCopy(daysBack+1);
+        });
     }
 
-    return function(){if(_liveRef&&_liveHandler)_liveRef.off("value",_liveHandler)};
+    return function(){
+      cancelled=true;
+      if(_liveRef&&_liveHandler)_liveRef.off("value",_liveHandler);
+    };
   },[selDateStr]);
 
   /* === Oldingi kun ma'lumotlarini taqqoslash uchun yuklash === */
