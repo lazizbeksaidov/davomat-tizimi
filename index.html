@@ -5700,7 +5700,14 @@ function IjroView({showToast}){
   }
 
   function badge(val,bg,col){
-    return React.createElement("span",{style:{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:24,height:22,padding:"0 8px",borderRadius:12,fontSize:11,fontWeight:700,fontFamily:"JetBrains Mono,monospace",background:bg,color:col}},val);
+    return React.createElement("span",{style:{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:28,height:26,padding:"0 10px",borderRadius:14,fontSize:13,fontWeight:800,fontFamily:"JetBrains Mono,monospace",background:bg,color:col}},val);
+  }
+  function statChip(label,val,bg,col,delta){
+    return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"6px 10px",borderRadius:10,background:bg,minWidth:48}},
+      React.createElement("div",{style:{fontSize:17,fontWeight:800,fontFamily:"JetBrains Mono,monospace",color:col,lineHeight:1}},val),
+      delta?React.createElement("div",{style:{fontSize:10,fontWeight:700,color:delta.up?"#dc2626":"#059669",marginTop:1}},delta.up?"\u2191+"+delta.diff:"\u2193"+delta.diff):null,
+      React.createElement("div",{style:{fontSize:8,fontWeight:600,color:col,opacity:.7,marginTop:2,whiteSpace:"nowrap"}},label)
+    );
   }
 
   /* Calendar grid computation */
@@ -5885,30 +5892,38 @@ function IjroView({showToast}){
         var empFoiz=row.jami>0?Math.round(((row.jami-row.otgan)/row.jami)*100):0;
         var dJami=getDelta(row.ek,"jami");
         var dOtgan=getDelta(row.ek,"jami_otgan");
-        return React.createElement("div",{key:row.ek,style:{marginBottom:8,borderRadius:12,border:"1px solid "+(isExp?"var(--cobalt)":"var(--border)"),background:"var(--white)",overflow:"hidden",boxShadow:isExp?"0 4px 16px rgba(70,95,255,.1)":"none",transition:"all .2s"}},
-          /* Row header - always visible */
-          React.createElement("div",{style:{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",background:isExp?"rgba(70,95,255,.03)":"transparent"},onClick:function(){setExpanded(isExp?null:row.ek)}},
-            empAvatar(row.emp.name,34),
-            React.createElement("div",{style:{flex:1,minWidth:0}},
-              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
-                React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"var(--navy)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},row.emp.name),
-                hasData?React.createElement("span",{style:{fontSize:9,fontWeight:700,color:empFoiz>=70?"#059669":empFoiz>=40?"#d97706":"#dc2626",background:empFoiz>=70?"#ecfdf5":empFoiz>=40?"#fffbeb":"#fef2f2",padding:"1px 6px",borderRadius:4}},empFoiz+"%"):null
+        return React.createElement("div",{key:row.ek,style:{marginBottom:10,borderRadius:14,border:"1px solid "+(isExp?"var(--cobalt)":"var(--border)"),background:"var(--white)",overflow:"hidden",boxShadow:isExp?"0 4px 16px rgba(70,95,255,.1)":"0 1px 4px rgba(0,0,0,.04)",transition:"all .2s"}},
+          /* Row header */
+          React.createElement("div",{style:{padding:"14px 16px",cursor:"pointer",background:isExp?"rgba(70,95,255,.03)":"transparent"},onClick:function(){setExpanded(isExp?null:row.ek)}},
+            /* Top line: avatar + name + edit */
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:hasData?10:0}},
+              empAvatar(row.emp.name,40),
+              React.createElement("div",{style:{flex:1,minWidth:0}},
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                  React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"var(--navy)"}},row.emp.name),
+                  hasData?React.createElement("span",{style:{fontSize:11,fontWeight:800,color:empFoiz>=70?"#059669":empFoiz>=40?"#d97706":"#dc2626",background:empFoiz>=70?"#ecfdf5":empFoiz>=40?"#fffbeb":"#fef2f2",padding:"2px 8px",borderRadius:6}},empFoiz+"%"):null
+                ),
+                React.createElement("div",{style:{fontSize:11,color:"var(--t4)",marginTop:2}},row.emp.lavozimi)
               ),
-              React.createElement("div",{style:{fontSize:10,color:"var(--t4)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},row.emp.lavozimi),
-              hasData?React.createElement("div",{style:{width:"100%",height:3,borderRadius:2,background:"#e2e8f0",marginTop:4,maxWidth:160}},
-                React.createElement("div",{style:{width:empFoiz+"%",height:"100%",borderRadius:2,background:empFoiz>=70?"#10b981":empFoiz>=40?"#f59e0b":"#ef4444",transition:"width .4s ease"}})
-              ):null
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+                React.createElement("button",{onClick:function(e){e.stopPropagation();openEdit(row.emp)},style:{width:32,height:32,borderRadius:8,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}},"\u270F\uFE0F"),
+                React.createElement("div",{style:{fontSize:16,color:"var(--t4)",transition:"transform .2s",transform:isExp?"rotate(180deg)":"rotate(0)",marginLeft:2}},"\u25BC")
+              )
             ),
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
-              hasData?React.createElement("span",{style:{display:"flex",alignItems:"center",gap:2}},badge(row.jami,"#dbeafe","#1e40af"),dJami?React.createElement("span",{style:{fontSize:8,fontWeight:700,color:dJami.up?"#dc2626":"#059669"}},dJami.up?"\u2191+"+dJami.diff:"\u2193"+dJami.diff):null):null,
-              row.otgan?React.createElement("span",{style:{display:"flex",alignItems:"center",gap:2}},badge(row.otgan,"#fee2e2","#dc2626"),dOtgan?React.createElement("span",{style:{fontSize:8,fontWeight:700,color:dOtgan.up?"#dc2626":"#059669"}},dOtgan.up?"\u2191+"+dOtgan.diff:"\u2193"+dOtgan.diff):null):null,
-              row.toplar?badge(row.toplar,"#fef3c7","#d97706"):null,
-              row.bugun_ijro?badge(row.bugun_ijro,"#d1fae5","#059669"):null
-            ),
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flexShrink:0}},
-              React.createElement("button",{onClick:function(e){e.stopPropagation();openEdit(row.emp)},style:{width:30,height:30,borderRadius:7,border:"1px solid var(--border)",background:"var(--surface)",cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}},"\u270F\uFE0F"),
-              React.createElement("div",{style:{fontSize:14,color:"var(--t4)",transition:"transform .2s",transform:isExp?"rotate(180deg)":"rotate(0)"}},"\u25BC")
-            )
+            /* Stats line: katta raqamlar */
+            hasData?React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginLeft:52}},
+              statChip("Jami",row.jami,"#dbeafe","#1e40af",dJami),
+              row.otgan?statChip("M.o\u2018tgan",row.otgan,"#fee2e2","#dc2626",dOtgan):null,
+              row.toplar?statChip("Muddatli",row.toplar,"#fef3c7","#b45309",null):null,
+              row.bugun_ijro?statChip("Ijro",row.bugun_ijro,"#d1fae5","#059669",null):null,
+              row.bugun_otgan?statChip("Sh.m.o\u2018tg",row.bugun_otgan,"#fce7f3","#be185d",null):null,
+              /* Progress bar */
+              React.createElement("div",{style:{flex:1,minWidth:80,display:"flex",flexDirection:"column",justifyContent:"center",gap:3}},
+                React.createElement("div",{style:{width:"100%",height:6,borderRadius:3,background:"#e2e8f0"}},
+                  React.createElement("div",{style:{width:empFoiz+"%",height:"100%",borderRadius:3,background:empFoiz>=70?"#10b981":empFoiz>=40?"#f59e0b":"#ef4444",transition:"width .4s ease"}})),
+                React.createElement("div",{style:{fontSize:9,color:"#94a3b8",fontWeight:600}},"ijro: "+(row.jami-row.otgan)+"/"+row.jami)
+              )
+            ):null
           ),
           /* Expanded detail */
           isExp&&React.createElement("div",{style:{padding:"0 16px 16px",borderTop:"1px solid var(--border)"}},
