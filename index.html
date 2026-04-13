@@ -8922,6 +8922,7 @@ function App(){
   /* APP */
   const isAdmin=user.role==="admin";
   const isBoss=user.role==="boss";
+  const canIjro=isAdmin||user.name==="Husainova Klara";
   const isObserver=user.role==="observer";
   const canManage=isAdmin||isBoss||isObserver;
   const canEdit=isAdmin||isBoss;
@@ -8937,7 +8938,7 @@ function App(){
     {k:"selfie",icon:"📸",label:"Selfie Davomat"},
     {k:"empNotes",icon:"✏️",label:"Xodim Izohlari"},
     ...((isAdmin||isObserver)?[{k:"aiAnalysis",icon:"🤖",label:"AI Tahlil"}]:[]),
-    ...(isAdmin?[{k:"ijro",icon:"📋",label:"Ijro"}]:[]),
+    ...(canIjro?[{k:"ijro",icon:"📋",label:"Ijro"}]:[]),
     ...(isAdmin?[{k:"location",icon:"📍",label:"Hudud"}]:[]),
     ...(isAdmin?[{k:"telegram",icon:"📨",label:"Telegram Bot"}]:[]),
     ...(isAdmin?[{k:"accounts",icon:"🔑",label:"Akkauntlar"}]:[])
@@ -8947,7 +8948,8 @@ function App(){
     {k:"announcements",icon:"📢",label:"E'lonlar"},
     {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
     {k:"selfie",icon:"📸",label:"Selfie Davomat"},
-    {k:"empNotes",icon:"✏️",label:"Izoh yozish"}
+    {k:"empNotes",icon:"✏️",label:"Izoh yozish"},
+    ...(canIjro?[{k:"ijro",icon:"📋",label:"Ijro"}]:[])
   ];
   const navItems=canManage?adminNav:empNav;
   const viewLabels={davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",location:"Hudud Sozlamalari",ijro:"Ijro Intizomi",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
@@ -9135,7 +9137,7 @@ function App(){
                 {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
                 {view==="empNotes"&&<EmployeeNotesView user={user}/>}
                 {view==="aiAnalysis"&&(isAdmin||isObserver)&&<AIAnalysisView showToast={showToast}/>}
-                {view==="ijro"&&isAdmin&&<IjroView showToast={showToast}/>}
+                {view==="ijro"&&canIjro&&<IjroView showToast={showToast}/>}
                 {view==="location"&&isAdmin&&<LocationSettings showToast={showToast}/>}
                 {view==="telegram"&&isAdmin&&<TelegramSettings showToast={showToast}/>}
                 {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
