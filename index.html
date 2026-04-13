@@ -2687,7 +2687,7 @@ var OFFICE_LOCATION = {
   address: "Navoiy sh., Amir Temur ko'chasi, 77A"
 };
 function loadOfficeLocation(){
-  return db.ref("office_location").once("value").then(function(snap){
+  return db.ref("telegram_config/office_location").once("value").then(function(snap){
     var v=snap.val();
     if(v){
       OFFICE_LOCATION.lat=v.lat||OFFICE_LOCATION.lat;
@@ -2701,7 +2701,7 @@ function loadOfficeLocation(){
 }
 function saveOfficeLocation(loc){
   OFFICE_LOCATION=Object.assign(OFFICE_LOCATION,loc);
-  return db.ref("office_location").set({lat:loc.lat,lng:loc.lng,radius:loc.radius,name:loc.name,address:loc.address});
+  return db.ref("telegram_config/office_location").set({lat:loc.lat,lng:loc.lng,radius:loc.radius,name:loc.name,address:loc.address});
 }
 loadOfficeLocation();
 /* ═══ TELEGRAM BOT INTEGRATION ═══ */
@@ -5339,7 +5339,7 @@ function LocationSettings({showToast}){
 
   if(loading)return React.createElement("div",{style:{padding:40,textAlign:"center"}},"Yuklanmoqda...");
 
-  var radiusOptions=[50,100,150,200,300,500];
+  var radiusOptions=[30,50,100,150,200,300,500];
 
   return(
     <div style={{animation:"fadeUp .35s ease"}}>
@@ -5385,7 +5385,8 @@ function LocationSettings({showToast}){
           </div>
           <div style={{marginTop:14,padding:"10px 14px",borderRadius:8,background:loc.radius<=100?"var(--emerald-bg)":loc.radius<=200?"rgba(251,191,36,.08)":"rgba(231,76,60,.06)",
             border:"1px solid "+(loc.radius<=100?"var(--emerald)":loc.radius<=200?"rgba(251,191,36,.3)":"rgba(231,76,60,.2)"),fontSize:12,color:"var(--t2)"}}>
-            {loc.radius<=50?"🔒 Juda qat'iy — faqat bino ichidagilar":
+            {loc.radius<=30?"🔒 Eng qat'iy — faqat bino ichida":
+             loc.radius<=50?"🔒 Qat'iy — bino ichidagilar":
              loc.radius<=100?"✅ Tavsiya etiladi — bino va hovli":
              loc.radius<=200?"⚠️ O'rtacha — yaqin atrofni ham qamraydi":
              "🔓 Keng — uzoqroq masofadan ham ruxsat beriladi"}
