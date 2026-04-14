@@ -2,10 +2,10 @@
 <html lang="uz">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#F8FAFC" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#465fff" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Xodimlar" />
   <title>Xodimlar Monitoring Tizimi — Navoiy viloyati</title>
   <link id="dynamic-manifest" rel="manifest" />
@@ -88,16 +88,25 @@
     }
     .glass-card:hover { box-shadow: var(--s3); }
 
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; height: 100%; }
     body {
       font-family: 'Inter', sans-serif;
       background: var(--ink);
       background-image: radial-gradient(circle at 0% 0%, rgba(70,95,255,.03) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(122,90,248,.03) 0%, transparent 50%);
       color: var(--t1);
       min-height: 100vh;
+      min-height: 100dvh;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
     }
+    /* Prevent iOS zoom on input focus */
+    @supports (-webkit-touch-callout: none) {
+      input, select, textarea { font-size: 16px !important; }
+    }
+    /* Smooth scroll on iOS */
+    * { -webkit-tap-highlight-color: transparent; }
+    input, button, select, textarea { -webkit-appearance: none; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
@@ -1079,9 +1088,10 @@
     }
     @media(max-width:640px) {
       .toast {
-        bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 12px);
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
         left: 14px; right: 14px;
         font-size: 13px;
+        border-radius: 14px;
       }
     }
     @keyframes toastIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
@@ -2606,11 +2616,32 @@
       border-color: rgba(251,146,60,.2);
     }
     @media(max-width:640px) {
-      /* bottom nav removed - sidebar only */
       [data-theme="dark"] .mobile-header {
-        background: rgba(13,17,23,.95);
-        backdrop-filter: blur(20px);
-        box-shadow: 0 20px 40px -10px rgba(0,0,0,.5);
+        background: linear-gradient(135deg, #2d3a8c 0%, #4c3d99 100%);
+        box-shadow: 0 4px 20px rgba(0,0,0,.3);
+      }
+      [data-theme="dark"] .sidebar {
+        background: var(--ink);
+        border-right: 1px solid rgba(255,255,255,.06);
+      }
+      [data-theme="dark"] .sidebar.open {
+        box-shadow: 8px 0 40px rgba(0,0,0,.5);
+      }
+      [data-theme="dark"] .sidebar-footer {
+        background: rgba(255,255,255,.03);
+      }
+      [data-theme="dark"] .sidebar-user {
+        background: rgba(255,255,255,.04);
+        border-color: rgba(255,255,255,.08);
+      }
+      [data-theme="dark"] .nav-item.active {
+        background: rgba(70,95,255,.15);
+        border-color: rgba(70,95,255,.25);
+      }
+      [data-theme="dark"] .dark-toggle,
+      [data-theme="dark"] .logout-btn {
+        background: rgba(255,255,255,.04);
+        border-color: rgba(255,255,255,.08);
       }
     }
   </style>
