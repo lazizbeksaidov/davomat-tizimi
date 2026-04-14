@@ -338,108 +338,136 @@
 
     /* Sidebar */
     .sidebar {
-      width: var(--sidebar-w);
+      width: 82vw; max-width: 320px;
       background: var(--white);
       display: flex; flex-direction: column;
       position: fixed; top: 0; left: 0; bottom: 0;
       z-index: 300; overflow-y: auto;
-      border-right: 1px solid var(--border);
+      border-right: none;
+      border-radius: 0 22px 22px 0;
       box-shadow: none;
-      transform: translateX(-100%);
-      transition: transform .3s cubic-bezier(.4,0,.2,1), box-shadow .3s ease;
+      transform: translateX(-105%);
+      transition: transform .32s cubic-bezier(.4,0,.2,1), box-shadow .32s ease;
     }
     .sidebar.open {
       transform: translateX(0);
-      box-shadow: 4px 0 24px rgba(0,0,0,.08);
+      box-shadow: 8px 0 40px rgba(0,0,0,.18);
     }
     .sidebar-top {
-      padding: 20px 18px 16px;
-      border-bottom: 1px solid var(--border);
+      padding: 22px 18px 18px;
+      background: linear-gradient(135deg, #465fff, #7a5af8);
+      border-radius: 0 22px 0 0;
     }
     .sidebar-brand {
-      display: flex; align-items: center; gap: 11px;
+      display: flex; align-items: center; gap: 12px;
     }
     .sidebar-logo {
-      width: 34px; height: 34px; flex-shrink: 0;
-      background: linear-gradient(135deg, #465fff, #7a5af8);
-      border-radius: 9px;
+      width: 40px; height: 40px; flex-shrink: 0;
+      background: rgba(255,255,255,.2);
+      border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 3px 12px rgba(70,95,255,.3);
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+      backdrop-filter: blur(8px);
     }
-    .sidebar-name { font-size: 12px; font-weight: 700; color: var(--t1); line-height: 1.3; }
-    .sidebar-sub { font-size: 9.5px; color: var(--t4); margin-top: 2px; }
+    .sidebar-logo svg { stroke: #fff !important; }
+    .sidebar-name { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.3; }
+    .sidebar-sub { font-size: 10px; color: rgba(255,255,255,.7); margin-top: 2px; }
+    .sidebar-top .sidebar-toggle { color: rgba(255,255,255,.7) !important; }
 
-    .sidebar-nav { flex: 1; padding: 10px 10px; }
+    .sidebar-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
     .nav-section-label {
       font-size: 9px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
       color: var(--t4); padding: 14px 8px 6px;
     }
     .nav-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 9px 10px; border-radius: 9px;
-      font-size: 13px; font-weight: 500; color: var(--t2);
+      display: flex; align-items: center; gap: 11px;
+      padding: 10px 12px; border-radius: 12px;
+      font-size: 13.5px; font-weight: 500; color: var(--t2);
       cursor: pointer; transition: all .18s; margin-bottom: 2px;
       border: 1px solid transparent;
       user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     .nav-item:hover { background: var(--surface2); color: var(--t1); }
+    .nav-item:active { transform: scale(.97); }
     .nav-item.active {
-      background: var(--gold-pale);
-      border-color: transparent;
-      color: var(--navy);
+      background: linear-gradient(135deg, rgba(70,95,255,.1), rgba(122,90,248,.08));
+      border-color: rgba(70,95,255,.15);
+      color: #465fff;
       font-weight: 600;
     }
     .nav-item-icon {
-      width: 28px; height: 28px; border-radius: 7px;
+      width: 32px; height: 32px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 14px; flex-shrink: 0;
+      font-size: 15px; flex-shrink: 0;
       background: var(--surface2);
-      transition: background .18s;
+      transition: all .18s;
     }
-    .nav-item.active .nav-item-icon { background: rgba(70,95,255,.1); }
+    .nav-item.active .nav-item-icon {
+      background: rgba(70,95,255,.12);
+      box-shadow: 0 2px 8px rgba(70,95,255,.15);
+    }
     .nav-item-badge {
       margin-left: auto; font-size: 9px; font-weight: 700;
       background: var(--ruby); color: #fff;
-      padding: 1px 6px; border-radius: 10px;
+      padding: 2px 7px; border-radius: 10px;
     }
 
     .sidebar-footer {
       padding: 14px 12px;
       border-top: 1px solid var(--border);
+      background: var(--surface2);
+      border-radius: 0 0 22px 0;
     }
     .sidebar-user {
       display: flex; align-items: center; gap: 10px;
-      padding: 8px 10px; border-radius: 10px;
-      background: var(--surface2);
+      padding: 10px 12px; border-radius: 12px;
+      background: var(--white);
       border: 1px solid var(--border);
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
     .sidebar-avatar {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--navy), var(--navy-lt));
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, #465fff, #7a5af8);
       display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700; color: #fff;
+      font-size: 13px; font-weight: 700; color: #fff;
       flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(70,95,255,.25);
     }
-    .sidebar-user-name { font-size: 12px; font-weight: 600; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sidebar-user-role { font-size: 9.5px; color: var(--t4); text-transform: uppercase; letter-spacing: .5px; }
-    .logout-btn {
-      width: 100%; padding: 8px 12px;
-      background: var(--surface2);
+    .sidebar-user-name { font-size: 12.5px; font-weight: 600; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role { font-size: 9.5px; color: var(--t4); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+    .dark-toggle {
+      width: 100%; padding: 9px 12px; margin-bottom: 6px;
+      background: var(--white);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--t3);
-      font-size: 11.5px; font-weight: 600; font-family: 'Inter', sans-serif;
+      border-radius: 10px;
+      color: var(--t2);
+      font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;
       cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
       transition: all .18s;
+      -webkit-tap-highlight-color: transparent;
     }
-    .logout-btn:hover { background: rgba(192,57,43,.12); color: #ff8a7a; border-color: rgba(192,57,43,.25); }
+    .dark-toggle:active { transform: scale(.97); }
+    .logout-btn {
+      width: 100%; padding: 9px 12px;
+      background: var(--white);
+      border: 1px solid rgba(239,68,68,.2);
+      border-radius: 10px;
+      color: #ef4444;
+      font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all .18s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .logout-btn:hover, .logout-btn:active { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.3); }
 
     /* Sidebar overlay backdrop */
     .sidebar-overlay {
       display: none;
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,.3);
+      background: rgba(0,0,0,.4);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       z-index: 299;
       opacity: 0;
       transition: opacity .3s ease;
@@ -1613,6 +1641,7 @@
 
     /* Mobile-only elements hidden on desktop */
     .mobile-bottom-nav { display: none !important; }
+    .mob-nav-btn, .mob-nav-icon, .mob-nav-label { display: none !important; }
     .mobile-header { display: none !important; }
 
     /* ─── RESPONSIVE ──────────────────────────── */
@@ -1772,80 +1801,14 @@
         color: #ff8a7a;
       }
 
-      /* ─── MOBILE BOTTOM NAV (fixed tab bar) ─── */
-      .mobile-bottom-nav {
-        display: flex !important;
-        position: fixed;
-        bottom: 0; left: 0; right: 0;
-        height: 56px;
-        background: rgba(255,255,255,.85);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-top: 1px solid var(--border);
-        box-shadow: 0 -4px 20px rgba(0,0,0,.06);
-        z-index: 700;
-        padding: 0 4px;
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-        align-items: stretch;
-        border-radius: 20px 20px 0 0;
-      }
-      .mob-nav-btn {
-        flex: 1;
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        gap: 1px;
-        padding: 6px 0 4px;
-        background: none; border: none;
-        color: var(--t4);
-        font-size: 9px;
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        cursor: pointer;
-        position: relative;
-        min-width: 0;
-        -webkit-tap-highlight-color: transparent;
-        transition: color .12s;
-        letter-spacing: .1px;
-      }
-      .mob-nav-btn.active {
-        color: #465fff;
-      }
-      .mob-nav-btn.active::after {
-        content: '';
-        position: absolute;
-        top: 0; left: 25%; right: 25%;
-        height: 2.5px;
-        border-radius: 0 0 3px 3px;
-        background: linear-gradient(90deg, #465fff, #7a5af8);
-      }
-      .mob-nav-btn.active .mob-nav-icon {
-        background: rgba(70,95,255,.1);
-        border-radius: 12px;
-      }
-      .mob-nav-icon {
-        font-size: 20px;
-        line-height: 1;
-        width: 36px; height: 28px;
-        display: flex; align-items: center; justify-content: center;
-        border-radius: 10px;
-        transition: background .12s;
-      }
-      .mob-nav-btn.active .mob-nav-icon {
-        background: rgba(70,95,255,.1);
-      }
-      .mob-nav-label {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 56px;
-        text-align: center;
-      }
+      /* ─── MOBILE BOTTOM NAV REMOVED ─── */
+      .mobile-bottom-nav, .mob-nav-btn, .mob-nav-icon, .mob-nav-label { display: none !important; }
 
       /* ─── MAIN CONTENT AREA ─── */
       .main {
         flex: 1;
         padding: 16px 14px 24px !important;
-        padding-bottom: calc(24px + 56px + env(safe-area-inset-bottom, 0px)) !important;
+        padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
@@ -2613,16 +2576,7 @@
       border-color: rgba(251,146,60,.2);
     }
     @media(max-width:640px) {
-      [data-theme="dark"] .mobile-bottom-nav {
-        background: rgba(22,27,34,0.8);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-top: 1px solid rgba(31,41,55,.4);
-        box-shadow: 0 -10px 30px rgba(0,0,0,.4);
-      }
-      [data-theme="dark"] .mob-nav-btn.active { color: #7592ff; }
-      [data-theme="dark"] .mob-nav-btn.active .mob-nav-icon { background: rgba(117,146,255,.12); }
-      [data-theme="dark"] .mob-nav-btn.active::after { background: linear-gradient(90deg, #7592ff, #9b8afb); }
+      /* bottom nav removed - sidebar only */
       [data-theme="dark"] .mobile-header {
         background: rgba(13,17,23,.95);
         backdrop-filter: blur(20px);
@@ -9825,33 +9779,48 @@ function App(){
   const isObserver=user.role==="observer";
   const canManage=isAdmin||isBoss||isObserver;
   const canEdit=isAdmin||isBoss;
-  const adminNav=[
-    {k:"dashboard",icon:"\uD83C\uDFE0",label:"Dashboard"},
-    {k:"davomat",icon:"📅",label:"Davomat"},
-    {k:"analytics",icon:"📈",label:"Analitika"},
-    {k:"stats",icon:"📊",label:"Statistika"},
-    {k:"employees",icon:"👥",label:"Xodimlar"},
-    {k:"holidays",icon:"🎉",label:"Bayramlar"},
-    {k:"announcements",icon:"📢",label:"E'lonlar"},
-    {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
-    ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
-    {k:"selfie",icon:"📸",label:"Selfie Davomat"},
-    {k:"empNotes",icon:"✏️",label:"Xodim Izohlari"},
-    ...((isAdmin||isObserver)?[{k:"aiAnalysis",icon:"🤖",label:"AI Tahlil"}]:[]),
-    ...(canIjro?[{k:"ijro",icon:"📋",label:"Ijro"}]:[]),
-    ...(isAdmin?[{k:"location",icon:"📍",label:"Hudud"}]:[]),
-    ...(isAdmin?[{k:"telegram",icon:"📨",label:"Telegram Bot"}]:[]),
-    ...(isAdmin?[{k:"accounts",icon:"🔑",label:"Akkauntlar"}]:[])
+  const adminNavGroups=[
+    {label:"Asosiy",items:[
+      {k:"dashboard",icon:"\uD83C\uDFE0",label:"Dashboard"},
+      {k:"davomat",icon:"📅",label:"Davomat"},
+      {k:"employees",icon:"👥",label:"Xodimlar"},
+    ]},
+    {label:"Hisobotlar",items:[
+      {k:"analytics",icon:"📈",label:"Analitika"},
+      {k:"stats",icon:"📊",label:"Statistika"},
+      ...(canIjro?[{k:"ijro",icon:"📋",label:"Ijro Intizomi"}]:[]),
+    ]},
+    {label:"Monitoring",items:[
+      {k:"selfie",icon:"📸",label:"Selfie Davomat"},
+      ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
+      {k:"empNotes",icon:"✏️",label:"Xodim Izohlari"},
+      ...((isAdmin||isObserver)?[{k:"aiAnalysis",icon:"🤖",label:"AI Tahlil"}]:[]),
+    ]},
+    {label:"Ma'lumotlar",items:[
+      {k:"announcements",icon:"📢",label:"E'lonlar"},
+      {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
+      {k:"holidays",icon:"🎉",label:"Bayramlar"},
+    ]},
+    ...(isAdmin?[{label:"Sozlamalar",items:[
+      {k:"location",icon:"📍",label:"Hudud"},
+      {k:"telegram",icon:"📨",label:"Telegram Bot"},
+      {k:"accounts",icon:"🔑",label:"Akkauntlar"},
+    ]}]:[]),
   ];
-  const empNav=[
-    {k:"myStats",icon:"👤",label:"Shaxsiy Kabinet"},
-    {k:"announcements",icon:"📢",label:"E'lonlar"},
-    {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
-    {k:"selfie",icon:"📸",label:"Selfie Davomat"},
-    {k:"empNotes",icon:"✏️",label:"Izoh yozish"},
-    ...(canIjro?[{k:"ijro",icon:"📋",label:"Ijro"}]:[])
+  const empNavGroups=[
+    {label:"Asosiy",items:[
+      {k:"myStats",icon:"👤",label:"Shaxsiy Kabinet"},
+      {k:"selfie",icon:"📸",label:"Selfie Davomat"},
+    ]},
+    {label:"Ma'lumotlar",items:[
+      {k:"announcements",icon:"📢",label:"E'lonlar"},
+      {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
+      {k:"empNotes",icon:"✏️",label:"Izoh yozish"},
+      ...(canIjro?[{k:"ijro",icon:"📋",label:"Ijro"}]:[]),
+    ]},
   ];
-  const navItems=canManage?adminNav:empNav;
+  const navGroups=canManage?adminNavGroups:empNavGroups;
+  const navItems=navGroups.flatMap(g=>g.items);
   const viewLabels={dashboard:"Dashboard",davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",location:"Hudud Sozlamalari",ijro:"Ijro Intizomi",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":isObserver?"Kuzatuvchi":"Xodim";
 
@@ -9878,11 +9847,15 @@ function App(){
         </div>
 
         <div className="sidebar-nav">
-          <div className="nav-section-label">Asosiy</div>
-          {navItems.map(({k,icon,label})=>(
-            <div key={k} className={`nav-item ${view===k?"active":""}`} onClick={()=>{setView(k);setSidebarOpen(false)}}>
-              <div className="nav-item-icon">{icon}</div>
-              <span>{label}</span>
+          {navGroups.map((group,gi)=>(
+            <div key={gi}>
+              <div className="nav-section-label">{group.label}</div>
+              {group.items.map(({k,icon,label})=>(
+                <div key={k} className={`nav-item ${view===k?"active":""}`} onClick={()=>{setView(k);setSidebarOpen(false)}}>
+                  <div className="nav-item-icon">{icon}</div>
+                  <span>{label}</span>
+                </div>
+              ))}
             </div>
           ))}
         </div>
