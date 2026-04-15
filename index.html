@@ -5744,102 +5744,74 @@ function IjroView({showToast}){
     });
   },[selDateStr]);
 
-  /* === Edo.ijro.uz rasmlaridan olingan ma'lumotlar — bir martalik yuklash === */
+  /* === Edo.ijro.uz rasmlaridan olingan ma'lumotlar — bir martalik yuklash (v3 — tuzatilgan) === */
   var _backupRef=useRef(null);
   var _seedRef=useRef(false);
 
-  /* Barcha sanalar uchun yagona seed funksiyasi */
   useEffect(function(){
     if(loading||_seedRef.current)return;
-    var SK="ijro_seed_all_v2";
+    var SK="ijro_seed_all_v3";
     try{if(localStorage.getItem(SK)==="done")return}catch(e){}
     _seedRef.current=true;
 
-    /* Kategoriya ma'lumotlari — Edo.ijro.uz screenshotlaridan o'qilgan */
-    var catBase=[
-      /* 0-Umrzoqov */  {prezAsosiy_o:1,prezAsosiy_t:1,vazirlar_o:1,hukumat_t:1},
-      /* 1-Axadov   */  {prezAsosiy_o:1,hukumat_o:1,hukumat_t:2},
-      /* 2-Qurbonov */  {prezQoshimcha_t:1,prezAdmin_t:1,vazirlar_t:2,hukumat_t:4,yuqori_t:4},
-      /* 3-Barnoqulov*/ {prezAdmin_o:2,prezAdmin_t:1,hukumat_t:2,yuqori_o:1,yuqori_t:2,murojaat_t:1},
-      /* 4-Nazarov  */  {prezAsosiy_o:1},
-      /* 5-Narzullayev*/{prezAdmin_o:1,vazirlar_o:3,yuqori_o:1,yuqori_t:2},
-      /* 6-Pirbayev */  {},
-      /* 7-Saidov   */  {yuqori_t:1},
-      /* 8-Jaynakov */  {}
+    /* 10-aprel — yuqori sifatli screenshot asosida (Jami=45, MO=13) */
+    var cat0410=[
+      /* 0-Umrzoqov  Jami=5  MO=1 */ {prezAsosiy_o:1,prezAsosiy_t:1,hukumat_t:1,yuqori_t:2},
+      /* 1-Axadov    Jami=8  MO=3 */ {prezAsosiy_o:1,hukumat_o:2,hukumat_t:3,yuqori_t:2},
+      /* 2-Qurbonov  Jami=12 MO=0 */ {prezQoshimcha_t:1,prezAdmin_t:1,vazirlar_t:2,hukumat_t:4,yuqori_t:4},
+      /* 3-Barnoqulov Jami=9 MO=4 */ {prezAdmin_o:2,prezAdmin_t:1,hukumat_o:1,hukumat_t:2,yuqori_o:1,yuqori_t:2},
+      /* 4-Nazarov   Jami=1  MO=1 */ {prezAsosiy_o:1},
+      /* 5-Narzullayev Jami=9 MO=4*/ {prezAdmin_o:1,vazirlar_o:3,yuqori_t:5},
+      /* 6-Pirbayev  Jami=0       */ {},
+      /* 7-Saidov    Jami=1  MO=0 */ {yuqori_t:1},
+      /* 8-Jaynakov  Jami=0       */ {}
+    ];
+    /* 13-aprel — yuqori sifatli screenshot asosida (Jami=42, MO=17) */
+    var cat0413=[
+      /* 0-Umrzoqov  Jami=5  MO=2 */ {prezAsosiy_o:1,prezAsosiy_t:1,hukumat_t:1,yuqori_o:1,yuqori_t:1},
+      /* 1-Axadov    Jami=5  MO=2 */ {prezAsosiy_o:1,hukumat_o:1,hukumat_t:2,yuqori_t:1},
+      /* 2-Qurbonov  Jami=13 MO=1 */ {prezQoshimcha_t:1,prezAdmin_t:1,vazirlar_t:2,hukumat_t:4,yuqori_o:1,yuqori_t:4},
+      /* 3-Barnoqulov Jami=8 MO=3 */ {prezAdmin_o:2,prezAdmin_t:1,hukumat_t:2,yuqori_o:1,yuqori_t:2},
+      /* 4-Nazarov   Jami=1  MO=1 */ {prezAsosiy_o:1},
+      /* 5-Narzullayev Jami=9 MO=7*/ {prezAdmin_o:1,vazirlar_o:3,yuqori_o:3,yuqori_t:2},
+      /* 6-Pirbayev  Jami=0       */ {},
+      /* 7-Saidov    Jami=1  MO=1 */ {yuqori_o:1},
+      /* 8-Jaynakov  Jami=0       */ {}
     ];
 
-    /* Kunlik "bugun ijro" ma'lumotlari — har bir sana uchun [ijro, otgan] */
-    var bugunByDate={
-      "2026-04-02":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
-      "2026-04-03":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
-      "2026-04-06":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
-      "2026-04-07":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
-      "2026-04-08":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
-      "2026-04-13":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]}
+    /* Sanalar: 2-8 aprel = 10-aprel asosida, bugun qiymatlari faqat aniq sanalar uchun */
+    var dateConfig={
+      "2026-04-02":{cats:cat0410,bugun:{}},
+      "2026-04-03":{cats:cat0410,bugun:{}},
+      "2026-04-06":{cats:cat0410,bugun:{}},
+      "2026-04-07":{cats:cat0410,bugun:{}},
+      "2026-04-08":{cats:cat0410,bugun:{}},
+      "2026-04-10":{cats:cat0410,bugun:{0:[2,1],5:[4,2]}},
+      "2026-04-13":{cats:cat0413,bugun:{5:[4,2]}}
     };
 
-    var dates=Object.keys(bugunByDate);
+    var dates=Object.keys(dateConfig);
     var ts=Date.now(),upd={},count=0;
 
-    /* Avval mavjud sanalarni tekshirish */
-    var checkKey="employee_notes/ijro_"+dates[0]+"_"+safeKey(IJRO_EMPLOYEES[0].name);
-    db.ref(checkKey).once("value").then(function(snap){
-      if(snap.exists()){
-        /* Allaqachon mavjud — faqat yangi sanalarni qo'shish */
-        var promises=[];
-        dates.forEach(function(dateStr){
-          var ek0=safeKey(IJRO_EMPLOYEES[0].name);
-          promises.push(db.ref("employee_notes/ijro_"+dateStr+"_"+ek0).once("value"));
-        });
-        return Promise.all(promises).then(function(snaps){
-          snaps.forEach(function(s,di){
-            if(!s.exists()){
-              /* Bu sana mavjud emas — seed qilish */
-              var dateStr=dates[di];
-              var bd=bugunByDate[dateStr]||{};
-              IJRO_EMPLOYEES.forEach(function(emp,i){
-                var c=catBase[i]||{};
-                var ek=safeKey(emp.name);
-                var rec={empName:emp.name,text:"ijro",timestamp:ts,name:emp.name,lavozimi:emp.lavozimi};
-                IJRO_CATEGORIES.forEach(function(cat){rec[cat.key+"_o"]=c[cat.key+"_o"]||0;rec[cat.key+"_t"]=c[cat.key+"_t"]||0});
-                var tO=0,tT=0;
-                IJRO_CATEGORIES.forEach(function(cat){tO+=rec[cat.key+"_o"];tT+=rec[cat.key+"_t"]});
-                rec.jami=tO+tT;rec.jami_otgan=tO;rec.jami_toplar=tT;
-                var b=bd[i]||[0,0];rec.bugun_ijro=b[0];rec.bugun_otgan=b[1];
-                upd["employee_notes/ijro_"+dateStr+"_"+ek]=rec;count++;
-              });
-            }
-          });
-          if(count>0){
-            return db.ref().update(upd).then(function(){
-              showToast(count+" ta yozuv qo\u2018shildi!");
-              try{localStorage.setItem(SK,"done")}catch(e){}
-            });
-          } else {
-            try{localStorage.setItem(SK,"done")}catch(e){}
-          }
-        });
-      } else {
-        /* Hech narsa yo'q — hammasini seed qilish */
-        dates.forEach(function(dateStr){
-          var bd=bugunByDate[dateStr]||{};
-          IJRO_EMPLOYEES.forEach(function(emp,i){
-            var c=catBase[i]||{};
-            var ek=safeKey(emp.name);
-            var rec={empName:emp.name,text:"ijro",timestamp:ts,name:emp.name,lavozimi:emp.lavozimi};
-            IJRO_CATEGORIES.forEach(function(cat){rec[cat.key+"_o"]=c[cat.key+"_o"]||0;rec[cat.key+"_t"]=c[cat.key+"_t"]||0});
-            var tO=0,tT=0;
-            IJRO_CATEGORIES.forEach(function(cat){tO+=rec[cat.key+"_o"];tT+=rec[cat.key+"_t"]});
-            rec.jami=tO+tT;rec.jami_otgan=tO;rec.jami_toplar=tT;
-            var b=bd[i]||[0,0];rec.bugun_ijro=b[0];rec.bugun_otgan=b[1];
-            upd["employee_notes/ijro_"+dateStr+"_"+ek]=rec;count++;
-          });
-        });
-        return db.ref().update(upd).then(function(){
-          showToast("6 kunlik ma\u2018lumotlar yuklandi! ("+count+" yozuv)");
-          try{localStorage.setItem(SK,"done")}catch(e){}
-        });
-      }
+    dates.forEach(function(dateStr){
+      var cfg=dateConfig[dateStr];
+      var bd=cfg.bugun||{};
+      IJRO_EMPLOYEES.forEach(function(emp,i){
+        var c=cfg.cats[i]||{};
+        var ek=safeKey(emp.name);
+        var rec={empName:emp.name,text:"ijro",timestamp:ts,name:emp.name,lavozimi:emp.lavozimi};
+        IJRO_CATEGORIES.forEach(function(cat){rec[cat.key+"_o"]=c[cat.key+"_o"]||0;rec[cat.key+"_t"]=c[cat.key+"_t"]||0});
+        var tO=0,tT=0;
+        IJRO_CATEGORIES.forEach(function(cat){tO+=rec[cat.key+"_o"];tT+=rec[cat.key+"_t"]});
+        rec.jami=tO+tT;rec.jami_otgan=tO;rec.jami_toplar=tT;
+        var b=bd[i]||[0,0];rec.bugun_ijro=b[0];rec.bugun_otgan=b[1];
+        upd["employee_notes/ijro_"+dateStr+"_"+ek]=rec;count++;
+      });
+    });
+
+    db.ref().update(upd).then(function(){
+      showToast("7 kunlik ma\u2018lumotlar yuklandi! ("+count+" yozuv)");
+      try{localStorage.setItem(SK,"done")}catch(e){}
     }).catch(function(e){
       showToast("Seed xatolik: "+e.message);
       _seedRef.current=false;
