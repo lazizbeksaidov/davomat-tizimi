@@ -5786,114 +5786,229 @@ function IjroView({showToast}){
 
   /* === EXCEL IMPORT === */
   var _fileInputRef=useRef(null);
+  /* === GOVERNMENT EXCEL IMPORT ===
+     Hukumat kunlik ijro intizomi Excel formati:
+     - "kunlik" sheet, merged header qatorlar (1-5)
+     - A: T/r, B: F.I.Sh (qisqartirilgan: "Sh.Qurbonov"), C: Lavozimi
+     - D: Jami, E-F: Jami (muddati o'tgan / muddatli)
+     - Category juftliklari (har biri: muddati o'tgan + muddatli):
+       Prezident, Prez.Admin, Vazirlar, Hukumat, Yuqori, Murojaat
+     - Oxirida: bugun ijro ta'minlangan ustunlari
+     - "Jami:" qatori — yakuniy summary
+  */
   function importIjroExcel(e){
     var file=e.target.files&&e.target.files[0];
-    if(!file){return}
+    if(!file)return;
     if(typeof XLSX==="undefined"){showToast("XLSX kutubxonasi yuklanmagan");return}
     setSaving(true);
     var reader=new FileReader();
     reader.onload=function(ev){
       try{
         var wb=XLSX.read(ev.target.result,{type:"binary"});
-        var ws=wb.Sheets[wb.SheetNames[0]];
-        var raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:0});
-        if(!raw||raw.length<2){showToast("Excel fayl bo'sh yoki noto'g'ri format");setSaving(false);return}
 
-        /* Headerdan ustun indekslarini aniqlash */
-        var hdr=raw[0].map(function(h){return String(h||"").toLowerCase().replace(/[\u2018\u2019\u02BC'`\s]/g,"")});
-        var nameCol=-1;
-        for(var hi=0;hi<hdr.length;hi++){
-          if(hdr[hi].indexOf("rahbar")>=0||hdr[hi].indexOf("xodim")>=0||hdr[hi].indexOf("ism")>=0||hdr[hi].indexOf("bolim")>=0||hdr[hi].indexOf("nomi")>=0){nameCol=hi;break}
+        /* 1. "kunlik" sheetni topish */
+        var wsName=wb.SheetNames[0];
+        for(var si=0;si<wb.SheetNames.length;si++){
+          if(wb.SheetNames[si].toLowerCase().indexOf("kunlik")>=0){wsName=wb.SheetNames[si];break}
         }
-        if(nameCol<0)nameCol=1; /* default: 2-ustun (B) — ism */
+        var ws=wb.Sheets[wsName];
+        var raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+        if(!raw||raw.length<3){showToast("Excel fayl bo\u2018sh yoki noto\u2018g\u2018ri format");setSaving(false);return}
 
-        /* Kategoriya ustunlarini topish */
-        var catCols={};
-        IJRO_CATEGORIES.forEach(function(c){
-          catCols[c.key]={o:-1,t:-1};
-          for(var ci=0;ci<hdr.length;ci++){
-            var h=hdr[ci];
-            var shortNorm=c.short.toLowerCase().replace(/[\.\s]/g,"");
-            if(h.indexOf(shortNorm)>=0||h.indexOf(c.key)>=0){
-              if(h.indexOf("otgan")>=0||h.indexOf("mo")>=0){catCols[c.key].o=ci}
-              else if(h.indexOf("muddatli")>=0||h.indexOf("toplar")>=0||catCols[c.key].t<0){catCols[c.key].t=ci}
-            }
+        /* 2. Data qatorlarini aniqlash — A ustunida raqam (T/r) bo'lgan qatorlar */
+        var dataStart=-1,dataEnd=raw.length;
+        for(var ri=0;ri<raw.length;ri++){
+          var cellA=raw[ri][0];
+          if(dataStart<0){
+            /* Birinchi raqamli qator — data boshlanishi */
+            if(typeof cellA==="number"&&cellA>=1&&cellA<=50){dataStart=ri}
+            else{var n=parseInt(cellA);if(!isNaN(n)&&n>=1&&n<=50)dataStart=ri}
+          }else{
+            /* "Jami:" yoki bo'sh qator — data tugashi */
+            var sv=String(cellA||"").toLowerCase().replace(/[:\s]/g,"");
+            if(sv==="jami"||sv==="itogo"){dataEnd=ri;break}
+            if(sv===""&&!raw[ri][1]){dataEnd=ri;break}
           }
-        });
+        }
+        if(dataStart<0){showToast("Ma\u2018lumot qatorlari topilmadi. T/r ustunini tekshiring.");setSaving(false);return}
 
-        /* Bugun ijro / bugun o'tgan ustunlarini topish */
-        var bugunIjroCol=-1,bugunOtganCol=-1;
-        for(var bi=0;bi<hdr.length;bi++){
-          if(hdr[bi].indexOf("bugunijro")>=0||hdr[bi].indexOf("bugun")>=0&&hdr[bi].indexOf("ijro")>=0)bugunIjroCol=bi;
-          if(hdr[bi].indexOf("bugunotgan")>=0||hdr[bi].indexOf("bugun")>=0&&hdr[bi].indexOf("otgan")>=0)bugunOtganCol=bi;
+        /* 3. Header qatorlaridan category ustun pozitsiyalarini topish */
+        var catColMap={};
+        var bugunCol=-1;
+        var jamiTopshCol=-1;
+        var catOrder=["prez","prezAdmin","vazirlar","hukumat","yuqori","murojaat"];
+        var catKW={
+          prez:["prezident topsh","prezident t","prezident"],
+          prezAdmin:["prezident admin","prez.admin","prez admin","prezident ad"],
+          vazirlar:["vazirlar","vazirlar mahk"],
+          hukumat:["hukumat","hukumat komis"],
+          yuqori:["yuqori turuvchi","yuqori t","yuqori"],
+          murojaat:["murojaat"]
+        };
+
+        for(var hr=0;hr<dataStart;hr++){
+          var row=raw[hr];if(!row)continue;
+          for(var hc=0;hc<row.length;hc++){
+            var cv=String(row[hc]||"").toLowerCase().replace(/[\u2018\u2019\u02BC\u2018\u2019'`]/g,"").trim();
+            if(!cv||cv.length<3)continue;
+
+            /* "bugun ijro taminlangan" */
+            if(cv.indexOf("bugun")>=0&&(cv.indexOf("ijro")>=0||cv.indexOf("tamin")>=0)){bugunCol=hc;continue}
+
+            /* "JAMI topshiriqlar" guruh headeri */
+            if(cv.indexOf("jami")>=0&&cv.indexOf("topsh")>=0){jamiTopshCol=hc;continue}
+
+            /* Category headerlarini topish — uzunroq match birinchi */
+            var found=null;
+            /* prezAdmin ni avval tekshirish (prezident ni noto'g'ri qo'lga olmaslik uchun) */
+            catKW.prezAdmin.forEach(function(kw){if(!found&&cv.indexOf(kw)>=0)found="prezAdmin"});
+            if(!found&&cv.indexOf("prezident")>=0&&cv.indexOf("admin")<0)found="prez";
+            if(!found){
+              ["vazirlar","hukumat","yuqori","murojaat"].forEach(function(ck){
+                if(found)return;
+                catKW[ck].forEach(function(kw){if(cv.indexOf(kw)>=0)found=ck});
+              });
+            }
+            if(found&&!catColMap[found])catColMap[found]=hc;
+          }
         }
 
-        /* Agar header aniqlanmasa — export formatiga asoslangan pozitsion o'qish */
-        var usePosMode=true;
-        IJRO_CATEGORIES.forEach(function(c){if(catCols[c.key].o>=0||catCols[c.key].t>=0)usePosMode=false});
+        /* 4. Ustun mapping strategiyasini aniqlash */
+        var headerFound=Object.keys(catColMap).length;
+        var useHeaderMode=headerFound>=3;
 
-        var upd={},ts=Date.now(),imported=0;
-        for(var ri=1;ri<raw.length;ri++){
+        /* Pozitsion mapping uchun: category juftlik boshlanish ustunini topish */
+        var catStartCol=6; /* default G ustuni */
+        if(useHeaderMode){
+          /* Birinchi topilgan category ustunidan boshlash */
+          var firstCatCol=999;
+          catOrder.forEach(function(ck){if(catColMap[ck]!==undefined&&catColMap[ck]<firstCatCol)firstCatCol=catColMap[ck]});
+          if(firstCatCol<999)catStartCol=firstCatCol;
+        }else if(jamiTopshCol>=0){
+          /* JAMI topshiriqlar headeri topilsa, category juftliklari undan 2 ustun keyinda */
+          catStartCol=jamiTopshCol+2;
+        }
+
+        /* 5. Name matching: "Sh.Qurbonov" → "Qurbonov Shavkat" */
+        function extractFamiliya(rawName){
+          var s=rawName.trim();
+          /* "Sh.Qurbonov" → "Qurbonov" — bosh harf(lar) + nuqta olib tashlash */
+          s=s.replace(/^[A-Za-z\u0400-\u04FF]{1,3}\.\s*/,"");
+          /* "Qurbonov Sh." — oxiridagi qisqartmani olib tashlash */
+          s=s.replace(/\s+[A-Za-z\u0400-\u04FF]{1,3}\.?\s*$/,"");
+          /* Agar hali nuqta bo'lsa, nuqtasiz bo'lakni topish */
+          if(s.indexOf(".")>=0){
+            var parts=s.split(/[\s.]+/);
+            for(var i=0;i<parts.length;i++){if(parts[i].length>2&&parts[i].indexOf(".")<0)return parts[i]}
+          }
+          return s.split(/\s+/)[0]||s;
+        }
+        function normStr(s){return normalizeUz(s.toLowerCase().replace(/[\s.'`\u2018\u2019\u02BC]/g,""))}
+
+        var upd={},ts=Date.now(),imported=0,skipped=[];
+
+        for(var ri=dataStart;ri<dataEnd;ri++){
           var r=raw[ri];
           if(!r||r.length<3)continue;
-          var empName=String(r[nameCol]||"").trim();
-          if(!empName||empName==="JAMI"||empName==="jami")continue;
 
-          /* Xodimni IJRO_EMPLOYEES dan topish */
+          /* T/r raqam yo'q bo'lsa — data emas (merged cell, bo'sh qator) */
+          var trNum=parseInt(r[0]);
+          if(isNaN(trNum)||trNum<1)continue;
+
+          var rawName=String(r[1]||"").trim();
+          if(!rawName)continue;
+
+          /* Familiya ajratib olish va xodimni topish */
+          var fam=extractFamiliya(rawName);
+          var normFam=normStr(fam);
           var matched=null;
+
+          /* Aniq familiya match */
           IJRO_EMPLOYEES.forEach(function(ie){
-            var norm1=normalizeUz(ie.name.toLowerCase());
-            var norm2=normalizeUz(empName.toLowerCase());
-            if(norm1===norm2||norm1.indexOf(norm2)>=0||norm2.indexOf(norm1)>=0)matched=ie;
+            if(matched)return;
+            var ieFam=ie.name.split(/\s+/)[0];
+            if(normStr(ieFam)===normFam)matched=ie;
           });
-          if(!matched){
-            /* Familiya bo'yicha qidirish */
-            var parts=empName.split(/\s+/);
+
+          /* Fallback: familiya qisman match (3+ harf) */
+          if(!matched&&normFam.length>=3){
             IJRO_EMPLOYEES.forEach(function(ie){
-              parts.forEach(function(p){
-                if(p.length>3&&normalizeUz(ie.name.toLowerCase()).indexOf(normalizeUz(p.toLowerCase()))>=0)matched=ie;
-              });
+              if(matched)return;
+              var ieFam=normStr(ie.name.split(/\s+/)[0]);
+              if(ieFam.indexOf(normFam)>=0||normFam.indexOf(ieFam)>=0)matched=ie;
             });
           }
-          if(!matched)continue;
+
+          /* Fallback: to'liq ism ichidan qidirish */
+          if(!matched&&normFam.length>=3){
+            IJRO_EMPLOYEES.forEach(function(ie){
+              if(matched)return;
+              if(normStr(ie.name).indexOf(normFam)>=0)matched=ie;
+            });
+          }
+
+          if(!matched){skipped.push(rawName);continue}
 
           var ek=safeKey(matched.name);
           var rec={empName:matched.name,text:"ijro",timestamp:ts,name:matched.name,lavozimi:matched.lavozimi};
 
-          if(usePosMode){
-            /* Export formatidagi pozitsion o'qish: col 3,4 = prez_o,prez_t; 5,6 = prezAdmin_o,prezAdmin_t; ... */
-            var ci=3;
+          /* 6. Category ma'lumotlarini o'qish */
+          if(useHeaderMode){
+            /* Header pozitsiyalari bo'yicha */
+            catOrder.forEach(function(ck,idx){
+              var col=catColMap[ck];
+              if(col!==undefined){
+                rec[ck+"_o"]=parseInt(r[col])||0;
+                rec[ck+"_t"]=parseInt(r[col+1])||0;
+              }else{
+                /* Topilmagan category — ketma-ket juftlik bo'yicha hisoblash */
+                var guessCol=catStartCol+(idx*2);
+                rec[ck+"_o"]=parseInt(r[guessCol])||0;
+                rec[ck+"_t"]=parseInt(r[guessCol+1])||0;
+              }
+            });
+          }else{
+            /* Pozitsion o'qish: catStartCol dan boshlab juftlik */
+            var ci=catStartCol;
             IJRO_CATEGORIES.forEach(function(c){
               rec[c.key+"_o"]=parseInt(r[ci])||0;ci++;
               rec[c.key+"_t"]=parseInt(r[ci])||0;ci++;
             });
-            /* ci hozir Jami ustunida, +3 = bugun_ijro, +4 = bugun_otgan */
-            rec.bugun_ijro=parseInt(r[ci+3])||0;
-            rec.bugun_otgan=parseInt(r[ci+4])||0;
-          }else{
-            /* Header bo'yicha o'qish */
-            IJRO_CATEGORIES.forEach(function(c){
-              rec[c.key+"_o"]=catCols[c.key].o>=0?parseInt(r[catCols[c.key].o])||0:0;
-              rec[c.key+"_t"]=catCols[c.key].t>=0?parseInt(r[catCols[c.key].t])||0:0;
-            });
-            rec.bugun_ijro=bugunIjroCol>=0?parseInt(r[bugunIjroCol])||0:0;
-            rec.bugun_otgan=bugunOtganCol>=0?parseInt(r[bugunOtganCol])||0:0;
           }
 
+          /* "bugun ijro" ustunlari */
+          if(bugunCol>=0){
+            rec.bugun_ijro=parseInt(r[bugunCol])||0;
+            rec.bugun_otgan=parseInt(r[bugunCol+1])||0;
+          }else{
+            /* Oxirgi 4 ustundan qidirish */
+            var lastCatEnd=catStartCol+(IJRO_CATEGORIES.length*2);
+            rec.bugun_ijro=parseInt(r[lastCatEnd])||0;
+            rec.bugun_otgan=parseInt(r[lastCatEnd+1])||0;
+          }
+
+          /* Jamilarni hisoblash */
           var tO=0,tT=0;
           IJRO_CATEGORIES.forEach(function(c){tO+=(rec[c.key+"_o"]||0);tT+=(rec[c.key+"_t"]||0)});
           rec.jami=tO+tT;rec.jami_otgan=tO;rec.jami_toplar=tT;
+
           upd["employee_notes/ijro_"+selDateStr+"_"+ek]=rec;
           imported++;
         }
 
-        if(imported===0){showToast("Xodimlar topilmadi. Ism ustuni to'g'riligini tekshiring.");setSaving(false);return}
+        if(imported===0){
+          var msg="Xodimlar topilmadi.";
+          if(skipped.length>0)msg+=" Tanilmagan: "+skipped.join(", ");
+          showToast(msg);setSaving(false);return;
+        }
         db.ref().update(upd).then(function(){
-          showToast(imported+" xodim ma'lumoti yuklandi!");setSaving(false);
+          var info=imported+" xodim yuklandi!";
+          if(skipped.length>0)info+=" ("+skipped.length+" tanilmadi: "+skipped.join(", ")+")";
+          showToast(info);setSaving(false);
         }).catch(function(err){showToast("Xatolik: "+err.message);setSaving(false)});
       }catch(err){
         console.error("Excel import error:",err);
-        showToast("Excel o'qishda xatolik: "+err.message);setSaving(false);
+        showToast("Excel o\u2018qishda xatolik: "+err.message);setSaving(false);
       }
     };
     reader.readAsBinaryString(file);
