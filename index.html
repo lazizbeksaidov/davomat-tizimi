@@ -5786,15 +5786,16 @@ function IjroView({showToast}){
 
   /* === EXCEL IMPORT === */
   var _fileInputRef=useRef(null);
-  /* === GOVERNMENT EXCEL IMPORT ===
-     Hukumat kunlik ijro intizomi Excel formati:
-     - "kunlik" sheet, merged header qatorlar (1-5)
-     - A: T/r, B: F.I.Sh (qisqartirilgan: "Sh.Qurbonov"), C: Lavozimi
-     - D: Jami, E-F: Jami (muddati o'tgan / muddatli)
-     - Category juftliklari (har biri: muddati o'tgan + muddatli):
-       Prezident, Prez.Admin, Vazirlar, Hukumat, Yuqori, Murojaat
-     - Oxirida: bugun ijro ta'minlangan ustunlari
-     - "Jami:" qatori — yakuniy summary
+  /* === GOVERNMENT EXCEL IMPORT (v3 — aniq tahlil) ===
+     Hukumat kunlik ijro intizomi Excel:
+     ┌─────────────────────────────────────────────────────────────┐
+     │ Row 1-4: Merged title/header rows                          │
+     │ Row 5  : Sub-headers ("Muddati o'tgan" / "Muddatli" x N)  │
+     │ Row 6+ : Data (T/r | F.I.Sh | Lavozimi | Jami | ...)      │
+     │ Row N  : "Jami:" totals                                    │
+     └─────────────────────────────────────────────────────────────┘
+     3 strategiya: merge-based → header-scan → pozitsion fallback
+     Cross-validation: hisoblangan jami vs Excel dagi Jami ustuni
   */
   function importIjroExcel(e){
     var file=e.target.files&&e.target.files[0];
@@ -5806,169 +5807,265 @@ function IjroView({showToast}){
       try{
         var wb=XLSX.read(ev.target.result,{type:"binary"});
 
-        /* 1. "kunlik" sheetni topish */
+        /* ══════ 1. SHEET TANLASH ══════ */
         var wsName=wb.SheetNames[0];
         for(var si=0;si<wb.SheetNames.length;si++){
           if(wb.SheetNames[si].toLowerCase().indexOf("kunlik")>=0){wsName=wb.SheetNames[si];break}
         }
         var ws=wb.Sheets[wsName];
         var raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
-        if(!raw||raw.length<3){showToast("Excel fayl bo\u2018sh yoki noto\u2018g\u2018ri format");setSaving(false);return}
+        if(!raw||raw.length<3){showToast("Excel fayl bo\u2018sh");setSaving(false);return}
+        console.log("[IJRO] Sheet: "+wsName+", qatorlar: "+raw.length);
 
-        /* 2. Data qatorlarini aniqlash — A ustunida raqam (T/r) bo'lgan qatorlar */
+        /* ══════ 2. MERGE XARITASI ══════
+           ws['!merges'] → qaysi cell qaysi merged guruhga tegishli.
+           getMergedText(row,col) → shu cell yoki uning merged parent textini qaytaradi */
+        var merges=ws["!merges"]||[];
+        function getMergedText(row,col){
+          for(var mi=0;mi<merges.length;mi++){
+            var m=merges[mi];
+            if(row>=m.s.r&&row<=m.e.r&&col>=m.s.c&&col<=m.e.c){
+              return String((raw[m.s.r]&&raw[m.s.r][m.s.c])||"").trim();
+            }
+          }
+          return String((raw[row]&&raw[row][col])||"").trim();
+        }
+
+        /* ══════ 3. DATA CHEGARALARI ══════ */
         var dataStart=-1,dataEnd=raw.length;
         for(var ri=0;ri<raw.length;ri++){
-          var cellA=raw[ri][0];
+          var cellA=raw[ri]&&raw[ri][0];
+          var numA=typeof cellA==="number"?cellA:parseInt(cellA);
           if(dataStart<0){
-            /* Birinchi raqamli qator — data boshlanishi */
-            if(typeof cellA==="number"&&cellA>=1&&cellA<=50){dataStart=ri}
-            else{var n=parseInt(cellA);if(!isNaN(n)&&n>=1&&n<=50)dataStart=ri}
+            if(!isNaN(numA)&&numA>=1&&numA<=50)dataStart=ri;
           }else{
-            /* "Jami:" yoki bo'sh qator — data tugashi */
             var sv=String(cellA||"").toLowerCase().replace(/[:\s]/g,"");
-            if(sv==="jami"||sv==="itogo"){dataEnd=ri;break}
-            if(sv===""&&!raw[ri][1]){dataEnd=ri;break}
+            if(sv==="jami"||sv==="itogo"||sv==="\u0438\u0442\u043E\u0433\u043E"){dataEnd=ri;break}
+            if(sv===""&&!String(raw[ri][1]||"").trim()){dataEnd=ri;break}
           }
         }
-        if(dataStart<0){showToast("Ma\u2018lumot qatorlari topilmadi. T/r ustunini tekshiring.");setSaving(false);return}
+        if(dataStart<0){showToast("Data topilmadi (T/r ustunini tekshiring)");setSaving(false);return}
+        console.log("[IJRO] Data: qator "+dataStart+" \u2014 "+(dataEnd-1)+" ("+(dataEnd-dataStart)+" ta xodim)");
 
-        /* 3. Header qatorlaridan category ustun pozitsiyalarini topish */
-        var catColMap={};
-        var bugunCol=-1;
-        var jamiTopshCol=-1;
+        /* ══════ 4. SUB-HEADER QATORI ══════
+           dataStart dan 1-3 qator oldin "muddati" so'zi 2+ marta takrorlanadi */
+        var subHdrRow=-1;
+        for(var sr=dataStart-1;sr>=Math.max(0,dataStart-4);sr--){
+          var muddatiCnt=0;
+          for(var sc=0;sc<(raw[sr]||[]).length;sc++){
+            var stxt=String(raw[sr][sc]||"").toLowerCase();
+            if(stxt.indexOf("muddati")>=0||stxt.indexOf("muddat")>=0||
+               stxt.indexOf("o\u2018tgan")>=0||stxt.indexOf("otgan")>=0)muddatiCnt++;
+          }
+          if(muddatiCnt>=2){subHdrRow=sr;break}
+        }
+        console.log("[IJRO] Sub-header qator: "+(subHdrRow>=0?subHdrRow:"topilmadi"));
+
+        /* ══════ 5. USTUN XARITASI — 3 strategiya ══════ */
+        var colMap={}; /* key → {o:colIdx, t:colIdx} */
+        var bugunOCol=-1,bugunTCol=-1;
+        var jamiCol=-1,jamiOCol=-1,jamiTCol=-1;
         var catOrder=["prez","prezAdmin","vazirlar","hukumat","yuqori","murojaat"];
         var catKW={
-          prez:["prezident topsh","prezident t","prezident"],
-          prezAdmin:["prezident admin","prez.admin","prez admin","prezident ad"],
-          vazirlar:["vazirlar","vazirlar mahk"],
-          hukumat:["hukumat","hukumat komis"],
-          yuqori:["yuqori turuvchi","yuqori t","yuqori"],
+          prez:["prezident"],
+          prezAdmin:["prezident admin","prez.admin","prez admin","administratsiya","prezidentadmin"],
+          vazirlar:["vazirlar","vazirlar mahk","vazirlarmahk"],
+          hukumat:["hukumat","hukumat komis","hukumatkomis"],
+          yuqori:["yuqori turuvchi","yuqori t","yuqorituruvchi"],
           murojaat:["murojaat"]
         };
+        function normHdr(s){return s.toLowerCase().replace(/[\u2018\u2019\u02BC'`\n\r\t]/g,"").replace(/\s+/g," ").trim()}
+        function matchCat(txt){
+          var t=normHdr(txt);if(t.length<4)return null;
+          var found=null;
+          /* prezAdmin ni AVVAL tekshirish — "prezident" so'zi ikkalasida ham bor */
+          catKW.prezAdmin.forEach(function(kw){if(!found&&t.indexOf(kw)>=0)found="prezAdmin"});
+          if(!found&&t.indexOf("prezident")>=0&&t.indexOf("admin")<0)found="prez";
+          if(!found){
+            ["vazirlar","hukumat","yuqori","murojaat"].forEach(function(ck){
+              if(found)return;
+              catKW[ck].forEach(function(kw){if(t.indexOf(kw)>=0)found=ck});
+            });
+          }
+          return found;
+        }
 
-        for(var hr=0;hr<dataStart;hr++){
-          var row=raw[hr];if(!row)continue;
-          for(var hc=0;hc<row.length;hc++){
-            var cv=String(row[hc]||"").toLowerCase().replace(/[\u2018\u2019\u02BC\u2018\u2019'`]/g,"").trim();
-            if(!cv||cv.length<3)continue;
-
-            /* "bugun ijro taminlangan" */
-            if(cv.indexOf("bugun")>=0&&(cv.indexOf("ijro")>=0||cv.indexOf("tamin")>=0)){bugunCol=hc;continue}
-
-            /* "JAMI topshiriqlar" guruh headeri */
-            if(cv.indexOf("jami")>=0&&cv.indexOf("topsh")>=0){jamiTopshCol=hc;continue}
-
-            /* Category headerlarini topish — uzunroq match birinchi */
-            var found=null;
-            /* prezAdmin ni avval tekshirish (prezident ni noto'g'ri qo'lga olmaslik uchun) */
-            catKW.prezAdmin.forEach(function(kw){if(!found&&cv.indexOf(kw)>=0)found="prezAdmin"});
-            if(!found&&cv.indexOf("prezident")>=0&&cv.indexOf("admin")<0)found="prez";
-            if(!found){
-              ["vazirlar","hukumat","yuqori","murojaat"].forEach(function(ck){
-                if(found)return;
-                catKW[ck].forEach(function(kw){if(cv.indexOf(kw)>=0)found=ck});
-              });
+        /* ── Strategiya A: Merge ranges + sub-header tahlili ── */
+        if(subHdrRow>=0){
+          /* Sub-header dagi har bir "muddati o'tgan" cellni topib,
+             ustidagi merged header orqali qaysi categoryga tegishli ekanini aniqlash */
+          var pairs=[]; /* [{oCol, tCol, parentText}] */
+          var sc2=0;
+          while(sc2<(raw[subHdrRow]||[]).length){
+            var subTxt=normHdr(String(raw[subHdrRow][sc2]||""));
+            var isOtgan=subTxt.indexOf("otgan")>=0||subTxt.indexOf("o\u2018tgan")>=0||subTxt.indexOf("o'tgan")>=0;
+            if(subTxt.indexOf("muddati")>=0&&isOtgan){
+              /* Bu "muddati o'tgan" — keyingisi "muddatli" bo'lishi kerak */
+              var parent="";
+              /* Merged header ni tepadan qidirish (1-3 qator yuqoriga) */
+              for(var up=subHdrRow-1;up>=Math.max(0,subHdrRow-3);up--){
+                var mt=getMergedText(up,sc2);
+                if(mt&&mt.length>=4){parent=mt;break}
+              }
+              pairs.push({oCol:sc2,tCol:sc2+1,parent:parent});
+              sc2+=2;
+            }else{
+              sc2++;
             }
-            if(found&&!catColMap[found])catColMap[found]=hc;
+          }
+          console.log("[IJRO] Merge-based juftliklar ("+pairs.length+"):");
+          pairs.forEach(function(p,i){console.log("  ["+i+"] col "+p.oCol+"-"+p.tCol+" \u2192 \""+p.parent+"\"")});
+
+          /* Juftliklarni category/jami/bugunga moslashtirish */
+          pairs.forEach(function(pair,pi){
+            var pt=normHdr(pair.parent);
+            /* "JAMI topshiriqlar" */
+            if((pt.indexOf("jami")>=0&&pt.indexOf("topsh")>=0)||(pt==="jami"&&pi<=1)){
+              jamiOCol=pair.oCol;jamiTCol=pair.tCol;return;
+            }
+            /* "bugun ijro ta'minlangan" */
+            if(pt.indexOf("bugun")>=0){bugunOCol=pair.oCol;bugunTCol=pair.tCol;return}
+            /* Category */
+            var cat=matchCat(pair.parent);
+            if(cat&&!colMap[cat])colMap[cat]={o:pair.oCol,t:pair.tCol};
+          });
+
+          /* Agar barcha categorylar topilmasa — JAMI juftlikdan keyingilarni
+             ketma-ket category deb belgilash */
+          if(Object.keys(colMap).length<IJRO_CATEGORIES.length){
+            var afterJami=false;var ci2=0;
+            pairs.forEach(function(pair){
+              if(pair.oCol===jamiOCol){afterJami=true;return}
+              if(!afterJami)return;
+              if(normHdr(pair.parent).indexOf("bugun")>=0)return;
+              if(ci2<catOrder.length&&!colMap[catOrder[ci2]]){
+                colMap[catOrder[ci2]]={o:pair.oCol,t:pair.tCol};
+              }
+              ci2++;
+            });
           }
         }
 
-        /* 4. Ustun mapping strategiyasini aniqlash */
-        var headerFound=Object.keys(catColMap).length;
-        var useHeaderMode=headerFound>=3;
-
-        /* Pozitsion mapping uchun: category juftlik boshlanish ustunini topish */
-        var catStartCol=6; /* default G ustuni */
-        if(useHeaderMode){
-          /* Birinchi topilgan category ustunidan boshlash */
-          var firstCatCol=999;
-          catOrder.forEach(function(ck){if(catColMap[ck]!==undefined&&catColMap[ck]<firstCatCol)firstCatCol=catColMap[ck]});
-          if(firstCatCol<999)catStartCol=firstCatCol;
-        }else if(jamiTopshCol>=0){
-          /* JAMI topshiriqlar headeri topilsa, category juftliklari undan 2 ustun keyinda */
-          catStartCol=jamiTopshCol+2;
+        /* ── Strategiya B: Header text skan (agar A yetarli bo'lmasa) ── */
+        if(Object.keys(colMap).length<3){
+          for(var hr=0;hr<dataStart;hr++){
+            for(var hc=0;hc<(raw[hr]||[]).length;hc++){
+              var cv=normHdr(String(raw[hr][hc]||""));
+              if(!cv||cv.length<3)continue;
+              if(cv.indexOf("bugun")>=0&&(cv.indexOf("ijro")>=0||cv.indexOf("tamin")>=0)){bugunOCol=hc;bugunTCol=hc+1}
+              if(cv.indexOf("jami")>=0&&cv.indexOf("topsh")>=0&&jamiOCol<0){jamiOCol=hc;jamiTCol=hc+1}
+              var cat=matchCat(cv);
+              if(cat&&!colMap[cat])colMap[cat]={o:hc,t:hc+1};
+            }
+          }
         }
 
-        /* 5. Name matching: "Sh.Qurbonov" → "Qurbonov Shavkat" */
-        function extractFamiliya(rawName){
+        /* ── Strategiya C: Pozitsion fallback ── */
+        var usePosMode=Object.keys(colMap).length<3;
+        var catStartCol=-1;
+        if(usePosMode){
+          /* Jami ustunini topish: D (3) yoki birinchi data qatordagi eng katta raqam */
+          if(jamiCol<0){
+            var firstRow=raw[dataStart]||[];
+            var maxVal=0;
+            for(var fc=3;fc<Math.min(8,firstRow.length);fc++){
+              var fv=parseInt(firstRow[fc])||0;
+              if(fv>maxVal){maxVal=fv;jamiCol=fc}
+            }
+            if(jamiCol<0)jamiCol=3;
+          }
+          jamiOCol=jamiCol+1;jamiTCol=jamiCol+2;
+
+          /* Category juftlik boshlanishini topish:
+             Jami_o (E) = barcha category _o larning yig'indisi bo'lishi kerak.
+             catStartCol dan boshlab 6 juftlik yig'indisini Jami_o ga solishtirish */
+          var firstR=raw[dataStart]||[];
+          var expO=parseInt(firstR[jamiOCol])||0;
+          var found=false;
+          if(expO>0){
+            for(var tryStart=jamiCol+3;tryStart<=jamiCol+5;tryStart++){
+              if(tryStart+11>=firstR.length)break;
+              var testSum=0;
+              for(var ti=0;ti<6;ti++)testSum+=parseInt(firstR[tryStart+(ti*2)])||0;
+              if(testSum===expO){catStartCol=tryStart;found=true;break}
+            }
+          }
+          if(!found)catStartCol=jamiCol+3;
+          console.log("[IJRO] Pozitsion: Jami=col"+jamiCol+", catStart=col"+catStartCol+(found?" (validated)":" (default)"));
+        }
+
+        /* Jami ustunini finalize */
+        if(jamiCol<0){
+          var firstCatO=999;
+          catOrder.forEach(function(ck){if(colMap[ck]&&colMap[ck].o<firstCatO)firstCatO=colMap[ck].o});
+          if(firstCatO<999){jamiCol=3;jamiOCol=firstCatO-2;jamiTCol=firstCatO-1}
+          else{jamiCol=3;jamiOCol=4;jamiTCol=5}
+        }
+
+        console.log("[IJRO] colMap: "+JSON.stringify(colMap));
+        console.log("[IJRO] Jami="+jamiCol+" JamiO="+jamiOCol+" JamiT="+jamiTCol+" BugunO="+bugunOCol+" BugunT="+bugunTCol);
+
+        /* ══════ 6. ISM MOSLASHTIRISH ══════ */
+        function extractFam(rawName){
           var s=rawName.trim();
-          /* "Sh.Qurbonov" → "Qurbonov" — bosh harf(lar) + nuqta olib tashlash */
-          s=s.replace(/^[A-Za-z\u0400-\u04FF]{1,3}\.\s*/,"");
-          /* "Qurbonov Sh." — oxiridagi qisqartmani olib tashlash */
-          s=s.replace(/\s+[A-Za-z\u0400-\u04FF]{1,3}\.?\s*$/,"");
-          /* Agar hali nuqta bo'lsa, nuqtasiz bo'lakni topish */
+          /* "Sh.Qurbonov" → "Qurbonov" */
+          s=s.replace(/^[A-Za-z\u0400-\u04FF]{1,4}\.\s*/,"");
+          /* "Qurbonov Sh." → "Qurbonov" */
+          s=s.replace(/\s+[A-Za-z\u0400-\u04FF]{1,4}\.?\s*$/,"");
           if(s.indexOf(".")>=0){
-            var parts=s.split(/[\s.]+/);
-            for(var i=0;i<parts.length;i++){if(parts[i].length>2&&parts[i].indexOf(".")<0)return parts[i]}
+            var pts=s.split(/[\s.]+/);
+            for(var i=0;i<pts.length;i++){if(pts[i].length>2&&pts[i].indexOf(".")<0)return pts[i]}
           }
           return s.split(/\s+/)[0]||s;
         }
-        function normStr(s){return normalizeUz(s.toLowerCase().replace(/[\s.'`\u2018\u2019\u02BC]/g,""))}
+        function nrm(s){return normalizeUz(s.toLowerCase().replace(/[\s.'`\u2018\u2019\u02BC]/g,""))}
 
-        var upd={},ts=Date.now(),imported=0,skipped=[];
+        /* Familiya indeksi — tezkor lookup */
+        var famIdx={};
+        IJRO_EMPLOYEES.forEach(function(ie){
+          var f=nrm(ie.name.split(/\s+/)[0]);
+          famIdx[f]=ie;
+          /* Ismni ham qo'shish (masalan "Bunyod" → Umrzoqov) */
+          var parts=ie.name.split(/\s+/);
+          if(parts[1])famIdx[nrm(parts[1])]=ie;
+        });
+
+        /* ══════ 7. DATA O'QISH VA SAQLASH ══════ */
+        var upd={},ts=Date.now(),imported=0,skipped=[],warnings=[];
 
         for(var ri=dataStart;ri<dataEnd;ri++){
           var r=raw[ri];
           if(!r||r.length<3)continue;
-
-          /* T/r raqam yo'q bo'lsa — data emas (merged cell, bo'sh qator) */
           var trNum=parseInt(r[0]);
           if(isNaN(trNum)||trNum<1)continue;
-
           var rawName=String(r[1]||"").trim();
           if(!rawName)continue;
 
-          /* Familiya ajratib olish va xodimni topish */
-          var fam=extractFamiliya(rawName);
-          var normFam=normStr(fam);
-          var matched=null;
+          /* Familiya ajratish */
+          var fam=extractFam(rawName);
+          var nf=nrm(fam);
+          var matched=famIdx[nf]||null;
 
-          /* Aniq familiya match */
-          IJRO_EMPLOYEES.forEach(function(ie){
-            if(matched)return;
-            var ieFam=ie.name.split(/\s+/)[0];
-            if(normStr(ieFam)===normFam)matched=ie;
-          });
-
-          /* Fallback: familiya qisman match (3+ harf) */
-          if(!matched&&normFam.length>=3){
-            IJRO_EMPLOYEES.forEach(function(ie){
-              if(matched)return;
-              var ieFam=normStr(ie.name.split(/\s+/)[0]);
-              if(ieFam.indexOf(normFam)>=0||normFam.indexOf(ieFam)>=0)matched=ie;
-            });
+          /* Partial match */
+          if(!matched&&nf.length>=3){
+            var keys=Object.keys(famIdx);
+            for(var ki=0;ki<keys.length;ki++){
+              if(keys[ki].length>=3&&(keys[ki].indexOf(nf)>=0||nf.indexOf(keys[ki])>=0)){matched=famIdx[keys[ki]];break}
+            }
           }
-
-          /* Fallback: to'liq ism ichidan qidirish */
-          if(!matched&&normFam.length>=3){
-            IJRO_EMPLOYEES.forEach(function(ie){
-              if(matched)return;
-              if(normStr(ie.name).indexOf(normFam)>=0)matched=ie;
-            });
-          }
-
           if(!matched){skipped.push(rawName);continue}
 
           var ek=safeKey(matched.name);
           var rec={empName:matched.name,text:"ijro",timestamp:ts,name:matched.name,lavozimi:matched.lavozimi};
 
-          /* 6. Category ma'lumotlarini o'qish */
-          if(useHeaderMode){
-            /* Header pozitsiyalari bo'yicha */
-            catOrder.forEach(function(ck,idx){
-              var col=catColMap[ck];
-              if(col!==undefined){
-                rec[ck+"_o"]=parseInt(r[col])||0;
-                rec[ck+"_t"]=parseInt(r[col+1])||0;
-              }else{
-                /* Topilmagan category — ketma-ket juftlik bo'yicha hisoblash */
-                var guessCol=catStartCol+(idx*2);
-                rec[ck+"_o"]=parseInt(r[guessCol])||0;
-                rec[ck+"_t"]=parseInt(r[guessCol+1])||0;
-              }
+          /* Category qiymatlarini o'qish */
+          if(!usePosMode){
+            IJRO_CATEGORIES.forEach(function(c){
+              var cm=colMap[c.key];
+              if(cm){rec[c.key+"_o"]=parseInt(r[cm.o])||0;rec[c.key+"_t"]=parseInt(r[cm.t])||0}
+              else{rec[c.key+"_o"]=0;rec[c.key+"_t"]=0}
             });
           }else{
-            /* Pozitsion o'qish: catStartCol dan boshlab juftlik */
             var ci=catStartCol;
             IJRO_CATEGORIES.forEach(function(c){
               rec[c.key+"_o"]=parseInt(r[ci])||0;ci++;
@@ -5976,24 +6073,39 @@ function IjroView({showToast}){
             });
           }
 
-          /* "bugun ijro" ustunlari */
-          if(bugunCol>=0){
-            rec.bugun_ijro=parseInt(r[bugunCol])||0;
-            rec.bugun_otgan=parseInt(r[bugunCol+1])||0;
-          }else{
-            /* Oxirgi 4 ustundan qidirish */
-            var lastCatEnd=catStartCol+(IJRO_CATEGORIES.length*2);
-            rec.bugun_ijro=parseInt(r[lastCatEnd])||0;
-            rec.bugun_otgan=parseInt(r[lastCatEnd+1])||0;
-          }
+          /* Bugun ijro */
+          if(bugunOCol>=0){
+            rec.bugun_ijro=parseInt(r[bugunOCol])||0;
+            rec.bugun_otgan=parseInt(r[bugunTCol>=0?bugunTCol:bugunOCol+1])||0;
+          }else if(usePosMode){
+            var afterCats=catStartCol+(IJRO_CATEGORIES.length*2);
+            rec.bugun_ijro=parseInt(r[afterCats])||0;
+            rec.bugun_otgan=parseInt(r[afterCats+1])||0;
+          }else{rec.bugun_ijro=0;rec.bugun_otgan=0}
 
-          /* Jamilarni hisoblash */
+          /* Jamilar */
           var tO=0,tT=0;
           IJRO_CATEGORIES.forEach(function(c){tO+=(rec[c.key+"_o"]||0);tT+=(rec[c.key+"_t"]||0)});
           rec.jami=tO+tT;rec.jami_otgan=tO;rec.jami_toplar=tT;
 
+          /* ── Cross-validation: hisoblangan vs Excel Jami ── */
+          var exJami=parseInt(r[jamiCol])||0;
+          var exJamiO=jamiOCol>=0?(parseInt(r[jamiOCol])||0):-1;
+          var exJamiT=jamiTCol>=0?(parseInt(r[jamiTCol])||0):-1;
+          if(exJami>0&&rec.jami!==exJami){
+            console.warn("[IJRO] \u26A0 "+matched.name+": hisob="+rec.jami+" \u2260 Excel="+exJami);
+            warnings.push(matched.name.split(" ")[0]+":"+rec.jami+"\u2260"+exJami);
+            /* Excel dagi Jami ni ishonchli qabul qilish */
+            rec.jami=exJami;
+            if(exJamiO>=0){rec.jami_otgan=exJamiO;rec.jami_toplar=exJami-exJamiO}
+            else if(exJamiT>=0){rec.jami_toplar=exJamiT;rec.jami_otgan=exJami-exJamiT}
+          }
+
           upd["employee_notes/ijro_"+selDateStr+"_"+ek]=rec;
           imported++;
+          console.log("[IJRO] \u2713 "+rawName+" \u2192 "+matched.name+
+            " | jami="+rec.jami+" o\u2018tgan="+rec.jami_otgan+" muddatli="+rec.jami_toplar+
+            " bugun="+rec.bugun_ijro+"/"+rec.bugun_otgan);
         }
 
         if(imported===0){
@@ -6001,14 +6113,16 @@ function IjroView({showToast}){
           if(skipped.length>0)msg+=" Tanilmagan: "+skipped.join(", ");
           showToast(msg);setSaving(false);return;
         }
+
         db.ref().update(upd).then(function(){
-          var info=imported+" xodim yuklandi!";
-          if(skipped.length>0)info+=" ("+skipped.length+" tanilmadi: "+skipped.join(", ")+")";
+          var info="\u2705 "+imported+" xodim yuklandi!";
+          if(skipped.length>0)info+="\n\u26A0 Tanilmadi ("+skipped.length+"): "+skipped.join(", ");
+          if(warnings.length>0)info+="\n\u26A0 Jami farq: "+warnings.join(", ");
           showToast(info);setSaving(false);
         }).catch(function(err){showToast("Xatolik: "+err.message);setSaving(false)});
       }catch(err){
-        console.error("Excel import error:",err);
-        showToast("Excel o\u2018qishda xatolik: "+err.message);setSaving(false);
+        console.error("[IJRO] Fatal:",err);
+        showToast("Excel xatolik: "+err.message);setSaving(false);
       }
     };
     reader.readAsBinaryString(file);
