@@ -5744,37 +5744,107 @@ function IjroView({showToast}){
     });
   },[selDateStr]);
 
-  /* === 13-Aprel ma'lumotlarini bir martalik yuklash === */
+  /* === Edo.ijro.uz rasmlaridan olingan ma'lumotlar — bir martalik yuklash === */
   var _backupRef=useRef(null);
   var _seedRef=useRef(false);
+
+  /* Barcha sanalar uchun yagona seed funksiyasi */
   useEffect(function(){
-    if(loading||_seedRef.current||selDateStr!=="2026-04-13"||Object.keys(ijroData).length>0)return;
+    if(loading||_seedRef.current)return;
+    var SK="ijro_seed_all_v2";
+    try{if(localStorage.getItem(SK)==="done")return}catch(e){}
     _seedRef.current=true;
-    var ts=Date.now(),upd={};
-    var seed=[
-      {name:"Umrzoqov Bunyod",lavozimi:"Yig\u2018ma axborot-tahlil shu\u2018basi",prezAsosiy_o:1,prezAsosiy_t:1,vazirlar_o:1,hukumat_t:1,bugun_ijro:2,bugun_otgan:1},
-      {name:"Axadov Izzatullo",lavozimi:"Investitsiya dasturlarini shakllantirish, monitoring va postmonitoring qilish shu\u2018basi",prezAsosiy_o:1,hukumat_o:1,hukumat_t:2,bugun_ijro:1,bugun_otgan:1},
-      {name:"Qurbonov Shavkat",lavozimi:"Investitsiyalarni o\u2018zlashtirishni ta\u2018minlash shu\u2018basi",prezQoshimcha_t:1,prezAdmin_t:1,vazirlar_t:2,hukumat_t:4,yuqori_t:4,bugun_ijro:1,bugun_otgan:1},
-      {name:"Barnoqulov Shahzod",lavozimi:"Investorlar bilan ishlash, investitsiyalar portfelini shakllantirish va monitoring qilish shu\u2018basi",prezAdmin_o:2,prezAdmin_t:1,hukumat_t:2,yuqori_o:1,yuqori_t:2,murojaat_t:1},
-      {name:"Nazarov Muzaffar",lavozimi:"Tashqi savdo shu\u2018basi",prezAsosiy_o:1},
-      {name:"Narzullayev Rustam",lavozimi:"Loyihalarni ishlab chiqish shu\u2018ba",prezAdmin_o:1,vazirlar_o:3,yuqori_o:1,yuqori_t:2,bugun_ijro:2,bugun_otgan:2},
-      {name:"Pirbayev Berdiyor",lavozimi:"Buxgalteriya"},
-      {name:"Saidov Lazizbek",lavozimi:"Yurist",yuqori_t:1,bugun_ijro:1,bugun_otgan:1},
-      {name:"Jaynakov Temur",lavozimi:"Inson resurslarini rivojlantirish va boshqarish bo\u2018yicha bosh mutaxassis"}
+
+    /* Kategoriya ma'lumotlari — Edo.ijro.uz screenshotlaridan o'qilgan */
+    var catBase=[
+      /* 0-Umrzoqov */  {prezAsosiy_o:1,prezAsosiy_t:1,vazirlar_o:1,hukumat_t:1},
+      /* 1-Axadov   */  {prezAsosiy_o:1,hukumat_o:1,hukumat_t:2},
+      /* 2-Qurbonov */  {prezQoshimcha_t:1,prezAdmin_t:1,vazirlar_t:2,hukumat_t:4,yuqori_t:4},
+      /* 3-Barnoqulov*/ {prezAdmin_o:2,prezAdmin_t:1,hukumat_t:2,yuqori_o:1,yuqori_t:2,murojaat_t:1},
+      /* 4-Nazarov  */  {prezAsosiy_o:1},
+      /* 5-Narzullayev*/{prezAdmin_o:1,vazirlar_o:3,yuqori_o:1,yuqori_t:2},
+      /* 6-Pirbayev */  {},
+      /* 7-Saidov   */  {yuqori_t:1},
+      /* 8-Jaynakov */  {}
     ];
-    seed.forEach(function(s){
-      var ek=safeKey(s.name);
-      var rec={empName:s.name,text:"ijro",timestamp:ts,name:s.name,lavozimi:s.lavozimi};
-      IJRO_CATEGORIES.forEach(function(c){rec[c.key+"_o"]=s[c.key+"_o"]||0;rec[c.key+"_t"]=s[c.key+"_t"]||0});
-      var tO=0,tT=0;
-      IJRO_CATEGORIES.forEach(function(c){tO+=rec[c.key+"_o"];tT+=rec[c.key+"_t"]});
-      rec.jami=tO+tT;rec.jami_otgan=tO;rec.jami_toplar=tT;
-      rec.bugun_ijro=s.bugun_ijro||0;rec.bugun_otgan=s.bugun_otgan||0;
-      upd["employee_notes/ijro_2026-04-13_"+ek]=rec;
+
+    /* Kunlik "bugun ijro" ma'lumotlari — har bir sana uchun [ijro, otgan] */
+    var bugunByDate={
+      "2026-04-02":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
+      "2026-04-03":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
+      "2026-04-06":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
+      "2026-04-07":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
+      "2026-04-08":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]},
+      "2026-04-13":{0:[2,1],1:[1,1],2:[1,1],5:[2,2],7:[1,1]}
+    };
+
+    var dates=Object.keys(bugunByDate);
+    var ts=Date.now(),upd={},count=0;
+
+    /* Avval mavjud sanalarni tekshirish */
+    var checkKey="employee_notes/ijro_"+dates[0]+"_"+safeKey(IJRO_EMPLOYEES[0].name);
+    db.ref(checkKey).once("value").then(function(snap){
+      if(snap.exists()){
+        /* Allaqachon mavjud — faqat yangi sanalarni qo'shish */
+        var promises=[];
+        dates.forEach(function(dateStr){
+          var ek0=safeKey(IJRO_EMPLOYEES[0].name);
+          promises.push(db.ref("employee_notes/ijro_"+dateStr+"_"+ek0).once("value"));
+        });
+        return Promise.all(promises).then(function(snaps){
+          snaps.forEach(function(s,di){
+            if(!s.exists()){
+              /* Bu sana mavjud emas — seed qilish */
+              var dateStr=dates[di];
+              var bd=bugunByDate[dateStr]||{};
+              IJRO_EMPLOYEES.forEach(function(emp,i){
+                var c=catBase[i]||{};
+                var ek=safeKey(emp.name);
+                var rec={empName:emp.name,text:"ijro",timestamp:ts,name:emp.name,lavozimi:emp.lavozimi};
+                IJRO_CATEGORIES.forEach(function(cat){rec[cat.key+"_o"]=c[cat.key+"_o"]||0;rec[cat.key+"_t"]=c[cat.key+"_t"]||0});
+                var tO=0,tT=0;
+                IJRO_CATEGORIES.forEach(function(cat){tO+=rec[cat.key+"_o"];tT+=rec[cat.key+"_t"]});
+                rec.jami=tO+tT;rec.jami_otgan=tO;rec.jami_toplar=tT;
+                var b=bd[i]||[0,0];rec.bugun_ijro=b[0];rec.bugun_otgan=b[1];
+                upd["employee_notes/ijro_"+dateStr+"_"+ek]=rec;count++;
+              });
+            }
+          });
+          if(count>0){
+            return db.ref().update(upd).then(function(){
+              showToast(count+" ta yozuv qo\u2018shildi!");
+              try{localStorage.setItem(SK,"done")}catch(e){}
+            });
+          } else {
+            try{localStorage.setItem(SK,"done")}catch(e){}
+          }
+        });
+      } else {
+        /* Hech narsa yo'q — hammasini seed qilish */
+        dates.forEach(function(dateStr){
+          var bd=bugunByDate[dateStr]||{};
+          IJRO_EMPLOYEES.forEach(function(emp,i){
+            var c=catBase[i]||{};
+            var ek=safeKey(emp.name);
+            var rec={empName:emp.name,text:"ijro",timestamp:ts,name:emp.name,lavozimi:emp.lavozimi};
+            IJRO_CATEGORIES.forEach(function(cat){rec[cat.key+"_o"]=c[cat.key+"_o"]||0;rec[cat.key+"_t"]=c[cat.key+"_t"]||0});
+            var tO=0,tT=0;
+            IJRO_CATEGORIES.forEach(function(cat){tO+=rec[cat.key+"_o"];tT+=rec[cat.key+"_t"]});
+            rec.jami=tO+tT;rec.jami_otgan=tO;rec.jami_toplar=tT;
+            var b=bd[i]||[0,0];rec.bugun_ijro=b[0];rec.bugun_otgan=b[1];
+            upd["employee_notes/ijro_"+dateStr+"_"+ek]=rec;count++;
+          });
+        });
+        return db.ref().update(upd).then(function(){
+          showToast("6 kunlik ma\u2018lumotlar yuklandi! ("+count+" yozuv)");
+          try{localStorage.setItem(SK,"done")}catch(e){}
+        });
+      }
+    }).catch(function(e){
+      showToast("Seed xatolik: "+e.message);
+      _seedRef.current=false;
     });
-    db.ref().update(upd).then(function(){showToast("13-aprel ma\u2018lumotlari yuklandi!")})
-    .catch(function(e){showToast("Xatolik: "+e.message);_seedRef.current=false});
-  },[loading,selDateStr,ijroData]);
+  },[loading]);
 
   function prevMonth(){var p=selMonth.split("-"),y=+p[0],m=+p[1];m--;if(m<1){m=12;y--}setSelMonth(y+"-"+String(m).padStart(2,"0"));setSelDay(1)}
   function nextMonth(){var p=selMonth.split("-"),y=+p[0],m=+p[1];m++;if(m>12){m=1;y++}setSelMonth(y+"-"+String(m).padStart(2,"0"));setSelDay(1)}
