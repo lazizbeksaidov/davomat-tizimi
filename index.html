@@ -2896,34 +2896,11 @@ function sendTelegramDavomat(dateKey,sessionFilter){
   });
 }
 
-/* ── 09:20 va 14:20 da avtomatik hisobot — faqat shu 2 vaqtda yuboriladi ── */
-var _tgScheduleSentKey="";
-function _tgScheduleCheck(){
-  if(!_telegramConfig.enabled)return;
-  var now=new Date();
-  var day=now.getDay();
-  if(day===0||day===6)return; /* shanba/yakshanba o'tkazib yuborish */
-  var h=now.getHours(),m=now.getMinutes();
-  var todayStr=fmtDate(now);
-  /* 09:20 — ertalabki hisobot */
-  if(h===9&&m>=20&&m<=25){
-    var key1=todayStr+"_morning";
-    if(_tgScheduleSentKey!==key1){
-      _tgScheduleSentKey=key1;
-      sendTelegramDavomat(todayStr,"morning");
-    }
-  }
-  /* 14:20 — tushlik hisobot */
-  if(h===14&&m>=20&&m<=25){
-    var key2=todayStr+"_afternoon";
-    if(_tgScheduleSentKey!==key2){
-      _tgScheduleSentKey=key2;
-      sendTelegramDavomat(todayStr,"afternoon");
-    }
-  }
-}
-setInterval(_tgScheduleCheck,60000);
-setTimeout(_tgScheduleCheck,5000); /* sahifa ochilganda 5s keyin tekshirish */
+/* ── Avtomatik Telegram hisobot Cloud Functions orqali yuboriladi ── */
+/* Client-side schedule O'CHIRILGAN — duplicate xabar oldini olish uchun.
+   Cloud Functions (morningSelfieCheck, afternoonSelfieCheck) serverda
+   aniq 09:20 va 14:20 da ishlaydi. Client-side'dan faqat admin
+   qo'lda "Hisobot yuborish" tugmasi orqali yuborishi mumkin. */
 
 loadTelegramConfig();
 

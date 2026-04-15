@@ -59,7 +59,9 @@ function safeKey(name) {
 }
 
 function fmtDate(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  /* Cloud Functions UTC da ishlaydi — Toshkent vaqtiga o'tkazish (UTC+5) */
+  const tz = new Date(d.getTime() + 5 * 60 * 60 * 1000);
+  return `${tz.getUTCFullYear()}-${String(tz.getUTCMonth()+1).padStart(2,"0")}-${String(tz.getUTCDate()).padStart(2,"0")}`;
 }
 
 function fmtMins(m) {
