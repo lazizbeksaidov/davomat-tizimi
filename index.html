@@ -5339,7 +5339,8 @@ var IJRO_EMPLOYEES=[
   {name:"Jaynakov Temur",lavozimi:"Inson resurslarini rivojlantirish va boshqarish bo\u2018yicha bosh mutaxassis"}
 ];
 var IJRO_CATEGORIES=[
-  {key:"prez",label:"Prezident topshiriqlari",short:"Prezident",color:"#dc2626"},
+  {key:"prezAsosiy",label:"Prezident topshiriqlari (asosiy)",short:"Prez.Asosiy",color:"#dc2626",group:"prez"},
+  {key:"prezQoshimcha",label:"Prezident topshiriqlari (qo\u2018shimcha)",short:"Prez.Qo\u2018sh",color:"#f87171",group:"prez"},
   {key:"prezAdmin",label:"Prezident Administratsiyasi",short:"Prez.Admin",color:"#ea580c"},
   {key:"vazirlar",label:"Vazirlar Mahkamasi",short:"Vaz.Mahk",color:"#d97706"},
   {key:"hukumat",label:"Hukumat komissiyasi",short:"Huk.Kom",color:"#65a30d"},
@@ -5647,11 +5648,11 @@ function IjroView({showToast}){
     _seedRef.current=true;
     var ts=Date.now(),upd={};
     var seed=[
-      {name:"Umrzoqov Bunyod",lavozimi:"Yig\u2018ma axborot-tahlil shu\u2018basi",prez_o:1,prez_t:1,vazirlar_o:1,hukumat_t:1,bugun_ijro:2,bugun_otgan:1},
-      {name:"Axadov Izzatullo",lavozimi:"Investitsiya dasturlarini shakllantirish, monitoring va postmonitoring qilish shu\u2018basi",prez_o:1,hukumat_o:1,hukumat_t:2,bugun_ijro:1,bugun_otgan:1},
-      {name:"Qurbonov Shavkat",lavozimi:"Investitsiyalarni o\u2018zlashtirishni ta\u2018minlash shu\u2018basi",prez_t:1,prezAdmin_t:1,vazirlar_t:2,hukumat_t:4,yuqori_t:4,bugun_ijro:1,bugun_otgan:1},
+      {name:"Umrzoqov Bunyod",lavozimi:"Yig\u2018ma axborot-tahlil shu\u2018basi",prezAsosiy_o:1,prezAsosiy_t:1,vazirlar_o:1,hukumat_t:1,bugun_ijro:2,bugun_otgan:1},
+      {name:"Axadov Izzatullo",lavozimi:"Investitsiya dasturlarini shakllantirish, monitoring va postmonitoring qilish shu\u2018basi",prezAsosiy_o:1,hukumat_o:1,hukumat_t:2,bugun_ijro:1,bugun_otgan:1},
+      {name:"Qurbonov Shavkat",lavozimi:"Investitsiyalarni o\u2018zlashtirishni ta\u2018minlash shu\u2018basi",prezQoshimcha_t:1,prezAdmin_t:1,vazirlar_t:2,hukumat_t:4,yuqori_t:4,bugun_ijro:1,bugun_otgan:1},
       {name:"Barnoqulov Shahzod",lavozimi:"Investorlar bilan ishlash, investitsiyalar portfelini shakllantirish va monitoring qilish shu\u2018basi",prezAdmin_o:2,prezAdmin_t:1,hukumat_t:2,yuqori_o:1,yuqori_t:2,murojaat_t:1},
-      {name:"Nazarov Muzaffar",lavozimi:"Tashqi savdo shu\u2018basi",prez_o:1},
+      {name:"Nazarov Muzaffar",lavozimi:"Tashqi savdo shu\u2018basi",prezAsosiy_o:1},
       {name:"Narzullayev Rustam",lavozimi:"Loyihalarni ishlab chiqish shu\u2018ba",prezAdmin_o:1,vazirlar_o:3,yuqori_o:1,yuqori_t:2,bugun_ijro:2,bugun_otgan:2},
       {name:"Pirbayev Berdiyor",lavozimi:"Buxgalteriya"},
       {name:"Saidov Lazizbek",lavozimi:"Yurist",yuqori_t:1,bugun_ijro:1,bugun_otgan:1},
@@ -5865,9 +5866,10 @@ function IjroView({showToast}){
         var colMap={}; /* key → {o:colIdx, t:colIdx} */
         var bugunOCol=-1,bugunTCol=-1;
         var jamiCol=-1,jamiOCol=-1,jamiTCol=-1;
-        var catOrder=["prez","prezAdmin","vazirlar","hukumat","yuqori","murojaat"];
+        var catOrder=["prezAsosiy","prezQoshimcha","prezAdmin","vazirlar","hukumat","yuqori","murojaat"];
         var catKW={
-          prez:["prezident"],
+          prezAsosiy:["asosiy"],
+          prezQoshimcha:["qoshimcha","qo'shimcha","qo\u2018shimcha"],
           prezAdmin:["prezident admin","prez.admin","prez admin","administratsiya","prezidentadmin"],
           vazirlar:["vazirlar","vazirlar mahk","vazirlarmahk"],
           hukumat:["hukumat","hukumat komis","hukumatkomis"],
@@ -5875,16 +5877,34 @@ function IjroView({showToast}){
           murojaat:["murojaat"]
         };
         function normHdr(s){return s.toLowerCase().replace(/[\u2018\u2019\u02BC'`\n\r\t]/g,"").replace(/\s+/g," ").trim()}
-        function matchCat(txt){
-          var t=normHdr(txt);if(t.length<4)return null;
+
+        /* Category ni aniqlash — parent + grandparent textlarini birga tahlil qiladi.
+           "Prezident topshiriqlari" > "Asosiy" → prezAsosiy
+           "Prezident topshiriqlari" > "Qo'shimcha" → prezQoshimcha */
+        function matchCatFull(parentTxt,grandparentTxt){
+          var pt=normHdr(parentTxt),gpt=normHdr(grandparentTxt||"");
+          if(pt.length<3&&gpt.length<3)return null;
+
+          /* "Asosiy" yoki "Qo'shimcha" — Prezident sub-group */
+          if(pt.indexOf("asosiy")>=0){
+            /* Grandparent "Prezident" bo'lsa yoki bo'sh bo'lsa ham asosiy deb qabul qilish */
+            if(!gpt||gpt.indexOf("prezident")>=0)return "prezAsosiy";
+          }
+          if(pt.indexOf("qoshimcha")>=0||pt.indexOf("qo'shimcha")>=0||pt.indexOf("qo\u2018shimcha")>=0){
+            if(!gpt||gpt.indexOf("prezident")>=0)return "prezQoshimcha";
+          }
+
+          /* prezAdmin AVVAL (chunki "prezident" ikkalasida ham bor) */
           var found=null;
-          /* prezAdmin ni AVVAL tekshirish — "prezident" so'zi ikkalasida ham bor */
-          catKW.prezAdmin.forEach(function(kw){if(!found&&t.indexOf(kw)>=0)found="prezAdmin"});
-          if(!found&&t.indexOf("prezident")>=0&&t.indexOf("admin")<0)found="prez";
+          catKW.prezAdmin.forEach(function(kw){if(!found&&pt.indexOf(kw)>=0)found="prezAdmin"});
+
+          /* "Prezident topshiriqlari" (asosiy/qoshimcha ajratilmagan) — keyinroq split qilinadi */
+          if(!found&&pt.indexOf("prezident")>=0&&pt.indexOf("admin")<0)found="__prez_group__";
+
           if(!found){
             ["vazirlar","hukumat","yuqori","murojaat"].forEach(function(ck){
               if(found)return;
-              catKW[ck].forEach(function(kw){if(t.indexOf(kw)>=0)found=ck});
+              catKW[ck].forEach(function(kw){if(pt.indexOf(kw)>=0)found=ck});
             });
           }
           return found;
@@ -5893,30 +5913,34 @@ function IjroView({showToast}){
         /* ── Strategiya A: Merge ranges + sub-header tahlili ── */
         if(subHdrRow>=0){
           /* Sub-header dagi har bir "muddati o'tgan" cellni topib,
-             ustidagi merged header orqali qaysi categoryga tegishli ekanini aniqlash */
-          var pairs=[]; /* [{oCol, tCol, parentText}] */
+             ustidagi headerlar orqali qaysi categoryga tegishli ekanini aniqlash.
+             parent = 1 qator yuqori, grandparent = 2-3 qator yuqori */
+          var pairs=[]; /* [{oCol, tCol, parent, grandparent}] */
           var sc2=0;
           while(sc2<(raw[subHdrRow]||[]).length){
             var subTxt=normHdr(String(raw[subHdrRow][sc2]||""));
             var isOtgan=subTxt.indexOf("otgan")>=0||subTxt.indexOf("o\u2018tgan")>=0||subTxt.indexOf("o'tgan")>=0;
             if(subTxt.indexOf("muddati")>=0&&isOtgan){
-              /* Bu "muddati o'tgan" — keyingisi "muddatli" bo'lishi kerak */
-              var parent="";
-              /* Merged header ni tepadan qidirish (1-3 qator yuqoriga) */
-              for(var up=subHdrRow-1;up>=Math.max(0,subHdrRow-3);up--){
+              var parent="",grandparent="";
+              /* Tepaga 1-3 qator ko'tarilish — birinchi topilgan = parent, ikkinchi = grandparent */
+              for(var up=subHdrRow-1;up>=Math.max(0,subHdrRow-4);up--){
                 var mt=getMergedText(up,sc2);
-                if(mt&&mt.length>=4){parent=mt;break}
+                if(mt&&mt.length>=3){
+                  if(!parent)parent=mt;
+                  else if(mt!==parent){grandparent=mt;break}
+                }
               }
-              pairs.push({oCol:sc2,tCol:sc2+1,parent:parent});
+              pairs.push({oCol:sc2,tCol:sc2+1,parent:parent,grandparent:grandparent});
               sc2+=2;
             }else{
               sc2++;
             }
           }
           console.log("[IJRO] Merge-based juftliklar ("+pairs.length+"):");
-          pairs.forEach(function(p,i){console.log("  ["+i+"] col "+p.oCol+"-"+p.tCol+" \u2192 \""+p.parent+"\"")});
+          pairs.forEach(function(p,i){console.log("  ["+i+"] col "+p.oCol+"-"+p.tCol+" parent=\""+p.parent+"\" gp=\""+p.grandparent+"\"")});
 
           /* Juftliklarni category/jami/bugunga moslashtirish */
+          var prezGroupPairs=[]; /* "Prezident topshiriqlari" ostidagi ajratilmagan juftliklar */
           pairs.forEach(function(pair,pi){
             var pt=normHdr(pair.parent);
             /* "JAMI topshiriqlar" */
@@ -5925,13 +5949,26 @@ function IjroView({showToast}){
             }
             /* "bugun ijro ta'minlangan" */
             if(pt.indexOf("bugun")>=0){bugunOCol=pair.oCol;bugunTCol=pair.tCol;return}
-            /* Category */
-            var cat=matchCat(pair.parent);
+            /* Category — parent + grandparent bilan */
+            var cat=matchCatFull(pair.parent,pair.grandparent);
+            if(cat==="__prez_group__"){
+              /* "Prezident topshiriqlari" bitta header ostida — birinchi juftlik = asosiy, ikkinchi = qo'shimcha */
+              prezGroupPairs.push(pair);return;
+            }
             if(cat&&!colMap[cat])colMap[cat]={o:pair.oCol,t:pair.tCol};
           });
 
-          /* Agar barcha categorylar topilmasa — JAMI juftlikdan keyingilarni
-             ketma-ket category deb belgilash */
+          /* Prezident guruhidagi ajratilmagan juftliklarni split qilish */
+          if(prezGroupPairs.length>=2&&!colMap.prezAsosiy&&!colMap.prezQoshimcha){
+            colMap.prezAsosiy={o:prezGroupPairs[0].oCol,t:prezGroupPairs[0].tCol};
+            colMap.prezQoshimcha={o:prezGroupPairs[1].oCol,t:prezGroupPairs[1].tCol};
+            console.log("[IJRO] Prezident split: asosiy=col"+prezGroupPairs[0].oCol+", qo'shimcha=col"+prezGroupPairs[1].oCol);
+          }else if(prezGroupPairs.length===1&&!colMap.prezAsosiy){
+            /* Faqat bitta juftlik bo'lsa — asosiy deb qabul qilish */
+            colMap.prezAsosiy={o:prezGroupPairs[0].oCol,t:prezGroupPairs[0].tCol};
+          }
+
+          /* Agar hali ham barcha categorylar topilmasa — JAMI dan keyingilarni ketma-ket belgilash */
           if(Object.keys(colMap).length<IJRO_CATEGORIES.length){
             var afterJami=false;var ci2=0;
             pairs.forEach(function(pair){
@@ -5954,8 +5991,11 @@ function IjroView({showToast}){
               if(!cv||cv.length<3)continue;
               if(cv.indexOf("bugun")>=0&&(cv.indexOf("ijro")>=0||cv.indexOf("tamin")>=0)){bugunOCol=hc;bugunTCol=hc+1}
               if(cv.indexOf("jami")>=0&&cv.indexOf("topsh")>=0&&jamiOCol<0){jamiOCol=hc;jamiTCol=hc+1}
-              var cat=matchCat(cv);
-              if(cat&&!colMap[cat])colMap[cat]={o:hc,t:hc+1};
+              /* Asosiy/Qo'shimcha */
+              if(cv.indexOf("asosiy")>=0&&!colMap.prezAsosiy){colMap.prezAsosiy={o:hc,t:hc+1};continue}
+              if((cv.indexOf("qoshimcha")>=0||cv.indexOf("qo'shimcha")>=0)&&!colMap.prezQoshimcha){colMap.prezQoshimcha={o:hc,t:hc+1};continue}
+              var cat=matchCatFull(cv,"");
+              if(cat&&cat!=="__prez_group__"&&!colMap[cat])colMap[cat]={o:hc,t:hc+1};
             }
           }
         }
@@ -6312,8 +6352,31 @@ function IjroView({showToast}){
     /* === TOPSHIRIQLAR IJRO HOLATI - Category cards === */
     React.createElement("div",{style:{padding:"16px 20px",borderRadius:14,background:"var(--navy)",marginBottom:16}},
       React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#fff",marginBottom:14}},"Topshiriqlar ijro holati"),
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(155px,1fr))",gap:10}},
-        IJRO_CATEGORIES.map(function(c){
+
+      /* Prezident topshiriqlari — guruh */
+      React.createElement("div",{style:{marginBottom:10}},
+        React.createElement("div",{style:{fontSize:9,fontWeight:700,color:"#fca5a5",textTransform:"uppercase",letterSpacing:".6px",marginBottom:6,paddingLeft:2}},"\uD83C\uDFDB Prezident topshiriqlari"),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}},
+          IJRO_CATEGORIES.filter(function(c){return c.group==="prez"}).map(function(c){
+            var co=summary.cats[c.key].o,ct=summary.cats[c.key].t,total=co+ct;
+            var isActive=selCat===c.key;
+            return React.createElement("div",{key:c.key,onClick:function(){setSelCat(isActive?null:c.key)},
+              style:{padding:"12px 14px",borderRadius:10,background:isActive?"#fff":"rgba(255,255,255,.08)",border:isActive?"2px solid "+c.color:"2px solid transparent",cursor:"pointer",transition:"all .2s"}},
+              React.createElement("div",{style:{fontSize:10,fontWeight:700,color:isActive?c.color:"#94a3b8",marginBottom:6,lineHeight:1.3}},c.key==="prezAsosiy"?"Asosiy":"Qo\u2018shimcha"),
+              React.createElement(AnimNum,{value:total||0,style:{fontSize:24,color:isActive?"#1e293b":"#fff",marginBottom:4}}),
+              React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                co?React.createElement("span",{style:{fontSize:9,fontWeight:700,color:isActive?"#dc2626":"#fca5a5",background:isActive?"#fee2e2":"rgba(220,38,38,.15)",padding:"2px 6px",borderRadius:4}},co+" m. o\u2018tgan"):null,
+                ct?React.createElement("span",{style:{fontSize:9,fontWeight:700,color:isActive?"#d97706":"#fcd34d",background:isActive?"#fef3c7":"rgba(217,119,6,.15)",padding:"2px 6px",borderRadius:4}},ct+" muddatli"):null,
+                !co&&!ct?React.createElement("span",{style:{fontSize:9,color:"#64748b"}},"\u2014"):null
+              )
+            );
+          })
+        )
+      ),
+
+      /* Qolgan categorylar */
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}},
+        IJRO_CATEGORIES.filter(function(c){return !c.group}).map(function(c){
           var co=summary.cats[c.key].o,ct=summary.cats[c.key].t,total=co+ct;
           var isActive=selCat===c.key;
           return React.createElement("div",{key:c.key,onClick:function(){setSelCat(isActive?null:c.key)},
@@ -6423,8 +6486,31 @@ function IjroView({showToast}){
           ),
           /* Expanded detail */
           isExp&&React.createElement("div",{style:{padding:"0 16px 16px",borderTop:"1px solid var(--border)"}},
-            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginTop:12}},
-              IJRO_CATEGORIES.map(function(c){
+
+            /* Prezident topshiriqlari guruhi */
+            React.createElement("div",{style:{marginTop:12,marginBottom:4}},
+              React.createElement("div",{style:{fontSize:9,fontWeight:700,color:"#dc2626",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}},"\uD83C\uDFDB Prezident topshiriqlari"),
+              React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8}},
+                IJRO_CATEGORIES.filter(function(c){return c.group==="prez"}).map(function(c){
+                  var co=row.d[c.key+"_o"]||0,ct=row.d[c.key+"_t"]||0;
+                  return React.createElement("div",{key:c.key,style:{padding:"10px 12px",borderRadius:8,background:"#fff5f5",borderLeft:"3px solid "+c.color}},
+                    React.createElement("div",{style:{fontSize:10,fontWeight:700,color:c.color,marginBottom:6}},c.key==="prezAsosiy"?"Asosiy":"Qo\u2018shimcha"),
+                    React.createElement("div",{style:{display:"flex",gap:10}},
+                      React.createElement("div",null,
+                        React.createElement("div",{style:{fontSize:16,fontWeight:800,color:co?"#dc2626":"#cbd5e1",fontFamily:"JetBrains Mono,monospace"}},co),
+                        React.createElement("div",{style:{fontSize:8,color:"#94a3b8",fontWeight:600}},"m. o\u2018tgan")),
+                      React.createElement("div",null,
+                        React.createElement("div",{style:{fontSize:16,fontWeight:800,color:ct?"#d97706":"#cbd5e1",fontFamily:"JetBrains Mono,monospace"}},ct),
+                        React.createElement("div",{style:{fontSize:8,color:"#94a3b8",fontWeight:600}},"muddatli"))
+                    )
+                  );
+                })
+              )
+            ),
+
+            /* Boshqa categorylar */
+            React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginTop:8}},
+              IJRO_CATEGORIES.filter(function(c){return !c.group}).map(function(c){
                 var co=row.d[c.key+"_o"]||0,ct=row.d[c.key+"_t"]||0;
                 return React.createElement("div",{key:c.key,style:{padding:"10px 12px",borderRadius:8,background:"#f8fafc",borderLeft:"3px solid "+c.color}},
                   React.createElement("div",{style:{fontSize:10,fontWeight:700,color:c.color,marginBottom:6}},c.short),
@@ -6476,7 +6562,23 @@ function IjroView({showToast}){
           React.createElement("button",{onClick:function(){setEditEmp(null)},style:{width:28,height:28,borderRadius:7,border:"1px solid #e2e8f0",background:"#f8fafc",cursor:"pointer",fontSize:14,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center"}},"\u2715")
         ),
         React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#94a3b8",marginBottom:10,textTransform:"uppercase",letterSpacing:".5px"}},selDay+"-"+monthName+" "+yearNum+" \u00b7 Topshiriqlar tarkibi"),
-        IJRO_CATEGORIES.map(function(c){
+
+        /* Prezident topshiriqlari guruhi */
+        React.createElement("div",{style:{marginBottom:10,padding:"10px 12px",borderRadius:10,border:"1px solid #fecaca",background:"#fff5f5"}},
+          React.createElement("div",{style:{fontSize:11,fontWeight:800,color:"#dc2626",marginBottom:8}},"\uD83C\uDFDB Prezident topshiriqlari"),
+          IJRO_CATEGORIES.filter(function(c){return c.group==="prez"}).map(function(c){
+            return React.createElement("div",{key:c.key,style:{marginBottom:6,padding:"8px 10px",borderRadius:8,background:"#fff",borderLeft:"3px solid "+c.color}},
+              React.createElement("div",{style:{fontSize:10,fontWeight:700,color:c.color,marginBottom:4}},c.key==="prezAsosiy"?"Asosiy":"Qo\u2018shimcha"),
+              React.createElement("div",{style:{display:"flex",gap:12}},
+                numInput(c.key+"_o","Muddati o\u2018tgan"),
+                numInput(c.key+"_t",monthName+" muddatli")
+              )
+            );
+          })
+        ),
+
+        /* Boshqa categorylar */
+        IJRO_CATEGORIES.filter(function(c){return !c.group}).map(function(c){
           return React.createElement("div",{key:c.key,style:{marginBottom:8,padding:"10px 12px",borderRadius:10,border:"1px solid #e2e8f0",background:"#f8fafc",borderLeft:"3px solid "+c.color}},
             React.createElement("div",{style:{fontSize:11,fontWeight:700,color:c.color,marginBottom:6}},c.label),
             React.createElement("div",{style:{display:"flex",gap:12}},
