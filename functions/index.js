@@ -753,3 +753,26 @@ O'zbek tilida, professional va aniq javob ber. Raqamlar bilan asosla.`;
   }
 });
 
+// ═══ CLIENT-SIDE DAN TELEGRAM XABAR YUBORISH ═══
+// Admin paneldan qo'lda hisobot yuborish uchun
+exports.sendTelegramNotify = functions.https.onRequest(async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+  try {
+    const authHeader = req.headers.authorization || "";
+    const idToken = authHeader.replace("Bearer ", "");
+    if (!idToken) { res.status(401).json({ ok: false, description: "No auth token" }); return; }
+    await admin.auth().verifyIdToken(idToken);
+    const chatId = await getChatId();
+    if (!chatId) { res.status(400).json({ ok: false, description: "Chat ID not configured" }); return; }
+    const { text, parseMode } = req.body;
+    const result = await sendMessage(chatId, text);
+    res.json(result || { ok: true });
+  } catch (err) {
+    console.error("sendTelegramNotify error:", err);
+    res.status(500).json({ ok: false, description: err.message });
+  }
+});
+
