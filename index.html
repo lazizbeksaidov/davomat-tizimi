@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Xodimlar" />
-  <title>Xodimlar Monitoring Tizimi — Navoiy viloyati</title>
+  <title>Intizom — Xodimlar Monitoringi</title>
   <link id="dynamic-manifest" rel="manifest" />
   <link id="dynamic-apple-icon" rel="apple-touch-icon" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -7379,7 +7379,7 @@ function TelegramSettings({showToast}){
   function handleTest(){
     if(!cfg.chatId){setTestResult({ok:false,msg:"Chat ID kiriting"});return}
     setTesting(true);setTestResult(null);
-    var text="✅ <b>Xodimlar Monitoring Tizimi</b>\n\nTelegram bot muvaffaqiyatli ulandi!\n📍 "+OFFICE_LOCATION.name+"\n🕰 "+new Date().toLocaleString("uz-UZ");
+    var text="✅ <b>Intizom — Xodimlar Monitoringi</b>\n\nTelegram bot muvaffaqiyatli ulandi!\n📍 "+OFFICE_LOCATION.name+"\n🕰 "+new Date().toLocaleString("uz-UZ");
     var origEnabled=_telegramConfig.enabled;
     _telegramConfig.enabled=true;_telegramConfig.chatId=cfg.chatId;
     sendTelegram(text).then(function(j){
@@ -9037,7 +9037,7 @@ function setupPWAAssets(){
     "</svg>";
   var iconUrl="data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(iconSvg);
   var manifest={
-    name:"Xodimlar Monitoring Tizimi — Navoiy viloyati",
+    name:"Intizom — Xodimlar Monitoringi",
     short_name:"Xodimlar",
     description:"Davomat, selfie nazorat va statistika tizimi — Navoiy viloyati hokimligi",
     start_url:window.location.pathname+window.location.search,
@@ -10647,7 +10647,7 @@ function App(){
               </svg>
             </div>
             <div>
-              <div className="sidebar-name">Xodimlar Monitoring</div>
+              <div className="sidebar-name">Intizom</div>
               <div className="sidebar-sub">Navoiy viloyati</div>
             </div>
           </div>
