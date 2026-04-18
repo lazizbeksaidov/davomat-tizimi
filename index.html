@@ -3257,6 +3257,215 @@
       body::after { display: none; }
     }
     /* ═══════════════════════════════════════════════════════════ */
+    /* 📱 MOBILE PREMIUM HOME — "Bosh" sahifa ekrani               */
+    /* ═══════════════════════════════════════════════════════════ */
+    .mhome { padding: 14px 16px 100px; max-width: 480px; margin: 0 auto; animation: fadeUp .35s ease; }
+    .mhome-greet {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+    }
+    .mhome-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--accent-gradient);
+      color: #fff; font-size: 14px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px -2px rgba(59,91,255,0.35), inset 0 -2px 0 rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.3);
+      flex-shrink: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .mhome-greet-text { min-width: 0; flex: 1; }
+    .mhome-greet-hi { font-size: 13px; color: var(--t3); font-weight: 500; margin-bottom: 2px; }
+    .mhome-greet-name { font-size: 19px; font-weight: 800; color: var(--t1); letter-spacing: -0.02em; font-family: 'Plus Jakarta Sans', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mhome-bell {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: var(--glass-bg-strong);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border-strong);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: var(--shadow-glass);
+      cursor: pointer; position: relative;
+      flex-shrink: 0;
+    }
+    .mhome-bell-dot {
+      position: absolute; top: 10px; right: 10px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 0 2px var(--white);
+    }
+
+    /* Hero Card — asosiy ishga taklif */
+    .mhome-hero {
+      background: var(--accent-gradient);
+      border-radius: 22px; padding: 22px 20px;
+      color: #fff; position: relative; overflow: hidden;
+      box-shadow: 0 16px 40px -8px rgba(59,91,255,0.4), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -2px 0 rgba(0,0,0,0.1);
+      margin-bottom: 14px;
+    }
+    .mhome-hero::before {
+      content: ""; position: absolute;
+      top: -40%; right: -20%;
+      width: 260px; height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .mhome-hero::after {
+      content: ""; position: absolute;
+      bottom: -60%; left: -20%;
+      width: 220px; height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,79,158,0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .mhome-hero-date {
+      font-size: 12px; font-weight: 600; opacity: 0.9;
+      margin-bottom: 6px; letter-spacing: 0.01em;
+      position: relative; z-index: 1;
+    }
+    .mhome-hero-title {
+      font-size: 24px; font-weight: 800; letter-spacing: -0.03em;
+      line-height: 1.2; margin-bottom: 18px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      position: relative; z-index: 1;
+    }
+    .mhome-hero-btn {
+      width: 100%; padding: 16px 20px;
+      background: rgba(255,255,255,0.2);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 14px;
+      color: #fff; font-size: 15px; font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      transition: all 0.2s var(--spring-snappy);
+      position: relative; z-index: 1;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+    }
+    .mhome-hero-btn:active { transform: scale(0.98); background: rgba(255,255,255,0.28); }
+    .mhome-hero-btn-left { display: flex; align-items: center; gap: 10px; }
+
+    /* Session mini cards */
+    .mhome-sessions {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+    }
+    .mhome-session {
+      background: var(--glass-bg-strong);
+      -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px; padding: 14px 16px;
+      box-shadow: var(--shadow-glass), var(--glass-inner);
+      transition: all 0.25s var(--spring-snappy);
+    }
+    .mhome-session:active { transform: scale(0.98); }
+    .mhome-session-label {
+      font-size: 10.5px; font-weight: 700; color: var(--t3);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;
+    }
+    .mhome-session-time {
+      font-size: 26px; font-weight: 800; color: var(--t1);
+      font-family: 'JetBrains Mono', monospace; letter-spacing: -0.03em;
+      margin-bottom: 4px; line-height: 1;
+    }
+    .mhome-session-time.pending { color: var(--t4); }
+    .mhome-session-status {
+      font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .mhome-session-status.ok { color: #10b981; }
+    .mhome-session-status.pending { color: var(--t4); }
+    .mhome-session-status.late { color: #f59e0b; }
+
+    /* Location card */
+    .mhome-loc {
+      background: var(--glass-bg-strong);
+      -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px; padding: 14px 16px;
+      box-shadow: var(--shadow-glass), var(--glass-inner);
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 16px;
+    }
+    .mhome-loc-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 18px;
+    }
+    .mhome-loc-icon.ok { background: rgba(16,185,129,0.12); color: #10b981; }
+    .mhome-loc-icon.far { background: rgba(239,68,68,0.12); color: #ef4444; }
+    .mhome-loc-icon.wait { background: rgba(59,91,255,0.12); color: var(--navy); }
+    .mhome-loc-text { flex: 1; min-width: 0; }
+    .mhome-loc-title { font-size: 14px; font-weight: 700; color: var(--t1); }
+    .mhome-loc-title.ok { color: #10b981; }
+    .mhome-loc-title.far { color: #ef4444; }
+    .mhome-loc-sub { font-size: 11.5px; color: var(--t3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Section header */
+    .mhome-section-title {
+      font-size: 11px; font-weight: 700; color: var(--t4);
+      text-transform: uppercase; letter-spacing: 0.12em;
+      margin: 18px 4px 10px;
+    }
+
+    /* Announcements */
+    .mhome-anno {
+      background: var(--glass-bg-strong);
+      -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px; padding: 14px 16px;
+      box-shadow: var(--shadow-glass), var(--glass-inner);
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.25s var(--spring-snappy);
+    }
+    .mhome-anno:active { transform: scale(0.98); }
+    .mhome-anno-title { font-size: 14px; font-weight: 700; color: var(--t1); margin-bottom: 4px; letter-spacing: -0.01em; }
+    .mhome-anno-text { font-size: 12.5px; color: var(--t2); line-height: 1.5; }
+    .mhome-empty {
+      text-align: center; color: var(--t4); font-size: 12px; padding: 20px;
+    }
+
+    /* Premium bottom nav */
+    @media (max-width: 640px) {
+      .mhome-bottom-nav {
+        display: flex !important;
+        position: fixed; bottom: 0; left: 0; right: 0;
+        padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+        background: var(--glass-bg-strong);
+        -webkit-backdrop-filter: var(--glass-blur-strong); backdrop-filter: var(--glass-blur-strong);
+        border-top: 1px solid var(--glass-border-strong);
+        z-index: 500;
+        justify-content: space-around;
+        box-shadow: 0 -4px 20px -4px rgba(15,23,42,0.08);
+      }
+      .mhome-nav-btn {
+        flex: 1; background: transparent; border: none;
+        padding: 8px 4px; border-radius: 12px;
+        display: flex; flex-direction: column; align-items: center; gap: 3px;
+        color: var(--t4); cursor: pointer;
+        transition: all 0.2s var(--spring-snappy);
+        -webkit-tap-highlight-color: transparent;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
+      .mhome-nav-btn:active { transform: scale(0.92); }
+      .mhome-nav-btn.active { color: var(--navy); }
+      .mhome-nav-icon { font-size: 20px; transition: transform 0.25s var(--spring); }
+      .mhome-nav-btn.active .mhome-nav-icon { transform: scale(1.1); }
+      .mhome-nav-label { font-size: 10px; font-weight: 600; letter-spacing: -0.01em; }
+      .mhome-nav-btn.active .mhome-nav-label { font-weight: 700; }
+      /* Hide old bottom nav when new one is used */
+      .mobile-bottom-nav { display: none !important; }
+    }
+    @media (min-width: 641px) {
+      .mhome-bottom-nav { display: none !important; }
+    }
+
+    [data-theme="dark"] .mhome-loc,
+    [data-theme="dark"] .mhome-session,
+    [data-theme="dark"] .mhome-anno,
+    [data-theme="dark"] .mhome-bell {
+      background: rgba(30,32,50,0.6);
+      border-color: rgba(255,255,255,0.08);
+    }
+    /* ═══════════════════════════════════════════════════════════ */
     /* END OF GLASS LAYER                                           */
     /* ═══════════════════════════════════════════════════════════ */
   </style>
@@ -8623,6 +8832,119 @@ function AccountsManager({showToast}){
   );
 }
 
+/* ═══ MOBILE PREMIUM HOME (for employees on phone) ═══ */
+function MobileEmpHome({user, checkinsData, attendanceData, announcements, holidays, onNavigate, onSelfie}){
+  const today = new Date();
+  const todayKey = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+  const hour = today.getHours();
+  const greeting = hour < 11 ? "Xayrli tong" : hour < 16 ? "Xayrli kun" : hour < 20 ? "Xayrli kech" : "Xayrli tun";
+  const firstName = (user.name||"").split(" ")[1] || (user.name||"").split(" ")[0] || "Xodim";
+  const dateStr = today.getDate()+" "+(["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"][today.getMonth()]);
+
+  // Bugungi check-ins
+  const ek = safeKey(user.name);
+  const todayChkIns = (checkinsData[todayKey]||{})[ek]||{};
+  const morning = todayChkIns.morning;
+  const afternoon = todayChkIns.afternoon;
+
+  // Status
+  const todayRec = (attendanceData[todayKey]||{})[ek]||{};
+  const isHoliday = (holidays||[]).some(h=>h.date===todayKey || (h.endDate&&h.endDate>=todayKey&&h.date<=todayKey));
+
+  // Location (Navoiy markazi default)
+  const officeLoc = typeof OFFICE_LOCATION !== 'undefined' ? OFFICE_LOCATION : {name: "Ofis", lat: 40.1158, lng: 65.3793};
+
+  // Oxirgi e'lon
+  const lastAnno = Array.isArray(announcements) && announcements.length ? announcements[0] : null;
+
+  const bothDone = morning && afternoon;
+  const heroTitle = bothDone ? "Bugun yakunlandi ✓" : morning ? "Tushlikdan keyin selfie" : isHoliday ? "Bugun dam olish kuni" : "Ishga xush kelibsiz";
+  const heroBtn = bothDone ? "Tarixni ko'rish" : "Selfie qiling";
+
+  return (
+    <div className="mhome">
+      <div className="mhome-greet">
+        <div className="mhome-avatar">{firstName.charAt(0).toUpperCase()}</div>
+        <div className="mhome-greet-text">
+          <div className="mhome-greet-hi">{greeting},</div>
+          <div className="mhome-greet-name">{firstName}!</div>
+        </div>
+        <div className="mhome-bell" onClick={()=>onNavigate&&onNavigate("announcements")}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+          </svg>
+          {lastAnno && <div className="mhome-bell-dot"/>}
+        </div>
+      </div>
+
+      {/* Hero Card */}
+      <div className="mhome-hero">
+        <div className="mhome-hero-date">Bugun · {dateStr}</div>
+        <div className="mhome-hero-title">{heroTitle}</div>
+        <button className="mhome-hero-btn" onClick={()=>{haptic&&haptic.light&&haptic.light();if(bothDone)onNavigate&&onNavigate("selfieHistory");else onSelfie&&onSelfie();}}>
+          <span className="mhome-hero-btn-left">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            {heroBtn}
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Sessions */}
+      <div className="mhome-sessions">
+        <div className="mhome-session">
+          <div className="mhome-session-label">ERTALAB</div>
+          <div className={"mhome-session-time "+(morning?"":"pending")}>{morning?morning.time:"—:—"}</div>
+          <div className={"mhome-session-status "+(morning?(morning.lateMinutes>0?"late":"ok"):"pending")}>
+            {morning ? (morning.lateMinutes>0 ? "⏰ "+morning.lateMinutes+" daq kech" : "✓ Tasdiqlangan") : "Kutilmoqda"}
+          </div>
+        </div>
+        <div className="mhome-session">
+          <div className="mhome-session-label">TUSHLIK</div>
+          <div className={"mhome-session-time "+(afternoon?"":"pending")}>{afternoon?afternoon.time:"—:—"}</div>
+          <div className={"mhome-session-status "+(afternoon?(afternoon.lateMinutes>0?"late":"ok"):"pending")}>
+            {afternoon ? (afternoon.lateMinutes>0 ? "⏰ "+afternoon.lateMinutes+" daq kech" : "✓ Tasdiqlangan") : "Kutilmoqda"}
+          </div>
+        </div>
+      </div>
+
+      {/* Location */}
+      <div className="mhome-loc" onClick={()=>onSelfie&&onSelfie()}>
+        <div className={"mhome-loc-icon "+(morning||afternoon?"ok":"wait")}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>
+        <div className="mhome-loc-text">
+          <div className={"mhome-loc-title "+(morning||afternoon?"ok":"")}>{morning||afternoon?"Ofis hududida":"Joylashuv tekshirilmoqda"}</div>
+          <div className="mhome-loc-sub">{officeLoc.name||"Navoiy, Boshqarma binosi"}</div>
+        </div>
+      </div>
+
+      {/* Announcements */}
+      <div className="mhome-section-title">E'LONLAR</div>
+      {lastAnno ? (
+        <div className="mhome-anno" onClick={()=>onNavigate&&onNavigate("announcements")}>
+          <div className="mhome-anno-title">{lastAnno.title||"Yangi e'lon"}</div>
+          <div className="mhome-anno-text">{(lastAnno.text||"").substring(0,120)}{(lastAnno.text||"").length>120?"...":""}</div>
+        </div>
+      ) : (
+        <div className="mhome-anno">
+          <div className="mhome-empty">Hozircha yangi e'lonlar yo'q</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EmployeeStats({empName,attendanceData,checkinsData,inModal=false}){
   const today=new Date();
   const [yr,setYr]=useState(today.getFullYear());const [mon,setMon]=useState(today.getMonth());
@@ -11786,6 +12108,30 @@ function App(){
         })}
       </div>
 
+      {/* PREMIUM MOBILE BOTTOM NAV — xodim uchun */}
+      {!canManage && (
+        <div className="mhome-bottom-nav">
+          {[
+            {k:"myStats", label:"Bosh", svg:<svg width="22" height="22" viewBox="0 0 24 24" fill={view==="myStats"?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
+            {k:"birthdays", label:"Kalendar", svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>},
+            {k:"selfie", label:"Selfie", svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>},
+            {k:"announcements", label:"E'lonlar", svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>},
+            {k:"__menu", label:"Menu", svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>},
+          ].map(({k, label, svg})=>(
+            <button key={k}
+              className={"mhome-nav-btn"+(view===k?" active":"")}
+              onClick={()=>{
+                haptic&&haptic.light&&haptic.light();
+                if(k==="__menu") setSidebarOpen(true);
+                else setView(k);
+              }}>
+              <span className="mhome-nav-icon">{svg}</span>
+              <span className="mhome-nav-label">{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* CONTENT */}
       <div className="content">
         {/* TOPBAR */}
@@ -11867,7 +12213,9 @@ function App(){
                 {view==="rankings"&&canManage&&<RankingsView attendanceData={data} onEmpClick={emp=>setModalEmp(emp)}/>}
                 {view==="announcements"&&<AnnouncementsView user={user} isAdmin={isAdmin}/>}
                 {view==="selfieHistory"&&isAdmin&&<SelfieHistoryView checkinsData={checkinsData}/>}
-                {view==="myStats"&&<EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>}
+                {view==="myStats"&&(window.innerWidth<=640&&user.role==="employee"
+                  ? <MobileEmpHome user={user} checkinsData={checkinsData} attendanceData={data} announcements={[]} holidays={holidaysData} onNavigate={setView} onSelfie={()=>setView("selfie")}/>
+                  : <EmployeeStats empName={user.name} attendanceData={data} checkinsData={checkinsData}/>)}
                 {view==="birthdays"&&<BirthdaysView/>}
                 {view==="selfie"&&<SelfieCheckin user={user} attendanceData={data} checkinsData={checkinsData} showToast={showToast}/>}
                 {view==="empNotes"&&<EmployeeNotesView user={user}/>}
