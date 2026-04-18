@@ -10,7 +10,7 @@
   <title>Intizom — Xodimlar Monitoringi</title>
   <link id="dynamic-manifest" rel="manifest" />
   <link id="dynamic-apple-icon" rel="apple-touch-icon" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js" integrity="sha384-3k8kxVAXIf47vgdf3Q4mXcBDdvMrYx80aK5RjODMB70JWXm6MEkDdtSu0zpHWpJ+" crossorigin="anonymous"></script>
@@ -20,6 +20,9 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js" integrity="sha384-dqDn4UOhYWNxmtwnMX6yC3WtZZ6Li8rF6rLB7cu0i/R7btvb+p+kObgEHto7VsJK" crossorigin="anonymous"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" crossorigin="anonymous" async></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js" crossorigin="anonymous" async></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous" async></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,18 +30,18 @@
     :root {
       --ink:      #f9fafb;
       --ink-deep: #f2f4f7;
-      --navy:     #465fff;
-      --navy-mid: #3641f5;
-      --navy-lt:  #7592ff;
+      --navy:     #3b5bff;
+      --navy-mid: #3040f0;
+      --navy-lt:  #6d8cff;
       --slate:    #e4e7ec;
       --mist:     #f2f4f7;
       --cloud:    #ffffff;
       --white:    #ffffff;
 
-      --gold:     #465fff;
-      --gold-lt:  #7592ff;
-      --gold-pale:rgba(70,95,255,.06);
-      --gold-glow:rgba(70,95,255,.12);
+      --gold:     #3b5bff;
+      --gold-lt:  #6d8cff;
+      --gold-pale:rgba(59,91,255,.06);
+      --gold-glow:rgba(59,91,255,.12);
 
       --emerald:  #12b76a;
       --emerald-bg:rgba(18,183,106,.08);
@@ -115,29 +118,56 @@
     /* ─── LOADING ─────────────────────────────── */
     .fullscreen-loader {
       position: fixed; inset: 0;
-      background: var(--ink);
+      background: linear-gradient(135deg, #0a0e2a 0%, #1a1f4e 40%, #0d1333 100%);
       display: flex; align-items: center; justify-content: center;
-      flex-direction: column; gap: 20px; z-index: 9999;
-      animation: loaderFade 0.3s ease 1.2s forwards;
+      flex-direction: column; gap: 24px; z-index: 9999;
+      animation: loaderFade 0.4s ease 2s forwards;
     }
     @keyframes loaderFade { to { opacity: 0; pointer-events: none; } }
     .loader-logo {
-      width: 56px; height: 56px;
-      background: linear-gradient(135deg, #465fff, #7a5af8);
-      border-radius: 14px;
+      width: 88px; height: 88px;
+      background: linear-gradient(135deg, #3b5bff, #7a5af8);
+      border-radius: 22px;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 40px rgba(70,95,255,.3);
-      animation: logoPulse 1.4s ease infinite;
+      box-shadow: 0 0 60px rgba(59,91,255,.4), 0 0 120px rgba(122,90,248,.2);
+      animation: logoEntry .6s cubic-bezier(.34,1.56,.64,1), logoPulse 2s ease infinite .6s;
+      position: relative;
     }
-    @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
-    .loader-dots { display: flex; gap: 6px; }
-    .loader-dot {
-      width: 6px; height: 6px; border-radius: 50%; background: rgba(70,95,255,.2);
-      animation: dotPulse 1.2s ease infinite;
+    .loader-logo::after {
+      content: ''; position: absolute; inset: -3px;
+      border-radius: 25px; border: 2px solid transparent;
+      background: linear-gradient(135deg, rgba(59,91,255,.5), rgba(122,90,248,.5)) border-box;
+      -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      animation: borderSpin 3s linear infinite;
     }
-    .loader-dot:nth-child(2) { animation-delay: .15s; }
-    .loader-dot:nth-child(3) { animation-delay: .3s; }
-    @keyframes dotPulse { 0%,80%,100%{background:rgba(70,95,255,.15)} 40%{background:var(--navy)} }
+    @keyframes logoEntry { from{transform:scale(0) rotate(-10deg);opacity:0} to{transform:scale(1) rotate(0);opacity:1} }
+    @keyframes logoPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.03)} }
+    @keyframes borderSpin { to{transform:rotate(360deg)} }
+    .loader-brand {
+      text-align: center; animation: brandFade .5s ease .4s both;
+    }
+    @keyframes brandFade { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .loader-brand-name {
+      font-size: 22px; font-weight: 800; color: #fff;
+      letter-spacing: 3px; text-transform: uppercase;
+    }
+    .loader-brand-sub {
+      font-size: 11px; color: rgba(255,255,255,.4);
+      letter-spacing: 1.5px; margin-top: 6px;
+    }
+    .loader-progress {
+      width: 160px; height: 3px; background: rgba(255,255,255,.1);
+      border-radius: 99px; overflow: hidden;
+      animation: brandFade .5s ease .6s both;
+    }
+    .loader-progress-bar {
+      height: 100%; width: 0;
+      background: linear-gradient(90deg, #3b5bff, #7a5af8);
+      border-radius: 99px;
+      animation: progressFill 1.6s ease .6s forwards;
+    }
+    @keyframes progressFill { to{width:100%} }
 
     /* ─── LOGIN ─────────────────────────────────── */
     .login-wrap {
@@ -316,7 +346,7 @@
     .form-input:focus { border-color: var(--gold); background: var(--ink); box-shadow: 0 0 0 4px var(--gold-glow); }
     .login-btn {
       width: 100%; padding: 14px;
-      background: linear-gradient(135deg, #465fff, #7a5af8);
+      background: linear-gradient(135deg, #3b5bff, #7a5af8);
       color: #fff; border: none; border-radius: var(--r);
       font-size: 14.5px; font-weight: 600; font-family: 'Inter', sans-serif;
       cursor: pointer; transition: all .25s; margin-top: 6px;
@@ -327,13 +357,14 @@
     }
     .login-btn::after {
       content: '';
-      position: absolute; top: -50%; left: -60%; width: 40%; height: 200%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent);
-      transform: skewX(-20deg);
-      transition: left .6s ease;
+      position: absolute; top: -50%; left: -60%; width: 30%; height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+      transform: skewX(-25deg);
+      animation: loginShimmer 3s ease-in-out infinite;
     }
-    .login-btn:hover:not(:disabled)::after { left: 120%; }
-    .login-btn:hover:not(:disabled) { box-shadow: 0 8px 32px rgba(10,14,26,.35); transform: translateY(-2px); }
+    @keyframes loginShimmer { 0%{left:-60%} 50%{left:130%} 100%{left:130%} }
+    .login-btn:hover:not(:disabled)::after { animation-duration: 1.5s; }
+    .login-btn:hover:not(:disabled) { box-shadow: 0 8px 32px rgba(59,91,255,.35); transform: translateY(-2px); }
     .login-btn:active { transform: translateY(0); }
     .login-btn:disabled { opacity: .7; cursor: not-allowed; }
     .login-divider { height: 1px; background: var(--border); margin: 28px 0; }
@@ -341,6 +372,202 @@
       display: flex; align-items: center; gap: 8px;
       font-size: 11.5px; color: var(--t4);
     }
+
+    /* ─── ONBOARDING ────────────────────────── */
+    .onboarding-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: linear-gradient(135deg, #0a0e2a, #1a1f4e);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      animation: fadeIn .4s ease;
+    }
+    .onboarding-slides { width: 100%; max-width: 380px; text-align: center; padding: 0 24px; }
+    .onboarding-slide { display: none; animation: fadeUp .4s ease; }
+    .onboarding-slide.active { display: block; }
+    .onboarding-icon { font-size: 64px; margin-bottom: 24px; filter: drop-shadow(0 4px 20px rgba(59,91,255,.4)); }
+    .onboarding-title { font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing: -.3px; }
+    .onboarding-desc { font-size: 14px; color: rgba(255,255,255,.5); line-height: 1.7; margin-bottom: 36px; }
+    .onboarding-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 32px; }
+    .onboarding-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.2); transition: all .3s; }
+    .onboarding-dot.active { width: 24px; border-radius: 4px; background: #3b5bff; }
+    .onboarding-btn {
+      padding: 14px 48px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #3b5bff, #7a5af8); color: #fff;
+      font-size: 15px; font-weight: 700; font-family: 'Inter', sans-serif;
+      cursor: pointer; box-shadow: 0 8px 32px rgba(59,91,255,.3);
+      transition: all .2s;
+    }
+    .onboarding-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(59,91,255,.4); }
+    .onboarding-skip {
+      position: absolute; top: 20px; right: 24px; top: calc(20px + env(safe-area-inset-top, 0px));
+      background: none; border: none; color: rgba(255,255,255,.4); font-size: 13px;
+      font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer;
+      padding: 8px 16px; border-radius: 8px; transition: color .2s;
+    }
+    .onboarding-skip:hover { color: rgba(255,255,255,.7); }
+
+    /* ─── CONFETTI ──────────────────────────── */
+    .confetti-container { position: fixed; inset: 0; pointer-events: none; z-index: 9999; overflow: hidden; }
+    .confetti-piece {
+      position: absolute; width: 10px; height: 10px; top: -10px;
+      opacity: 0; animation: confettiFall 3s ease forwards;
+    }
+    @keyframes confettiFall {
+      0% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+      100% { opacity: 0; transform: translateY(100vh) rotate(720deg) scale(0.3); }
+    }
+
+    /* ─── ANIMATED COUNTER ──────────────────── */
+    .counter-animate { transition: all .6s cubic-bezier(.4,0,.2,1); }
+
+    /* ─── SWIPE NAV ─────────────────────────── */
+    .swipe-hint {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: var(--navy); color: #fff; padding: 8px 16px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; z-index: 500; opacity: 0;
+      animation: swipeHintShow 2s ease .5s forwards;
+      pointer-events: none;
+    }
+    @keyframes swipeHintShow { 0%{opacity:0} 20%{opacity:1} 80%{opacity:1} 100%{opacity:0;display:none} }
+
+    /* ─── RATING PROMPT ─────────────────────── */
+    .rating-overlay {
+      position: fixed; inset: 0; background: rgba(15,23,42,.5);
+      backdrop-filter: blur(8px); z-index: 9500;
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn .25s ease;
+    }
+    .rating-card {
+      background: var(--white); border-radius: 20px; padding: 32px;
+      text-align: center; max-width: 320px; width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.15); animation: slideUp .3s ease;
+    }
+    .rating-icon { font-size: 48px; margin-bottom: 16px; }
+    .rating-title { font-size: 20px; font-weight: 800; color: var(--t1); margin-bottom: 6px; }
+    .rating-desc { font-size: 13px; color: var(--t3); margin-bottom: 24px; line-height: 1.6; }
+    .rating-stars { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; }
+    .rating-star {
+      font-size: 32px; cursor: pointer; transition: transform .15s;
+      filter: grayscale(1) opacity(.3);
+    }
+    .rating-star.active { filter: none; transform: scale(1.15); }
+    .rating-star:hover { transform: scale(1.2); }
+    .rating-actions { display: flex; gap: 8px; }
+    .rating-later, .rating-submit {
+      flex: 1; padding: 12px; border-radius: 10px; font-size: 13px;
+      font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; border: none;
+    }
+    .rating-later { background: var(--surface3); color: var(--t2); }
+    .rating-submit { background: linear-gradient(135deg, #3b5bff, #7a5af8); color: #fff; }
+
+    /* ─── LEADERBOARD ───────────────────────── */
+    .leaderboard-podium { display: flex; align-items: flex-end; justify-content: center; gap: 8px; padding: 20px 18px 10px; }
+    .podium-item { text-align: center; border-radius: 14px; padding: 14px 12px; background: var(--surface2); border: 1px solid var(--border); min-width: 90px; transition: transform .15s; }
+    .podium-item:hover { transform: translateY(-3px); }
+    .podium-item.gold { background: linear-gradient(135deg, #fff9e6, #fff3cc); border-color: rgba(200,150,42,.3); }
+    .podium-item.silver { background: linear-gradient(135deg, #f4f6f9, #e8ecf2); border-color: rgba(150,160,180,.3); }
+    .podium-item.bronze { background: linear-gradient(135deg, #fdf0e6, #fbe4d0); border-color: rgba(180,120,60,.3); }
+    .podium-rank { font-size: 24px; margin-bottom: 6px; }
+    .podium-name { font-size: 11px; font-weight: 700; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+    .podium-score { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 800; color: var(--emerald); margin-top: 4px; }
+    .podium-bar { height: 4px; border-radius: 2px; margin-top: 6px; }
+    .podium-item.gold .podium-bar { height: 60px; background: linear-gradient(180deg, #fbbf24, #f59e0b); border-radius: 8px 8px 0 0; }
+    .podium-item:nth-child(1) .podium-bar { height: 40px; background: linear-gradient(180deg, #94a3b8, #64748b); border-radius: 8px 8px 0 0; }
+    .podium-item:nth-child(3) .podium-bar { height: 30px; background: linear-gradient(180deg, #d97706, #b45309); border-radius: 8px 8px 0 0; }
+
+    /* ─── IN-APP MESSAGES ───────────────────── */
+    .msg-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+    .msg-item {
+      display: flex; gap: 10px; padding: 12px; border-radius: 12px;
+      background: var(--surface2); border: 1px solid var(--border); transition: all .15s;
+    }
+    .msg-item:hover { background: var(--white); border-color: var(--border2); }
+    .msg-item.unread { border-left: 3px solid var(--navy); }
+    .msg-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #3b5bff, #7a5af8); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .msg-body { flex: 1; min-width: 0; }
+    .msg-sender { font-size: 12px; font-weight: 700; color: var(--navy); }
+    .msg-text { font-size: 12px; color: var(--t2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-time { font-size: 10px; color: var(--t4); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+    /* ─── SCHEDULE / ISH JADVALI ────────────── */
+    .schedule-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 14px 16px; }
+    .schedule-day {
+      text-align: center; padding: 10px 4px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--white); transition: all .15s;
+      cursor: default;
+    }
+    .schedule-day.today { border-color: var(--navy); background: rgba(59,91,255,.06); }
+    .schedule-day.holiday { background: rgba(240,68,56,.05); border-color: rgba(240,68,56,.15); }
+    .schedule-day.vacation { background: rgba(11,165,236,.06); border-color: rgba(11,165,236,.15); }
+    .schedule-day-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--t1); }
+    .schedule-day-label { font-size: 9px; color: var(--t4); margin-top: 2px; text-transform: uppercase; font-weight: 600; }
+    .schedule-day.holiday .schedule-day-num { color: var(--ruby); }
+    .schedule-legend { display: flex; gap: 14px; padding: 10px 16px; border-top: 1px solid var(--border); font-size: 10.5px; color: var(--t3); flex-wrap: wrap; }
+    .schedule-legend-item { display: flex; align-items: center; gap: 5px; }
+    .schedule-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+    /* ─── DATE RANGE PICKER ─────────────────── */
+    .daterange-wrap { display: flex; align-items: center; gap: 6px; }
+    .daterange-input {
+      padding: 7px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+      color: var(--navy); background: var(--white); outline: none; cursor: pointer;
+    }
+    .daterange-input:focus { border-color: var(--navy); }
+    .daterange-sep { color: var(--t4); font-size: 12px; }
+
+    /* ─── AUDIT LOG ─────────────────────────── */
+    .audit-item {
+      display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px;
+      border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .audit-item:last-child { border-bottom: none; }
+    .audit-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+    .audit-icon.a-login { background: var(--emerald-bg); }
+    .audit-icon.a-edit { background: var(--cobalt-bg); }
+    .audit-icon.a-delete { background: var(--ruby-bg); }
+    .audit-icon.a-export { background: var(--violet-bg); }
+    .audit-info { flex: 1; }
+    .audit-action { font-weight: 600; color: var(--t1); }
+    .audit-detail { font-size: 11px; color: var(--t3); margin-top: 2px; }
+    .audit-time { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--t4); white-space: nowrap; flex-shrink: 0; }
+
+    /* ─── PULL TO REFRESH ───────────────────── */
+    .ptr-indicator {
+      position: fixed; top: 0; left: 50%; transform: translateX(-50%) translateY(-60px);
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--white); border: 1px solid var(--border);
+      box-shadow: var(--s2); z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    .ptr-indicator.pulling { transform: translateX(-50%) translateY(16px); }
+    .ptr-indicator.refreshing { transform: translateX(-50%) translateY(16px); }
+    .ptr-indicator .ptr-spinner {
+      width: 20px; height: 20px; border: 2.5px solid var(--border);
+      border-top-color: var(--navy); border-radius: 50%;
+    }
+    .ptr-indicator.refreshing .ptr-spinner { animation: spin .6s linear infinite; }
+
+    /* ─── SKELETON LOADING ──────────────────── */
+    .skeleton { position: relative; overflow: hidden; background: var(--surface3); border-radius: 8px; }
+    .skeleton::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+      animation: skeletonShimmer 1.5s ease infinite;
+    }
+    @keyframes skeletonShimmer { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+    .skeleton-card { height: 120px; border-radius: var(--rl); margin-bottom: 12px; }
+    .skeleton-row { height: 48px; border-radius: 8px; margin-bottom: 8px; }
+    .skeleton-text { height: 14px; border-radius: 6px; margin-bottom: 8px; }
+    .skeleton-text.w60 { width: 60%; }
+    .skeleton-text.w40 { width: 40%; }
+    .skeleton-circle { width: 40px; height: 40px; border-radius: 50%; }
+
+    /* ─── PAGE TRANSITIONS ──────────────────── */
+    .page-enter { animation: pageSlideIn .3s cubic-bezier(.4,0,.2,1); }
+    .page-exit { animation: pageSlideOut .2s ease forwards; }
+    @keyframes pageSlideIn { from{opacity:0;transform:translateX(12px)} to{opacity:1;transform:none} }
+    @keyframes pageSlideOut { to{opacity:0;transform:translateX(-12px)} }
 
     /* ─── APP SHELL ────────────────────────────── */
     .app { min-height: 100vh; display: flex; }
@@ -501,9 +728,14 @@
       height: 58px;
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 26px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: none;
       position: sticky; top: 0; z-index: 200;
       box-shadow: 0 1px 4px rgba(0,0,0,.03);
+    }
+    .topbar::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, var(--border), var(--navy-lt), var(--border));
+      opacity: .5;
     }
     .topbar-left { display: flex; align-items: center; gap: 14px; }
     .sidebar-toggle {
@@ -590,10 +822,11 @@
     }
     .action-btn:hover { border-color: var(--navy); color: var(--navy); }
     .action-btn.primary {
-      background: var(--navy); color: #fff; border-color: var(--navy);
-      box-shadow: 0 2px 8px rgba(10,14,26,.15);
+      background: linear-gradient(135deg, var(--navy), #7a5af8); color: #fff; border-color: var(--navy);
+      box-shadow: 0 2px 8px rgba(59,91,255,.2);
+      transition: all .2s ease;
     }
-    .action-btn.primary:hover { background: var(--navy-lt); }
+    .action-btn.primary:hover { background: linear-gradient(135deg, var(--navy-lt), #9b8afb); box-shadow: 0 6px 20px rgba(59,91,255,.3); transform: translateY(-1px); }
 
     /* ─── STAT CARDS ───────────────────────────── */
     .stats-grid {
@@ -602,7 +835,7 @@
       gap: 12px; margin-bottom: 22px;
     }
     .stat-card {
-      background: var(--white);
+      background: linear-gradient(135deg, var(--white) 0%, var(--surface2) 100%);
       border: 1px solid var(--border);
       border-radius: var(--rl); padding: 18px 20px;
       box-shadow: var(--s1); position: relative; overflow: hidden;
@@ -621,7 +854,7 @@
       letter-spacing: .2px;
     }
     .stat-accent {
-      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      position: absolute; top: 0; left: 0; right: 0; height: 4px;
       border-radius: var(--rl) var(--rl) 0 0;
     }
     .stat-card-inner { position: relative; }
@@ -687,7 +920,9 @@
     .th-right { text-align: right !important; }
     tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
     tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: rgba(25, 37, 64, 0.5); }
+    tbody tr:hover { background: var(--surface2); }
+    tbody tr:nth-child(even) { background: var(--surface2); }
+    tbody tr:nth-child(even):hover { background: var(--surface3); }
     td { padding: 9px 14px; vertical-align: middle; }
     .row-num {
       font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
@@ -834,10 +1069,16 @@
     /* ─── PROFESSIONAL STATS ENHANCEMENTS ────── */
     .stats-summary-bar {
       display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
-      padding: 14px 20px; background: linear-gradient(135deg, #465fff 0%, #7a5af8 100%);
+      padding: 14px 20px; background: linear-gradient(135deg, #2a3eb1 0%, #3b5bff 40%, #7a5af8 100%);
       border: none;
       border-radius: var(--rl); margin-bottom: 18px; color: #fff;
-      box-shadow: 0 10px 30px -5px rgba(70,95,255,.2);
+      box-shadow: 0 10px 30px -5px rgba(59,91,255,.25);
+      position: relative; overflow: hidden;
+    }
+    .stats-summary-bar::before {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(120deg, transparent, transparent 20px, rgba(255,255,255,.03) 20px, rgba(255,255,255,.03) 40px);
+      pointer-events: none;
     }
     .stats-summary-item {
       display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 500;
@@ -1544,7 +1785,11 @@
 
 
     /* ─── SELFIE CHECKIN ─────────────────────────── */
-    .selfie-wrap { animation: fadeUp .35s ease; }
+    .selfie-wrap { animation: fadeUp .35s ease; position: relative; z-index: 1; }
+    /* Leaflet map containment — prevent overflow */
+    .leaflet-container { position: relative !important; z-index: 1 !important; }
+    .leaflet-pane, .leaflet-control, .leaflet-top, .leaflet-bottom { z-index: 1 !important; }
+    .leaflet-popup-pane, .leaflet-tooltip-pane { z-index: 2 !important; }
     .selfie-header { margin-bottom: 22px; }
     .selfie-gps-bar {
       display: flex; align-items: center; gap: 10px;
@@ -1778,11 +2023,12 @@
       }
       .mobile-header-logo {
         width: 32px; height: 32px;
-        background: linear-gradient(135deg, #465fff, #7a5af8);
+        background: rgba(255,255,255,.15);
         border-radius: 9px;
         display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 2px 8px rgba(70,95,255,.3);
+        box-shadow: 0 2px 8px rgba(0,0,0,.15);
         flex-shrink: 0;
+        color: #fff;
       }
       .mobile-header-name {
         font-size: 15px; font-weight: 700; color: #fff;
@@ -2515,8 +2761,12 @@
       background: rgba(16,24,40,0.9);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(52,64,84,.4);
+      border-bottom: none;
       box-shadow: none;
+    }
+    [data-theme="dark"] .topbar::after {
+      background: linear-gradient(90deg, rgba(52,64,84,.4), rgba(117,146,255,.3), rgba(52,64,84,.4));
+      opacity: .6;
     }
     [data-theme="dark"] .table-header {
       background: rgba(39,42,50,0.5);
@@ -2524,6 +2774,15 @@
     }
     [data-theme="dark"] thead th {
       background: rgba(25,27,35,0.6);
+    }
+    [data-theme="dark"] tbody tr:hover {
+      background: rgba(117,146,255,.08);
+    }
+    [data-theme="dark"] tbody tr:nth-child(even) {
+      background: rgba(29,41,57,.5);
+    }
+    [data-theme="dark"] tbody tr:nth-child(even):hover {
+      background: rgba(117,146,255,.1);
     }
     [data-theme="dark"] .login-right {
       background: rgba(22,27,34,0.85);
@@ -2537,9 +2796,9 @@
     }
     [data-theme="dark"] .modal-overlay { background: rgba(6,8,15,.65); backdrop-filter: blur(6px); }
     [data-theme="dark"] .stats-summary-bar {
-      background: linear-gradient(135deg, rgba(70,95,255,.15) 0%, rgba(122,90,248,.1) 100%);
-      border: 1px solid rgba(70,95,255,.15);
-      box-shadow: 0 0 30px rgba(70,95,255,.08);
+      background: linear-gradient(135deg, rgba(42,62,177,.25) 0%, rgba(59,91,255,.15) 40%, rgba(122,90,248,.1) 100%);
+      border: 1px solid rgba(117,146,255,.15);
+      box-shadow: 0 0 30px rgba(59,91,255,.08);
     }
     [data-theme="dark"] .reminder-card {
       background: linear-gradient(135deg,rgba(251,191,36,.06) 0%,rgba(245,158,11,.03) 100%);
@@ -2582,7 +2841,7 @@
       color: #101828;
     }
     [data-theme="dark"] .action-btn.primary {
-      background: #7592ff;
+      background: linear-gradient(135deg, #7592ff, #9b8afb);
       color: #101828;
       border-color: #7592ff;
     }
@@ -2644,6 +2903,17 @@
         border-color: rgba(255,255,255,.08);
       }
     }
+    [data-theme="dark"] .onboarding-overlay { background: linear-gradient(135deg, #050714, #0f1535); }
+    [data-theme="dark"] .rating-card { background: #1a1f3a; }
+    [data-theme="dark"] .rating-title { color: #fff; }
+    [data-theme="dark"] .rating-desc { color: rgba(255,255,255,.5); }
+    [data-theme="dark"] .msg-item { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+    [data-theme="dark"] .msg-item:hover { background: rgba(255,255,255,.07); }
+    [data-theme="dark"] .schedule-day { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+    [data-theme="dark"] .audit-item { border-color: rgba(255,255,255,.06); }
+    [data-theme="dark"] .podium-item { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+    [data-theme="dark"] .podium-item.gold { background: rgba(251,191,36,.08); }
+    [data-theme="dark"] .leaderboard-podium { background: transparent; }
   </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -2651,6 +2921,248 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
+// ═══ Capacitor Native APIs ═══
+const isCapacitor = typeof window.Capacitor !== 'undefined';
+const haptic = {
+  light: () => { if(isCapacitor && window.Capacitor.Plugins?.Haptics) window.Capacitor.Plugins.Haptics.impact({style:'LIGHT'}); },
+  medium: () => { if(isCapacitor && window.Capacitor.Plugins?.Haptics) window.Capacitor.Plugins.Haptics.impact({style:'MEDIUM'}); },
+  heavy: () => { if(isCapacitor && window.Capacitor.Plugins?.Haptics) window.Capacitor.Plugins.Haptics.impact({style:'HEAVY'}); },
+  notify: (t='SUCCESS') => { if(isCapacitor && window.Capacitor.Plugins?.Haptics) window.Capacitor.Plugins.Haptics.notification({type:t}); },
+};
+
+// ═══ PDF Report Generator ═══
+function generatePDF(title, headers, rows, filename) {
+  if(!window.jspdf){alert('PDF kutubxonasi yuklanmoqda, qayta urinib ko\'ring');return;}
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF('l','mm','a4');
+  doc.setFillColor(59,91,255);
+  doc.rect(0,0,297,32,  'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('INTIZOM — '+title, 14, 14);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(new Date().toLocaleDateString('uz-UZ',{year:'numeric',month:'long',day:'numeric'}), 14, 22);
+  doc.setTextColor(0,0,0);
+  doc.autoTable({
+    head:[headers], body:rows, startY:38,
+    styles:{fontSize:9, cellPadding:4, font:'helvetica'},
+    headStyles:{fillColor:[59,91,255], textColor:255, fontStyle:'bold', fontSize:9},
+    alternateRowStyles:{fillColor:[245,247,250]},
+    margin:{left:14,right:14},
+  });
+  const pgCount = doc.internal.getNumberOfPages();
+  for(let i=1;i<=pgCount;i++){
+    doc.setPage(i);
+    doc.setFontSize(8); doc.setTextColor(150);
+    doc.text('Intizom — Xodimlar Monitoringi | Sahifa '+i+'/'+pgCount, 14, doc.internal.pageSize.height-8);
+  }
+  doc.save(filename||'hisobot.pdf');
+}
+
+// ═══ Pull-to-refresh ═══
+let ptrStart=0, ptrActive=false, ptrInitialized=false;
+function initPullToRefresh(){
+  if(ptrInitialized) return; // Prevent duplicate init (memory leak fix)
+  const main = document.querySelector('.main');
+  if(!main) return;
+  ptrInitialized = true;
+  const indicator = document.createElement('div');
+  indicator.className='ptr-indicator';
+  indicator.innerHTML='<div class="ptr-spinner"></div>';
+  document.body.appendChild(indicator);
+  const onStart = (e)=>{if(main.scrollTop<=0){ptrStart=e.touches[0].clientY;ptrActive=true;}};
+  const onMove = (e)=>{if(!ptrActive)return;const dy=e.touches[0].clientY-ptrStart;if(dy>40&&dy<120){indicator.classList.add('pulling');indicator.classList.remove('refreshing');}};
+  const onEnd = ()=>{if(indicator.classList.contains('pulling')){indicator.classList.remove('pulling');indicator.classList.add('refreshing');haptic.medium();setTimeout(()=>{window.location.reload();},800);}ptrActive=false;};
+  main.addEventListener('touchstart',onStart,{passive:true});
+  main.addEventListener('touchmove',onMove,{passive:true});
+  main.addEventListener('touchend',onEnd,{passive:true});
+}
+
+// ═══ Multi-language i18n ═══
+const TRANSLATIONS = {
+  uz: {
+    dashboard: "Boshqaruv paneli", employees: "Xodimlar", attendance: "Davomat",
+    stats: "Statistika", settings: "Sozlamalar", logout: "Chiqish",
+    present: "Keldi", absent: "Kelmadi", late: "Kech qoldi", excused: "Sababli",
+    search: "Qidirish...", save: "Saqlash", cancel: "Bekor qilish",
+    export_pdf: "PDF yuklash", export_excel: "Excel yuklash",
+    leaderboard: "Reyting", messages: "Xabarlar", schedule: "Ish jadvali",
+    audit: "Jurnal", total: "Jami", today: "Bugun",
+    welcome: "Xush kelibsiz", loading: "Yuklanmoqda...",
+    lang_name: "O'zbek", login_title: "Tizimga Kirish", login_sub: "Shaxsiy login va parolingizni kiriting", login_btn: "Kirish", login_label: "Login", login_pass: "Parol", onboarding_next: "Keyingi", onboarding_start: "Boshlash",
+    onboarding_skip: "O'tkazib yuborish", rate_title: "Ilovani baholang",
+    rate_desc: "Intizom sizga yoqdimi? Baholab qo'ying!", rate_later: "Keyinroq",
+    rate_submit: "Baholash",
+    nav_main: "Asosiy", nav_reports: "Hisobotlar", nav_monitoring: "Monitoring", nav_data: "Ma'lumotlar", nav_settings: "Sozlamalar",
+    nav_dashboard: "Dashboard", nav_davomat: "Davomat", nav_employees: "Xodimlar", nav_analytics: "Analitika", nav_stats: "Statistika", nav_ijro: "Ijro Intizomi",
+    nav_selfie: "Selfie Davomat", nav_selfie_history: "Selfie Tarix", nav_notes: "Xodim Izohlari", nav_ai: "AI Tahlil",
+    nav_announcements: "E'lonlar", nav_birthdays: "Tug'ilgan kunlar", nav_holidays: "Bayramlar",
+    nav_location: "Hudud", nav_telegram: "Telegram Bot", nav_accounts: "Akkauntlar",
+    nav_personal: "Shaxsiy Kabinet", nav_write_note: "Izoh yozish",
+    dark_on: "Tungi rejim", dark_off: "Kunduzgi rejim", breadcrumb: "Boshqarma",
+    role_admin: "Kadrlar bo'limi", role_boss: "Rahbar", role_observer: "Kuzatuvchi", role_employee: "Xodim",
+    status_present: "Keldi", status_late: "Kech qoldi", status_absent: "Kelmadi", status_excused: "Sababli",
+    system_active: "Tizim faol", saved: "Muvaffaqiyatli saqlandi",
+  },
+  ru: {
+    dashboard: "Панель управления", employees: "Сотрудники", attendance: "Посещаемость",
+    stats: "Статистика", settings: "Настройки", logout: "Выйти",
+    present: "Пришёл", absent: "Отсутствует", late: "Опоздал", excused: "По причине",
+    search: "Поиск...", save: "Сохранить", cancel: "Отменить",
+    export_pdf: "Скачать PDF", export_excel: "Скачать Excel",
+    leaderboard: "Рейтинг", messages: "Сообщения", schedule: "Расписание",
+    audit: "Журнал", total: "Всего", today: "Сегодня",
+    welcome: "Добро пожаловать", loading: "Загрузка...",
+    lang_name: "Русский", login_title: "Вход в систему", login_sub: "Введите логин и пароль", login_btn: "Войти", login_label: "Логин", login_pass: "Пароль", onboarding_next: "Далее", onboarding_start: "Начать",
+    onboarding_skip: "Пропустить", rate_title: "Оцените приложение",
+    rate_desc: "Вам нравится Intizom? Оцените нас!", rate_later: "Позже",
+    rate_submit: "Оценить",
+    nav_main: "Основное", nav_reports: "Отчёты", nav_monitoring: "Мониторинг", nav_data: "Данные", nav_settings: "Настройки",
+    nav_dashboard: "Панель", nav_davomat: "Посещаемость", nav_employees: "Сотрудники", nav_analytics: "Аналитика", nav_stats: "Статистика", nav_ijro: "Исполнение",
+    nav_selfie: "Селфи", nav_selfie_history: "История селфи", nav_notes: "Заметки", nav_ai: "ИИ Анализ",
+    nav_announcements: "Объявления", nav_birthdays: "Дни рождения", nav_holidays: "Праздники",
+    nav_location: "Территория", nav_telegram: "Telegram Бот", nav_accounts: "Аккаунты",
+    nav_personal: "Личный кабинет", nav_write_note: "Написать заметку",
+    dark_on: "Ночной режим", dark_off: "Дневной режим", breadcrumb: "Управление",
+    role_admin: "Кадровый отдел", role_boss: "Руководитель", role_observer: "Наблюдатель", role_employee: "Сотрудник",
+    status_present: "Пришёл", status_late: "Опоздал", status_absent: "Отсутствует", status_excused: "По причине",
+    system_active: "Система активна", saved: "Успешно сохранено",
+  },
+  en: {
+    dashboard: "Dashboard", employees: "Employees", attendance: "Attendance",
+    stats: "Statistics", settings: "Settings", logout: "Logout",
+    present: "Present", absent: "Absent", late: "Late", excused: "Excused",
+    search: "Search...", save: "Save", cancel: "Cancel",
+    export_pdf: "Download PDF", export_excel: "Download Excel",
+    leaderboard: "Leaderboard", messages: "Messages", schedule: "Schedule",
+    audit: "Audit Log", total: "Total", today: "Today",
+    welcome: "Welcome", loading: "Loading...",
+    lang_name: "English", login_title: "Sign In", login_sub: "Enter your login and password", login_btn: "Sign In", login_label: "Login", login_pass: "Password", onboarding_next: "Next", onboarding_start: "Get Started",
+    onboarding_skip: "Skip", rate_title: "Rate this app",
+    rate_desc: "Enjoying Intizom? Rate us!", rate_later: "Later",
+    rate_submit: "Rate",
+    nav_main: "Main", nav_reports: "Reports", nav_monitoring: "Monitoring", nav_data: "Data", nav_settings: "Settings",
+    nav_dashboard: "Dashboard", nav_davomat: "Attendance", nav_employees: "Employees", nav_analytics: "Analytics", nav_stats: "Statistics", nav_ijro: "Execution",
+    nav_selfie: "Selfie Check-in", nav_selfie_history: "Selfie History", nav_notes: "Notes", nav_ai: "AI Analysis",
+    nav_announcements: "Announcements", nav_birthdays: "Birthdays", nav_holidays: "Holidays",
+    nav_location: "Location", nav_telegram: "Telegram Bot", nav_accounts: "Accounts",
+    nav_personal: "Personal Cabinet", nav_write_note: "Write Note",
+    dark_on: "Dark mode", dark_off: "Light mode", breadcrumb: "Management",
+    role_admin: "HR Department", role_boss: "Manager", role_observer: "Observer", role_employee: "Employee",
+    status_present: "Present", status_late: "Late", status_absent: "Absent", status_excused: "Excused",
+    system_active: "System active", saved: "Saved successfully",
+  }
+};
+function t(key) {
+  const lang = localStorage.getItem('intizom_lang') || 'uz';
+  return TRANSLATIONS[lang]?.[key] || TRANSLATIONS.uz[key] || key;
+}
+function setLang(lang) { localStorage.setItem('intizom_lang', lang); }
+function getLang() { return localStorage.getItem('intizom_lang') || 'uz'; }
+
+// ═══ Confetti Effect ═══
+function fireConfetti() {
+  const container = document.createElement('div');
+  container.className = 'confetti-container';
+  document.body.appendChild(container);
+  const colors = ['#3b5bff','#7a5af8','#f59e0b','#10b981','#ef4444','#ec4899'];
+  for(let i=0; i<60; i++){
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random()*100+'%';
+    piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+    piece.style.animationDelay = Math.random()*1.5+'s';
+    piece.style.animationDuration = (2+Math.random()*2)+'s';
+    piece.style.width = (6+Math.random()*8)+'px';
+    piece.style.height = (6+Math.random()*8)+'px';
+    piece.style.borderRadius = Math.random()>.5?'50%':'2px';
+    container.appendChild(piece);
+  }
+  haptic.notify('SUCCESS');
+  setTimeout(()=>container.remove(), 4000);
+}
+
+// ═══ Animated Counter ═══
+function animateCounter(el, target, duration=600) {
+  if(!el) return;
+  const start = parseInt(el.textContent)||0;
+  const diff = target - start;
+  if(diff===0) return;
+  const startTime = performance.now();
+  function step(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed/duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(start + diff * eased);
+    if(progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ═══ Geofencing ═══
+const OFFICE_COORDS = { lat: 40.1158, lng: 65.3793 }; // Navoiy shahar markazi
+const GEOFENCE_RADIUS = 300; // metr
+function getDistanceFromOffice(lat, lng) {
+  const R = 6371e3;
+  const p1 = OFFICE_COORDS.lat * Math.PI/180, p2 = lat * Math.PI/180;
+  const dp = (lat-OFFICE_COORDS.lat) * Math.PI/180;
+  const dl = (lng-OFFICE_COORDS.lng) * Math.PI/180;
+  const a = Math.sin(dp/2)*Math.sin(dp/2) + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function isInGeofence(lat, lng) { return getDistanceFromOffice(lat, lng) <= GEOFENCE_RADIUS; }
+
+// ═══ AI Prediction (simple heuristic) ═══
+function predictLateProbability(employeeHistory) {
+  if(!employeeHistory || employeeHistory.length < 5) return null;
+  const recentLates = employeeHistory.slice(-14).filter(d => d.status === 'late').length;
+  const totalDays = Math.min(employeeHistory.length, 14);
+  const dayOfWeek = new Date().getDay();
+  const mondayBonus = dayOfWeek === 1 ? 0.1 : 0;
+  const fridayBonus = dayOfWeek === 5 ? 0.05 : 0;
+  const baseProb = recentLates / totalDays;
+  return Math.min(Math.round((baseProb + mondayBonus + fridayBonus) * 100), 95);
+}
+
+// ═══ Audit Log ═══
+function logAudit(action, detail, user) {
+  const logs = JSON.parse(localStorage.getItem('intizom_audit') || '[]');
+  logs.unshift({ action, detail, user: user||'admin', time: new Date().toISOString() });
+  if(logs.length > 500) logs.length = 500;
+  localStorage.setItem('intizom_audit', JSON.stringify(logs));
+}
+function getAuditLogs() { return JSON.parse(localStorage.getItem('intizom_audit') || '[]'); }
+
+// ═══ App Rating ═══
+function shouldShowRating() {
+  const count = parseInt(localStorage.getItem('intizom_opens') || '0') + 1;
+  localStorage.setItem('intizom_opens', count);
+  const rated = localStorage.getItem('intizom_rated');
+  return count === 5 && !rated;
+}
+function markRated() { localStorage.setItem('intizom_rated', '1'); }
+
+// ═══ Onboarding ═══
+function hasSeenOnboarding() { return localStorage.getItem('intizom_onboarded') === '1'; }
+function markOnboarded() { localStorage.setItem('intizom_onboarded', '1'); }
+
+// ═══ Device Management ═══
+function getDeviceId() {
+  let id = localStorage.getItem('intizom_device_id');
+  if(!id) { id = 'dev_' + Math.random().toString(36).substr(2,12) + Date.now().toString(36); localStorage.setItem('intizom_device_id', id); }
+  return id;
+}
+
+// ═══ Chart Export ═══
+function exportChartAsImage(canvasId, filename) {
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const link = document.createElement('a');
+  link.download = filename || 'chart.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
 const {useState, useMemo, useEffect, useRef, useCallback} = React;
 
 /* ═══ FIREBASE ═══ */
@@ -6933,6 +7445,38 @@ function DashboardView({showToast}){
   var[chkData,setChkData]=useState({});
   var[loading,setLoading]=useState(true);
   var[tab,setTab]=useState("davomat");
+  /* === WIDGET TIZIMI === */
+  var DEFAULT_WIDGET_ORDER=["present","late","absent","total","overdue","percent"];
+  var[widgetOrder,setWidgetOrder]=useState(function(){
+    try{var s=localStorage.getItem("intizom-widget-order");if(s){var p=JSON.parse(s);if(Array.isArray(p)&&p.length)return p;}}catch(e){}
+    return DEFAULT_WIDGET_ORDER.slice();
+  });
+  var[hiddenWidgets,setHiddenWidgets]=useState(function(){
+    try{var s=localStorage.getItem("intizom-widget-hidden");if(s){var p=JSON.parse(s);if(Array.isArray(p))return p;}}catch(e){}
+    return[];
+  });
+  var[editMode,setEditMode]=useState(false);
+  var[dragId,setDragId]=useState(null);
+  function saveOrder(newOrder){setWidgetOrder(newOrder);try{localStorage.setItem("intizom-widget-order",JSON.stringify(newOrder));}catch(e){}}
+  function saveHidden(newHidden){setHiddenWidgets(newHidden);try{localStorage.setItem("intizom-widget-hidden",JSON.stringify(newHidden));}catch(e){}}
+  function toggleWidget(id){
+    if(hiddenWidgets.indexOf(id)>=0) saveHidden(hiddenWidgets.filter(function(x){return x!==id}));
+    else saveHidden(hiddenWidgets.concat([id]));
+  }
+  function resetWidgets(){saveOrder(DEFAULT_WIDGET_ORDER.slice());saveHidden([]);setEditMode(false);if(showToast)showToast("✓ Tartib tiklandi");}
+  function handleDragStart(id){setDragId(id);}
+  function handleDragOver(e,targetId){
+    e.preventDefault();
+    if(!dragId||dragId===targetId)return;
+    var newOrder=widgetOrder.slice();
+    var fromIdx=newOrder.indexOf(dragId);
+    var toIdx=newOrder.indexOf(targetId);
+    if(fromIdx<0||toIdx<0)return;
+    newOrder.splice(fromIdx,1);
+    newOrder.splice(toIdx,0,dragId);
+    saveOrder(newOrder);
+  }
+  function handleDragEnd(){setDragId(null);}
 
   useEffect(function(){
     var done=0,need=3;
@@ -7013,29 +7557,82 @@ function DashboardView({showToast}){
       )
     ),
 
-    /* === KPI CARDS === */
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:18}},
-      React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #059669",padding:"14px 16px"})},
-        React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:2}},
-          React.createElement(AnimNum,{value:davRows.present,style:{fontSize:24,color:"#059669"}}),
-          React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#94a3b8",fontFamily:"JetBrains Mono,monospace"}},"/"+davRows.total)),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#10b981",marginTop:2}},"Ish joyida")),
-      React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #f59e0b",padding:"14px 16px"})},
-        React.createElement(AnimNum,{value:davRows.late,style:{fontSize:24,color:"#f59e0b"}}),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#d97706",marginTop:2}},"Kechikkan")),
-      React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #dc2626",padding:"14px 16px"})},
-        React.createElement(AnimNum,{value:davRows.absent,style:{fontSize:24,color:"#dc2626"}}),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#ef4444",marginTop:2}},"Kelmagan")),
-      React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #1e40af",padding:"14px 16px"})},
-        React.createElement(AnimNum,{value:ijroRows.jami,style:{fontSize:24,color:"#1e40af"}}),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#3b82f6",marginTop:2}},"Jami topshiriqlar")),
-      React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #dc2626",padding:"14px 16px"})},
-        React.createElement(AnimNum,{value:ijroRows.otgan,style:{fontSize:24,color:"#dc2626"}}),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#ef4444",marginTop:2}},"M. o\u2018tgan")),
-      React.createElement("div",{style:Object.assign({},_cs,{borderLeft:"4px solid #7c3aed",padding:"14px 16px"})},
-        React.createElement(AnimNum,{value:ijroRows.foiz,suffix:"%",style:{fontSize:24,color:"#7c3aed"}}),
-        React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"#8b5cf6",marginTop:2}},"Ijro foizi"))
+    /* === EDIT WIDGETS TUGMASI === */
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12,alignItems:"center",flexWrap:"wrap"}},
+      React.createElement("button",{
+        onClick:function(){setEditMode(!editMode);haptic&&haptic.light&&haptic.light();},
+        style:{padding:"7px 14px",borderRadius:10,border:"1.5px solid "+(editMode?"#3b5bff":"var(--border)"),background:editMode?"#3b5bff":"var(--white)",color:editMode?"#fff":"var(--t2)",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s",fontFamily:"'Inter',sans-serif"}
+      },editMode?"✓ Tayyor":"⚙️ Widgetlarni sozlash"),
+      editMode&&React.createElement("button",{
+        onClick:resetWidgets,
+        style:{padding:"7px 14px",borderRadius:10,border:"1.5px solid var(--border)",background:"var(--white)",color:"var(--t3)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}
+      },"↺ Tiklash"),
+      editMode&&React.createElement("span",{style:{fontSize:11,color:"var(--t4)",marginLeft:"auto"}},"💡 Widgetlarni sudrab ko'chiring yoki ✕ bosib yashiring")
     ),
+    /* === KPI WIDGETS === */
+    (function(){
+      var widgetDefs={
+        present:{color:"#059669",color2:"#10b981",label:"Ish joyida",value:davRows.present,showSlash:true,total:davRows.total},
+        late:{color:"#f59e0b",color2:"#d97706",label:"Kechikkan",value:davRows.late},
+        absent:{color:"#dc2626",color2:"#ef4444",label:"Kelmagan",value:davRows.absent},
+        total:{color:"#1e40af",color2:"#3b82f6",label:"Jami topshiriqlar",value:ijroRows.jami},
+        overdue:{color:"#dc2626",color2:"#ef4444",label:"M. o\u2018tgan",value:ijroRows.otgan},
+        percent:{color:"#7c3aed",color2:"#8b5cf6",label:"Ijro foizi",value:ijroRows.foiz,suffix:"%"}
+      };
+      var visibleWidgets=widgetOrder.filter(function(id){return hiddenWidgets.indexOf(id)<0});
+      return React.createElement("div",null,
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:18}},
+          visibleWidgets.map(function(id){
+            var w=widgetDefs[id];if(!w)return null;
+            var isDragging=dragId===id;
+            return React.createElement("div",{
+              key:id,
+              draggable:editMode,
+              onDragStart:function(){handleDragStart(id)},
+              onDragOver:function(e){handleDragOver(e,id)},
+              onDragEnd:handleDragEnd,
+              style:Object.assign({},_cs,{
+                borderLeft:"4px solid "+w.color,
+                padding:"14px 16px",
+                position:"relative",
+                cursor:editMode?"grab":"default",
+                opacity:isDragging?0.4:1,
+                transform:isDragging?"scale(.96)":"scale(1)",
+                transition:"opacity .15s, transform .15s",
+                border:editMode?"1.5px dashed var(--border2)":"1px solid var(--border)",
+                borderLeft:"4px solid "+w.color
+              })
+            },
+              editMode&&React.createElement("button",{
+                onClick:function(){toggleWidget(id)},
+                style:{position:"absolute",top:6,right:6,width:22,height:22,borderRadius:"50%",border:"none",background:"rgba(220,38,38,.1)",color:"#dc2626",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}
+              },"✕"),
+              w.showSlash?
+                React.createElement("div",{style:{display:"flex",alignItems:"baseline",gap:2}},
+                  React.createElement(AnimNum,{value:w.value,style:{fontSize:24,color:w.color}}),
+                  React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#94a3b8",fontFamily:"JetBrains Mono,monospace"}},"/"+w.total)
+                ):
+                React.createElement(AnimNum,{value:w.value,suffix:w.suffix||"",style:{fontSize:24,color:w.color}}),
+              React.createElement("div",{style:{fontSize:10,fontWeight:600,color:w.color2,marginTop:2}},w.label)
+            );
+          })
+        ),
+        /* Yashirilgan widgetlar paneli */
+        editMode&&hiddenWidgets.length>0&&React.createElement("div",{style:{padding:"10px 14px",background:"var(--surface2)",borderRadius:10,marginBottom:14,border:"1px dashed var(--border2)"}},
+          React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"var(--t4)",textTransform:"uppercase",letterSpacing:".6px",marginBottom:8}},"Yashirilgan widgetlar"),
+          React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+            hiddenWidgets.map(function(id){
+              var w=widgetDefs[id];if(!w)return null;
+              return React.createElement("button",{
+                key:id,
+                onClick:function(){toggleWidget(id)},
+                style:{padding:"6px 12px",borderRadius:8,border:"1px solid "+w.color,background:"var(--white)",color:w.color,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:5}
+              },"+ ",w.label);
+            })
+          )
+        )
+      );
+    })(),
 
     /* === PROGRESS BARS === */
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18}},
@@ -8225,8 +8822,8 @@ function SelfieLocationMap({lat,lng,name,distance,gpsOk,live}){
   },[lat,lng,distance,gpsOk]);
 
   if(!lat||!lng||lat===0)return null;
-  return React.createElement("div",{style:{height:180,borderRadius:10,overflow:"hidden",border:"1px solid "+(gpsOk?"rgba(13,122,91,.2)":"rgba(192,57,43,.2)"),marginTop:8,marginBottom:live?14:0}},
-    React.createElement("div",{ref:mapEl,style:{height:"100%",width:"100%"}})
+  return React.createElement("div",{style:{height:180,borderRadius:10,overflow:"hidden",border:"1px solid "+(gpsOk?"rgba(13,122,91,.2)":"rgba(192,57,43,.2)"),marginTop:8,marginBottom:live?14:0,position:"relative",contain:"layout paint"}},
+    React.createElement("div",{ref:mapEl,style:{height:"100%",width:"100%",position:"absolute",top:0,left:0,right:0,bottom:0}})
   );
 }
 
@@ -10273,9 +10870,23 @@ function App(){
   const [isStandalone,setIsStandalone]=useState(false);
   const [iosInstallHint,setIosInstallHint]=useState(false);
   const [hideInstallBanner,setHideInstallBanner]=useState(false);
+  const [lang,setLangState]=useState(()=>getLang());
+  const [showOnboarding,setShowOnboarding]=useState(()=>!hasSeenOnboarding());
+  const [onboardSlide,setOnboardSlide]=useState(0);
+  const [showRating,setShowRating]=useState(false);
+  const [ratingStars,setRatingStars]=useState(0);
   const toastRef=useRef(null);
   const [darkMode,setDarkMode]=useState(()=>{try{return localStorage.getItem("xodimlar-dark-mode")==="1"}catch(e){return false}});
   useEffect(()=>{if(darkMode){document.documentElement.setAttribute("data-theme","dark")}else{document.documentElement.removeAttribute("data-theme")}try{localStorage.setItem("xodimlar-dark-mode",darkMode?"1":"0")}catch(e){}},[darkMode]);
+
+  // Rating prompt on 5th open
+  useEffect(()=>{if(user && shouldShowRating()) setTimeout(()=>setShowRating(true),3000);},[user]);
+  // Pull-to-refresh
+  useEffect(()=>{if(user) setTimeout(initPullToRefresh,500);},[user]);
+  // Audit log on login
+  useEffect(()=>{if(user) logAudit('login','Tizimga kirdi',user.name);},[user]);
+  // Language change handler
+  function changeLang(l){setLang(l);setLangState(l);window.location.reload();}
 
   useEffect(()=>{const t=setInterval(()=>setClock(new Date()),30000);return()=>clearInterval(t)},[]);
   useEffect(()=>{
@@ -10479,22 +11090,91 @@ function App(){
     if(field==="morning"&&value===0&&rec.afternoon===0&&rec.status==="late")rec.status="present";
     db.ref(`attendance/${dateKey}/${empKey}`).set(rec)
       .then(()=>{
-        showToast("✓ Muvaffaqiyatli saqlandi");
+        showToast("✓ "+t('saved'));
+        haptic.light();
+        logAudit('edit', emp + ' — ' + field + ': ' + value, user?.name);
       })
       .catch(()=>showToast("⚠ Tarmoqda xatolik yuz berdi"));
+  }
+
+  // ═══ ONBOARDING COMPONENT ═══
+  const onboardingSlides = [
+    {icon:"📊",title:"Real-time Monitoring",desc:"Xodimlar davomatini real vaqtda kuzating. Har bir kelish-ketish avtomatik qayd etiladi."},
+    {icon:"📸",title:"Selfie Davomat",desc:"Xodimlar selfie orqali davomatni tasdiqlaydi. GPS tekshiruvi bilan xavfsiz."},
+    {icon:"📈",title:"Statistika va Tahlil",desc:"AI asosida tahlillar, grafiklar va oylik hisobotlar. PDF va Excel eksport."},
+    {icon:"🏆",title:"Reyting va Motivatsiya",desc:"Eng intizomli xodimlar reytingi. 100% davomat uchun maxsus mukofotlar."},
+  ];
+  function OnboardingOverlay(){
+    if(!showOnboarding) return null;
+    const slide = onboardingSlides[onboardSlide];
+    const isLast = onboardSlide === onboardingSlides.length-1;
+    function skip(){markOnboarded();setShowOnboarding(false);}
+    function next(){
+      if(isLast){skip();return;}
+      setOnboardSlide(s=>s+1);
+      haptic.light();
+    }
+    return(
+      <div className="onboarding-overlay">
+        <button className="onboarding-skip" onClick={skip}>{t('onboarding_skip')}</button>
+        <div className="onboarding-slides">
+          <div className="onboarding-slide active">
+            <div className="onboarding-icon">{slide.icon}</div>
+            <div className="onboarding-title">{slide.title}</div>
+            <div className="onboarding-desc">{slide.desc}</div>
+          </div>
+          <div className="onboarding-dots">
+            {onboardingSlides.map((_,i)=><div key={i} className={`onboarding-dot${i===onboardSlide?" active":""}`}/>)}
+          </div>
+          <button className="onboarding-btn" onClick={next}>
+            {isLast ? t('onboarding_start') : t('onboarding_next')} →
+          </button>
+        </div>
+      </div>
+    );
+  }
+  function RatingPrompt(){
+    if(!showRating) return null;
+    return(
+      <div className="rating-overlay" onClick={()=>setShowRating(false)}>
+        <div className="rating-card" onClick={e=>e.stopPropagation()}>
+          <div className="rating-icon">⭐</div>
+          <div className="rating-title">{t('rate_title')}</div>
+          <div className="rating-desc">{t('rate_desc')}</div>
+          <div className="rating-stars">
+            {[1,2,3,4,5].map(n=>(
+              <span key={n} className={`rating-star${ratingStars>=n?" active":""}`}
+                onClick={()=>{setRatingStars(n);haptic.light();}}>⭐</span>
+            ))}
+          </div>
+          <div className="rating-actions">
+            <button className="rating-later" onClick={()=>setShowRating(false)}>{t('rate_later')}</button>
+            <button className="rating-submit" onClick={()=>{
+              markRated();setShowRating(false);showToast("Rahmat! ⭐");haptic.notify('SUCCESS');
+              if(isCapacitor&&ratingStars>=4){
+                try{window.Capacitor.Plugins?.Browser?.open({url: navigator.userAgent.match(/android/i)
+                  ? 'https://play.google.com/store/apps/details?id=uz.boshqarma.xodimlar'
+                  : 'https://apps.apple.com/app/intizom/id000000'
+                });}catch(e){}
+              }
+            }}>{t('rate_submit')}</button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   /* LOGIN */
   if(loading)return(
     <div className="fullscreen-loader">
       <div className="loader-logo">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0a0e1a" strokeWidth="2.5">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 2-5 10"/><path d="m17 2 5 10"/></svg>
       </div>
-      <div className="loader-dots">
-        <div className="loader-dot"/><div className="loader-dot"/><div className="loader-dot"/>
+      <div className="loader-brand">
+        <div className="loader-brand-name">INTIZOM</div>
+        <div className="loader-brand-sub">Xodimlar Monitoringi</div>
       </div>
+      <div className="loader-progress"><div className="loader-progress-bar"></div></div>
     </div>
   );
 
@@ -10548,31 +11228,40 @@ function App(){
         <div className="login-card" style={{animation:"slideUp .4s ease"}}>
           <div className="login-card-eyebrow">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            Xavfsiz Kirish
+            {getLang()==='ru'?'Безопасный вход':getLang()==='en'?'Secure Login':'Xavfsiz Kirish'}
           </div>
-          <h1 className="login-card-title">Tizimga Kirish</h1>
-          <p className="login-card-sub">Shaxsiy login va parolingizni kiriting</p>
+          <h1 className="login-card-title">{t('login_title')}</h1>
+          <p className="login-card-sub">{t('login_sub')}</p>
           {loginErr&&<div className="login-error"><span>⚠</span>{loginErr}</div>}
           <div className="form-group">
-            <label className="form-label">Login</label>
+            <label className="form-label">{t('login_label')}</label>
             <input className="form-input" placeholder="ism.familiya" value={loginU}
               onChange={e=>setLoginU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} autoFocus autoComplete="username"/>
           </div>
           <div className="form-group">
-            <label className="form-label">Parol</label>
+            <label className="form-label">{t('login_pass')}</label>
             <input className="form-input" type="password" placeholder="••••••••" value={loginP}
               onChange={e=>setLoginP(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} autoComplete="current-password"/>
           </div>
           <button className="login-btn" onClick={handleLogin} disabled={authLoading}>
             {authLoading
-              ? <><span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .7s linear infinite"}}/> Tekshirilmoqda...</>
-              : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Kirish</>
+              ? <><span style={{width:14,height:14,border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block",animation:"spin .7s linear infinite"}}/> {getLang()==='ru'?'Проверка...':getLang()==='en'?'Checking...':'Tekshirilmoqda...'}</>
+              : <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>{t('login_btn')}</>
             }
           </button>
           <div className="login-divider"/>
           <div className="login-secure">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             Firebase Authentication · SSL himoyalangan
+          </div>
+          <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:20}}>
+            {[["uz","🇺🇿 O'zbek"],["ru","🇷🇺 Русский"],["en","🇬🇧 English"]].map(([code,label])=>(
+              <button key={code} onClick={()=>changeLang(code)} style={{
+                padding:"6px 14px",borderRadius:8,border:lang===code?"1.5px solid var(--navy)":"1px solid var(--border)",
+                background:lang===code?"var(--gold-pale)":"transparent",fontSize:12,fontWeight:lang===code?700:500,
+                fontFamily:"'Inter',sans-serif",cursor:"pointer",color:lang===code?"var(--navy)":"var(--t3)",transition:"all .15s"
+              }}>{label}</button>
+            ))}
           </div>
         </div>
       </div>
@@ -10588,52 +11277,54 @@ function App(){
   const canManage=isAdmin||isBoss||isObserver;
   const canEdit=isAdmin||isBoss;
   const adminNavGroups=[
-    {label:"Asosiy",items:[
-      {k:"dashboard",icon:"\uD83C\uDFE0",label:"Dashboard"},
-      {k:"davomat",icon:"📅",label:"Davomat"},
-      {k:"employees",icon:"👥",label:"Xodimlar"},
+    {label:t('nav_main'),items:[
+      {k:"dashboard",icon:"\uD83C\uDFE0",label:t('nav_dashboard')},
+      {k:"davomat",icon:"📅",label:t('nav_davomat')},
+      {k:"employees",icon:"👥",label:t('nav_employees')},
     ]},
-    {label:"Hisobotlar",items:[
-      {k:"analytics",icon:"📈",label:"Analitika"},
-      {k:"stats",icon:"📊",label:"Statistika"},
-      ...(canIjro?[{k:"ijro",icon:"📋",label:"Ijro Intizomi"}]:[]),
+    {label:t('nav_reports'),items:[
+      {k:"analytics",icon:"📈",label:t('nav_analytics')},
+      {k:"stats",icon:"📊",label:t('nav_stats')},
+      ...(canIjro?[{k:"ijro",icon:"📋",label:t('nav_ijro')}]:[]),
     ]},
-    {label:"Monitoring",items:[
-      {k:"selfie",icon:"📸",label:"Selfie Davomat"},
-      ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:"Selfie Tarix"}]:[]),
-      {k:"empNotes",icon:"✏️",label:"Xodim Izohlari"},
-      ...((isAdmin||isObserver)?[{k:"aiAnalysis",icon:"🤖",label:"AI Tahlil"}]:[]),
+    {label:t('nav_monitoring'),items:[
+      {k:"selfie",icon:"📸",label:t('nav_selfie')},
+      ...(isAdmin?[{k:"selfieHistory",icon:"🗂",label:t('nav_selfie_history')}]:[]),
+      {k:"empNotes",icon:"✏️",label:t('nav_notes')},
+      ...((isAdmin||isObserver)?[{k:"aiAnalysis",icon:"🤖",label:t('nav_ai')}]:[]),
     ]},
-    {label:"Ma'lumotlar",items:[
-      {k:"announcements",icon:"📢",label:"E'lonlar"},
-      {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
-      {k:"holidays",icon:"🎉",label:"Bayramlar"},
+    {label:t('nav_data'),items:[
+      {k:"announcements",icon:"📢",label:t('nav_announcements')},
+      {k:"birthdays",icon:"🎂",label:t('nav_birthdays')},
+      {k:"holidays",icon:"🎉",label:t('nav_holidays')},
     ]},
-    ...(isAdmin?[{label:"Sozlamalar",items:[
-      {k:"location",icon:"📍",label:"Hudud"},
-      {k:"telegram",icon:"📨",label:"Telegram Bot"},
-      {k:"accounts",icon:"🔑",label:"Akkauntlar"},
+    ...(isAdmin?[{label:t('nav_settings'),items:[
+      {k:"location",icon:"📍",label:t('nav_location')},
+      {k:"telegram",icon:"📨",label:t('nav_telegram')},
+      {k:"accounts",icon:"🔑",label:t('nav_accounts')},
     ]}]:[]),
   ];
   const empNavGroups=[
-    {label:"Asosiy",items:[
-      {k:"myStats",icon:"👤",label:"Shaxsiy Kabinet"},
-      {k:"selfie",icon:"📸",label:"Selfie Davomat"},
+    {label:t('nav_main'),items:[
+      {k:"myStats",icon:"👤",label:t('nav_personal')},
+      {k:"selfie",icon:"📸",label:t('nav_selfie')},
     ]},
-    {label:"Ma'lumotlar",items:[
-      {k:"announcements",icon:"📢",label:"E'lonlar"},
-      {k:"birthdays",icon:"🎂",label:"Tug'ilgan kunlar"},
-      {k:"empNotes",icon:"✏️",label:"Izoh yozish"},
-      ...(canIjro?[{k:"ijro",icon:"📋",label:"Ijro"}]:[]),
+    {label:t('nav_data'),items:[
+      {k:"announcements",icon:"📢",label:t('nav_announcements')},
+      {k:"birthdays",icon:"🎂",label:t('nav_birthdays')},
+      {k:"empNotes",icon:"✏️",label:t('nav_write_note')},
+      ...(canIjro?[{k:"ijro",icon:"📋",label:t('nav_ijro')}]:[]),
     ]},
   ];
   const navGroups=canManage?adminNavGroups:empNavGroups;
   const navItems=navGroups.flatMap(g=>g.items);
   const viewLabels={dashboard:"Dashboard",davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",location:"Hudud Sozlamalari",ijro:"Ijro Intizomi",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
-  const roleLabel=isAdmin?"Kadrlar bo'limi":isBoss?"Rahbar":isObserver?"Kuzatuvchi":"Xodim";
+  const roleLabel=isAdmin?t('role_admin'):isBoss?t('role_boss'):isObserver?t('role_observer'):t('role_employee');
 
   return(
     <div className="app">
+      <OnboardingOverlay/>
+      <RatingPrompt/>
       {/* SIDEBAR OVERLAY */}
       {sidebarOpen&&<div className="sidebar-overlay visible" onClick={()=>setSidebarOpen(false)}/>}
 
@@ -10676,8 +11367,19 @@ function App(){
               <div className="sidebar-user-role">{roleLabel}</div>
             </div>
           </div>
+          <div style={{display:"flex",gap:4,marginBottom:6}}>
+            {[["uz","🇺🇿"],["ru","🇷🇺"],["en","🇬🇧"]].map(([code,flag])=>(
+              <button key={code} onClick={()=>changeLang(code)} style={{
+                flex:1,padding:"7px 0",borderRadius:8,border:lang===code?"1.5px solid var(--navy)":"1px solid var(--border)",
+                background:lang===code?"var(--gold-pale)":"var(--white)",
+                fontSize:12,fontWeight:lang===code?700:500,fontFamily:"'Inter',sans-serif",
+                cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4,
+                color:lang===code?"var(--navy)":"var(--t2)",transition:"all .15s"
+              }}>{flag} {code.toUpperCase()}</button>
+            ))}
+          </div>
           <button className="dark-toggle" onClick={()=>setDarkMode(p=>!p)}>
-            {darkMode?"☀️ Kunduzgi rejim":"🌙 Tungi rejim"}
+            {darkMode?("☀️ "+t('dark_off')):("🌙 "+t('dark_on'))}
           </button>
           <button className="logout-btn" onClick={handleLogout}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -10685,7 +11387,7 @@ function App(){
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-            <span>Chiqish</span>
+            <span>{t('logout')}</span>
           </button>
         </div>
       </nav>
@@ -10708,7 +11410,16 @@ function App(){
         </div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           {canManage&&<MobSearch data={data} onPick={emp=>setModalEmp(emp)}/>}
-          <button className="mobile-dark-toggle" onClick={()=>setDarkMode(p=>!p)} title={darkMode?"Kunduzgi rejim":"Tungi rejim"}>
+          <select value={lang} onChange={e=>changeLang(e.target.value)} style={{
+            background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.15)",
+            borderRadius:8,color:"#fff",fontSize:11,fontWeight:600,padding:"5px 8px",
+            fontFamily:"'Inter',sans-serif",cursor:"pointer",WebkitAppearance:"none"
+          }}>
+            <option value="uz" style={{color:"#000"}}>🇺🇿 UZ</option>
+            <option value="ru" style={{color:"#000"}}>🇷🇺 RU</option>
+            <option value="en" style={{color:"#000"}}>🇬🇧 EN</option>
+          </select>
+          <button className="mobile-dark-toggle" onClick={()=>setDarkMode(p=>!p)} title={darkMode?t('dark_off'):t('dark_on')}>
             {darkMode?"☀️":"🌙"}
           </button>
           <div className="topbar-clock" style={{fontSize:11.5,padding:"6px 10px",fontWeight:600}}>
@@ -10743,7 +11454,7 @@ function App(){
               </svg>
             </button>
             <div className="topbar-breadcrumb">
-              <span>Boshqarma</span>
+              <span>{t('breadcrumb')}</span>
               <span style={{color:"var(--border2)"}}>›</span>
               <span className="topbar-breadcrumb-cur">{viewLabels[view]}</span>
             </div>
@@ -10752,7 +11463,7 @@ function App(){
             {canManage&&<GlobalSearch data={data} onPick={emp=>setModalEmp(emp)}/>}
             <div className="topbar-status">
               <div className="topbar-dot"/>
-              <span>Tizim faol</span>
+              <span>{t('system_active')}</span>
             </div>
             <div className="topbar-clock">
               {clock.toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"})}

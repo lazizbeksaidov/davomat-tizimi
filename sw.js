@@ -1,133 +1,46 @@
-var CACHE_NAME="xodimlar-monitoring-pwa-v5";
-var APP_SHELL=["./","./index.html","./sw.js"];
-var LAST_PAGE_KEY="last-successful-page";
+const CACHE_NAME = 'intizom-v4';
+const ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap',
+];
 
-function isCacheableResponse(response){
-  return !!response&&(response.ok||response.type==="opaque");
-}
-
-function isStaticAsset(request){
-  var url=new URL(request.url);
-  var destination=request.destination||"";
-  if(url.origin===self.location.origin){
-    return ["document","script","style","font","image","manifest"].indexOf(destination)!==-1;
-  }
-  return /(?:gstatic|googleapis|unpkg|sheetjs)/i.test(url.hostname)&&["script","style","font","image"].indexOf(destination)!==-1;
-}
-
-self.addEventListener("install",function(event){
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(function(cache){
-        return cache.addAll(APP_SHELL.map(function(path){
-          return new Request(path,{cache:"reload"});
-        }));
-      })
-      .catch(function(){})
-      .then(function(){
-        return self.skipWaiting();
-      })
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener("activate",function(event){
-  event.waitUntil(
-    caches.keys()
-      .then(function(keys){
-        return Promise.all(
-          keys.map(function(key){
-            if(key!==CACHE_NAME) return caches.delete(key);
-          })
-        );
-      })
-      .then(function(){
-        return self.clients.claim();
-      })
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+    )).then(() => self.clients.claim())
   );
 });
 
-self.addEventListener("fetch",function(event){
-  var request=event.request;
-  if(request.method!=="GET") return;
-
-  var url=new URL(request.url);
-  if(/(?:firebaseio|open-meteo)\.com/i.test(url.hostname)) return;
-
-  if(request.mode==="navigate"){
-    event.respondWith(
-      fetch(request)
-        .then(function(response){
-          if(isCacheableResponse(response)){
-            var copy=response.clone();
-            caches.open(CACHE_NAME).then(function(cache){
-              cache.put(request,copy);
-              cache.put(LAST_PAGE_KEY,response.clone());
-            });
-          }
-          return response;
-        })
-        .catch(function(){
-          return caches.open(CACHE_NAME).then(function(cache){
-            return cache.match(request)
-              .then(function(match){
-                return match||cache.match(LAST_PAGE_KEY)||cache.match("./index.html");
-              });
-          });
-        })
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+  // Network-first for API, cache-first for assets
+  if (e.request.url.includes('firebaseio.com') || e.request.url.includes('googleapis.com/identitytoolkit')) {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match(e.request))
     );
-    return;
-  }
-
-  if(!isStaticAsset(request)) return;
-
-  event.respondWith(
-    caches.match(request).then(function(cached){
-      var networkFetch=fetch(request)
-        .then(function(response){
-          if(isCacheableResponse(response)){
-            caches.open(CACHE_NAME).then(function(cache){
-              cache.put(request,response.clone());
-            });
+  } else {
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        const fetchPromise = fetch(e.request).then(response => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
           }
           return response;
-        })
-        .catch(function(){
-          return cached||new Response("",{status:504,statusText:"Offline"});
-        });
-
-      return cached||networkFetch;
-    })
-  );
-});
-
-/* ═══ PUSH NOTIFICATION HANDLER ═══ */
-self.addEventListener("notificationclick",function(event){
-  event.notification.close();
-  var url=event.notification.data&&event.notification.data.url?event.notification.data.url:"/";
-  event.waitUntil(
-    clients.matchAll({type:"window",includeUncontrolled:true}).then(function(clientList){
-      for(var i=0;i<clientList.length;i++){
-        if(clientList[i].url.indexOf("davomat-tizimi")!==-1&&"focus" in clientList[i]){
-          return clientList[i].focus();
-        }
-      }
-      return clients.openWindow(url);
-    })
-  );
-});
-
-/* Show notification from message event (triggered by app) */
-self.addEventListener("message",function(event){
-  if(event.data&&event.data.type==="SHOW_NOTIFICATION"){
-    var d=event.data;
-    self.registration.showNotification(d.title,{
-      body:d.body,
-      icon:d.icon||"/favicon.ico",
-      badge:d.badge||"/favicon.ico",
-      tag:d.tag||"xodimlar-notif",
-      data:{url:d.url||"/"},
-      vibrate:[200,100,200],
-      requireInteraction:d.requireInteraction||false
-    });
+        }).catch(() => cached);
+        return cached || fetchPromise;
+      })
+    );
   }
 });
