@@ -8864,7 +8864,9 @@ function MobileEmpHome({user, checkinsData, attendanceData, announcements, holid
   return (
     <div className="mhome">
       <div className="mhome-greet">
-        <div className="mhome-avatar">{firstName.charAt(0).toUpperCase()}</div>
+        <div className="mhome-avatar-wrap">
+          <EmpAvatar name={user.name} size={44}/>
+        </div>
         <div className="mhome-greet-text">
           <div className="mhome-greet-hi">{greeting},</div>
           <div className="mhome-greet-name">{firstName}!</div>
@@ -12028,7 +12030,9 @@ function App(){
 
         <div className="sidebar-footer">
           <div className="sidebar-user">
-            <div className="sidebar-avatar">{user.name.charAt(0)}</div>
+            <div className="sidebar-avatar" style={{padding:0,overflow:"hidden"}}>
+              <EmpAvatar name={user.name} size={36}/>
+            </div>
             <div style={{minWidth:0}}>
               <div className="sidebar-user-name">{user.name.split(" ").slice(0,2).join(" ")}</div>
               <div className="sidebar-user-role">{roleLabel}</div>
