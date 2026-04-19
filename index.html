@@ -11946,7 +11946,7 @@ function WhitelistView({showToast, user}){
 
 /* ═══ MAIN APP ═══ */
 /* ═══ SETTINGS / PROFILE VIEW — barcha xodimlar uchun ═══ */
-function SettingsView({user, showToast, onPasswordChange}){
+function SettingsView({user, showToast, darkMode, setDarkMode}){
   const[tab,setTab]=useState("profile"); // profile | password | prefs
   const[profile,setProfile]=useState(null);
   const[loading,setLoading]=useState(true);
@@ -12220,30 +12220,90 @@ function SettingsView({user, showToast, onPasswordChange}){
     ),
 
     // ═══ PREFS TAB ═══
-    tab==='prefs'&&React.createElement('div',{style:_cs},
-      React.createElement('div',{style:{fontSize:15,fontWeight:800,color:'var(--t1)',marginBottom:16,fontFamily:"'Plus Jakarta Sans',sans-serif"}},'🌐 Umumiy sozlamalar'),
-      React.createElement('div',{style:{marginBottom:18}},
-        React.createElement('div',{style:{fontSize:12,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:.6,marginBottom:8}},'Til tanlash'),
-        React.createElement('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
-          [['uz','🇺🇿 O\'zbekcha'],['ru','🇷🇺 Русский'],['en','🇬🇧 English']].map(([c,l])=>{
-            const active=getLang()===c;
-            return React.createElement('button',{key:c,onClick:()=>{setLang(c);window.location.reload();},style:{
-              padding:'10px 16px',borderRadius:10,
-              border:active?'2px solid var(--navy)':'1.5px solid var(--border)',
-              background:active?'var(--gold-pale)':'var(--white)',
-              color:active?'var(--navy)':'var(--t2)',
-              fontSize:13,fontWeight:active?700:500,cursor:'pointer',
-              fontFamily:"'Plus Jakarta Sans','Inter',sans-serif"
-            }},l);
-          })
+    tab==='prefs'&&React.createElement('div',null,
+      React.createElement('div',{style:_cs},
+        React.createElement('div',{style:{fontSize:15,fontWeight:800,color:'var(--t1)',marginBottom:16,fontFamily:"'Plus Jakarta Sans',sans-serif"}},'🌐 Til va ko\'rinish'),
+        // ——— Language ———
+        React.createElement('div',{style:{marginBottom:22}},
+          React.createElement('div',{style:{fontSize:12,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:.6,marginBottom:10}},'🌍 Til tanlash'),
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}},
+            [['uz','🇺🇿','O\'zbekcha'],['ru','🇷🇺','Русский'],['en','🇬🇧','English']].map(([c,flag,l])=>{
+              const active=getLang()===c;
+              return React.createElement('button',{key:c,onClick:()=>{setLang(c);window.location.reload();},style:{
+                padding:'12px 8px',borderRadius:12,
+                border:active?'2px solid var(--navy)':'1.5px solid var(--border)',
+                background:active?'var(--gold-pale)':'var(--white)',
+                color:active?'var(--navy)':'var(--t2)',
+                fontSize:13,fontWeight:active?700:600,cursor:'pointer',
+                fontFamily:"'Plus Jakarta Sans','Inter',sans-serif",
+                display:'flex',flexDirection:'column',alignItems:'center',gap:4,
+                transition:'all .2s'
+              }},React.createElement('span',{style:{fontSize:22}},flag),l);
+            })
+          )
+        ),
+        // ——— Theme ———
+        React.createElement('div',{style:{marginBottom:8}},
+          React.createElement('div',{style:{fontSize:12,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:.6,marginBottom:10}},'🎨 Mavzu'),
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}},
+            React.createElement('button',{onClick:()=>setDarkMode && setDarkMode(false),style:{
+              padding:'14px 12px',borderRadius:12,
+              border:!darkMode?'2px solid var(--navy)':'1.5px solid var(--border)',
+              background:!darkMode?'var(--gold-pale)':'var(--white)',
+              color:!darkMode?'var(--navy)':'var(--t2)',
+              fontSize:13,fontWeight:!darkMode?700:600,cursor:'pointer',
+              fontFamily:"'Plus Jakarta Sans','Inter',sans-serif",
+              display:'flex',flexDirection:'column',alignItems:'center',gap:6
+            }},React.createElement('span',{style:{fontSize:22}},'☀️'),'Kunduzgi'),
+            React.createElement('button',{onClick:()=>setDarkMode && setDarkMode(true),style:{
+              padding:'14px 12px',borderRadius:12,
+              border:darkMode?'2px solid var(--navy)':'1.5px solid var(--border)',
+              background:darkMode?'var(--gold-pale)':'var(--white)',
+              color:darkMode?'var(--navy)':'var(--t2)',
+              fontSize:13,fontWeight:darkMode?700:600,cursor:'pointer',
+              fontFamily:"'Plus Jakarta Sans','Inter',sans-serif",
+              display:'flex',flexDirection:'column',alignItems:'center',gap:6
+            }},React.createElement('span',{style:{fontSize:22}},'🌙'),'Tungi')
+          )
         )
       ),
-      React.createElement('div',{style:{marginBottom:18}},
-        React.createElement('div',{style:{fontSize:12,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:.6,marginBottom:8}},'Ma\'lumot'),
-        React.createElement('div',{style:{padding:12,background:'var(--surface2)',borderRadius:10,fontSize:12.5,color:'var(--t2)',lineHeight:1.7}},
-          React.createElement('div',null,'📧 Email: ',React.createElement('b',null,user.email)),
-          React.createElement('div',null,'🎭 Rol: ',React.createElement('b',null,user.role)),
-          user.phone&&React.createElement('div',null,'📱 Telefon: ',React.createElement('b',null,user.phone))
+      // ——— Account info ———
+      React.createElement('div',{style:_cs},
+        React.createElement('div',{style:{fontSize:15,fontWeight:800,color:'var(--t1)',marginBottom:14,fontFamily:"'Plus Jakarta Sans',sans-serif"}},'👤 Akkaunt ma\'lumoti'),
+        React.createElement('div',{style:{display:'grid',gap:10}},
+          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:12,padding:12,background:'var(--surface2)',borderRadius:10}},
+            React.createElement('span',{style:{fontSize:18}},'📧'),
+            React.createElement('div',{style:{flex:1,minWidth:0}},
+              React.createElement('div',{style:{fontSize:10.5,color:'var(--t4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:700}},'Email'),
+              React.createElement('div',{style:{fontSize:13,color:'var(--t1)',fontWeight:600,wordBreak:'break-all'}},user.email||'—')
+            )
+          ),
+          user.phone&&React.createElement('div',{style:{display:'flex',alignItems:'center',gap:12,padding:12,background:'var(--surface2)',borderRadius:10}},
+            React.createElement('span',{style:{fontSize:18}},'📱'),
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('div',{style:{fontSize:10.5,color:'var(--t4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:700}},'Telefon'),
+              React.createElement('div',{style:{fontSize:13,color:'var(--t1)',fontWeight:600}},user.phone)
+            )
+          ),
+          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:12,padding:12,background:'var(--surface2)',borderRadius:10}},
+            React.createElement('span',{style:{fontSize:18}},'🎭'),
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('div',{style:{fontSize:10.5,color:'var(--t4)',textTransform:'uppercase',letterSpacing:.5,fontWeight:700}},'Rol'),
+              React.createElement('div',{style:{fontSize:13,color:'var(--t1)',fontWeight:600,textTransform:'capitalize'}},user.role)
+            )
+          )
+        )
+      ),
+      // ——— About app ———
+      React.createElement('div',{style:_cs},
+        React.createElement('div',{style:{fontSize:15,fontWeight:800,color:'var(--t1)',marginBottom:14,fontFamily:"'Plus Jakarta Sans',sans-serif"}},'ℹ️ Ilova haqida'),
+        React.createElement('div',{style:{fontSize:13,color:'var(--t2)',lineHeight:1.8}},
+          React.createElement('div',null,React.createElement('b',null,'Intizom'),' — Xodimlar davomat tizimi'),
+          React.createElement('div',{style:{color:'var(--t3)',marginTop:4}},'Navoiy viloyati investitsiyalar, sanoat va savdo boshqarmasi'),
+          React.createElement('div',{style:{marginTop:10,fontSize:12,color:'var(--t4)'}},'Versiya: 5.3'),
+          React.createElement('div',{style:{marginTop:8,fontSize:12}},
+            React.createElement('a',{href:'/privacy.html',target:'_blank',style:{color:'var(--navy)',textDecoration:'none',fontWeight:600}},'📄 Maxfiylik siyosati')
+          )
         )
       )
     )
@@ -13059,32 +13119,19 @@ function App(){
         </div>
 
         <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-avatar" style={{padding:0,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setView("settings");setSidebarOpen(false);}}>
+          <div className="sidebar-user" style={{cursor:"pointer"}} onClick={()=>{setView("settings");setSidebarOpen(false);}}>
+            <div className="sidebar-avatar" style={{padding:0,overflow:"hidden"}}>
               <EmpAvatar name={user.name} photo={user.photo} size={36}/>
             </div>
-            <div style={{minWidth:0}}>
+            <div style={{minWidth:0,flex:1}}>
               <div className="sidebar-user-name">{user.name.split(" ").slice(0,2).join(" ")}</div>
               <div className="sidebar-user-role">{roleLabel}</div>
             </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
           </div>
-          <div style={{display:"flex",gap:4,marginBottom:6}}>
-            {[["uz","🇺🇿"],["ru","🇷🇺"],["en","🇬🇧"]].map(([code,flag])=>(
-              <button key={code} onClick={()=>changeLang(code)} style={{
-                flex:1,padding:"7px 0",borderRadius:8,border:lang===code?"1.5px solid var(--navy)":"1px solid var(--border)",
-                background:lang===code?"var(--gold-pale)":"var(--white)",
-                fontSize:12,fontWeight:lang===code?700:500,fontFamily:"'Inter',sans-serif",
-                cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:4,
-                color:lang===code?"var(--navy)":"var(--t2)",transition:"all .15s"
-              }}>{flag} {code.toUpperCase()}</button>
-            ))}
-          </div>
-          <button className="dark-toggle" onClick={()=>setDarkMode(p=>!p)}>
-            {darkMode?("☀️ "+t('dark_off')):("🌙 "+t('dark_on'))}
-          </button>
-          <button className="dark-toggle" onClick={()=>setShowSetPw(true)} style={{marginTop:6}}>
-            🔑 Parol o'rnatish
-          </button>
           <button className="logout-btn" onClick={handleLogout}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -13262,7 +13309,7 @@ function App(){
                 {view==="location"&&isAdmin&&<LocationSettings showToast={showToast}/>}
                 {view==="telegram"&&isAdmin&&<TelegramSettings showToast={showToast}/>}
                 {view==="whitelist"&&isAdmin&&<WhitelistView showToast={showToast} user={user}/>}
-                {view==="settings"&&<SettingsView user={user} showToast={showToast}/>}
+                {view==="settings"&&<SettingsView user={user} showToast={showToast} darkMode={darkMode} setDarkMode={setDarkMode}/>}
                 {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
               </>
           }
