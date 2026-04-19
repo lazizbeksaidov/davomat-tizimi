@@ -1090,13 +1090,10 @@ async function lookupWhitelist(phone) {
   return null;
 }
 
-async function createLoginToken(uid, claims) {
-  try {
-    return await admin.auth().createCustomToken(uid, claims || {});
-  } catch (e) {
-    console.error("Custom token error:", e);
-    return null;
-  }
+function randomPassword() {
+  // Kuchli, 32 belgi, bazada saqlanmaydi — faqat login uchun 1 marta
+  const b = require("crypto").randomBytes(24);
+  return b.toString("base64").replace(/[+/=]/g, "x");
 }
 
 async function ensureUser(rec) {
@@ -1104,12 +1101,16 @@ async function ensureUser(rec) {
   const phone = normalizePhone(rec.phone);
   const email = phone.replace("+", "").replace(/\D/g, "") + "@intizom.uz";
   let user;
+  const tempPassword = randomPassword();
   try {
     user = await admin.auth().getUserByEmail(email);
+    // Existing user — reset password temporarily for one-time login
+    await admin.auth().updateUser(user.uid, { password: tempPassword });
   } catch (e) {
     // Create new user
     user = await admin.auth().createUser({
       email,
+      password: tempPassword,
       emailVerified: true,
       displayName: rec.name,
       disabled: false,
@@ -1124,7 +1125,7 @@ async function ensureUser(rec) {
       createdAt: Date.now(),
     });
   }
-  return { uid: user.uid, email };
+  return { uid: user.uid, email, tempPassword };
 }
 
 exports.telegramLoginBot = functions
@@ -1199,18 +1200,14 @@ exports.telegramLoginBot = functions
           return res.status(200).send("OK");
         }
 
-        // Create/get user, generate custom token
-        const { uid, email } = await ensureUser({ ...rec, phone });
-        const token = await createLoginToken(uid, { phone, role: rec.role || "employee" });
-        if (!token) {
-          await tgApi("sendMessage", { chat_id: chatId, text: t.error, reply_markup: { remove_keyboard: true } });
-          return res.status(200).send("OK");
-        }
+        // Create/get user with temporary password
+        const { uid, email, tempPassword } = await ensureUser({ ...rec, phone });
 
-        // Store token with expiry for web app to pick up
+        // Store creds with expiry for web app to pick up (one-time use)
         const loginId = "tg_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
         await db.ref(`tg_logins/${loginId}`).set({
-          token,
+          email,
+          tempPassword,
           phone,
           uid,
           name: rec.name,
@@ -1271,7 +1268,12 @@ exports.claimTelegramLogin = functions.https.onRequest(async (req, res) => {
     // Mark as used (one-time)
     await db.ref(`tg_logins/${loginId}`).update({ used: true, usedAt: Date.now() });
 
-    return res.json({ token: rec.token, name: rec.name, phone: rec.phone });
+    return res.json({
+      email: rec.email,
+      tempPassword: rec.tempPassword,
+      name: rec.name,
+      phone: rec.phone
+    });
   } catch (e) {
     console.error("claimTelegramLogin error:", e);
     return res.status(500).json({ error: "Server error" });

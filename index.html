@@ -9079,7 +9079,7 @@ function MobileEmpHome({user, checkinsData, attendanceData, announcements, holid
   return (
     <div className="mhome">
       <div className="mhome-greet">
-        <div className="mhome-avatar-wrap">
+        <div className="mhome-avatar-wrap" onClick={()=>onNavigate&&onNavigate("settings")} style={{cursor:"pointer"}}>
           <EmpAvatar name={user.name} size={44}/>
         </div>
         <div className="mhome-greet-text">
@@ -11942,6 +11942,291 @@ function WhitelistView({showToast, user}){
 }
 
 /* ═══ MAIN APP ═══ */
+/* ═══ SETTINGS / PROFILE VIEW — barcha xodimlar uchun ═══ */
+function SettingsView({user, showToast, onPasswordChange}){
+  const[tab,setTab]=useState("profile"); // profile | password | prefs
+  const[profile,setProfile]=useState(null);
+  const[loading,setLoading]=useState(true);
+  const[saving,setSaving]=useState(false);
+  const[newPw,setNewPw]=useState("");
+  const[newPw2,setNewPw2]=useState("");
+  const[pwSaving,setPwSaving]=useState(false);
+  const fileInputRef=useRef(null);
+
+  // Find employee key for this user
+  const empKey=useMemo(()=>{
+    if(!user||!user.name)return null;
+    // Try canonical key (FirstLast format)
+    const clean=user.name.replace(/[\u2018\u2019'`]/g,"").replace(/\s+/g,"_");
+    return clean;
+  },[user]);
+
+  useEffect(()=>{
+    if(!empKey){setLoading(false);return;}
+    const ref=db.ref('employees/'+empKey);
+    ref.once('value',snap=>{
+      const d=snap.val()||{};
+      // Also merge EMPLOYEE_PROFILES photo if exists
+      const prof=EMPLOYEE_PROFILES[user.name]||{};
+      setProfile({
+        firstName: d.firstName || (user.name||"").split(" ")[1] || "",
+        lastName: d.lastName || (user.name||"").split(" ")[0] || "",
+        fullName: d.fullName || user.name || "",
+        position: d.position || user.title || prof.position || "",
+        department: d.department || prof.department || "",
+        phone: d.phone || user.phone || "",
+        email: user.email || "",
+        birthDate: d.birthDate || prof.birthDate || "",
+        birthPlace: d.birthPlace || prof.birthPlace || "",
+        education: d.education || prof.education || "",
+        specialty: d.specialty || prof.specialty || "",
+        languages: d.languages || prof.languages || "",
+        photo: d.photo || prof.photo || "",
+        schedule: d.schedule || "Dush-Jum 09:00-18:00"
+      });
+      setLoading(false);
+    },err=>{
+      console.error(err);
+      setLoading(false);
+    });
+  },[empKey,user]);
+
+  function updateField(field, value){
+    setProfile(p=>({...p,[field]:value}));
+  }
+
+  function saveProfile(){
+    if(!empKey||!profile)return;
+    setSaving(true);
+    const data={
+      firstName: profile.firstName||"",
+      lastName: profile.lastName||"",
+      fullName: profile.fullName||(profile.lastName+" "+profile.firstName),
+      position: profile.position||"",
+      department: profile.department||"",
+      phone: profile.phone||"",
+      birthDate: profile.birthDate||"",
+      birthPlace: profile.birthPlace||"",
+      education: profile.education||"",
+      specialty: profile.specialty||"",
+      languages: profile.languages||"",
+      photo: profile.photo||"",
+      schedule: profile.schedule||"Dush-Jum 09:00-18:00"
+    };
+    db.ref('employees/'+empKey).update(data).then(()=>{
+      showToast && showToast('✅ Saqlandi');
+      setSaving(false);
+    }).catch(e=>{
+      showToast && showToast('❌ '+e.message);
+      setSaving(false);
+    });
+  }
+
+  function handlePhotoUpload(e){
+    const file=e.target.files[0];
+    if(!file)return;
+    if(file.size>800*1024){showToast && showToast('⚠️ Rasm 800KB dan oshmasin. Avval siqib oling.');return;}
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      // Compress via canvas
+      const img=new Image();
+      img.onload=()=>{
+        const max=400;
+        let w=img.width, h=img.height;
+        if(w>h){if(w>max){h=h*max/w;w=max;}}
+        else{if(h>max){w=w*max/h;h=max;}}
+        const canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.82);
+        updateField('photo',dataUrl);
+        showToast && showToast('✓ Rasm tayyor. Saqlash tugmasini bosing');
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removePhoto(){
+    updateField('photo','');
+  }
+
+  async function handlePasswordChange(){
+    if(!newPw||newPw.length<6){showToast && showToast('⚠️ Kamida 6 belgi');return;}
+    if(newPw!==newPw2){showToast && showToast('⚠️ Parollar mos emas');return;}
+    setPwSaving(true);
+    try{
+      const token=await auth.currentUser.getIdToken();
+      const res=await fetch('https://us-central1-xodimlar-7c13c.cloudfunctions.net/setUserPassword',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({password:newPw})
+      });
+      const d=await res.json();
+      if(d.success){
+        showToast && showToast('✅ Parol o\'zgartirildi. Endi shu parol bilan kiring.');
+        setNewPw('');setNewPw2('');
+      }else{
+        showToast && showToast('❌ '+(d.error||'Xato'));
+      }
+    }catch(e){
+      showToast && showToast('❌ Server xatosi');
+    }finally{setPwSaving(false);}
+  }
+
+  if(loading){
+    return React.createElement('div',{style:{padding:60,textAlign:'center',color:'var(--t3)'}},'Yuklanmoqda...');
+  }
+
+  const _cs={background:'var(--glass-bg-strong)',border:'1px solid var(--glass-border)',borderRadius:16,padding:20,marginBottom:14,boxShadow:'var(--shadow-glass)'};
+  const _tab=(k,icon,label)=>React.createElement('button',{
+    key:k,onClick:()=>setTab(k),
+    style:{
+      flex:1,padding:'11px 14px',borderRadius:10,border:'none',
+      background:tab===k?'var(--accent-gradient)':'transparent',
+      color:tab===k?'#fff':'var(--t2)',
+      fontSize:13,fontWeight:700,cursor:'pointer',
+      display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+      fontFamily:"'Plus Jakarta Sans','Inter',sans-serif",
+      boxShadow:tab===k?'0 4px 14px -2px rgba(59,91,255,.45)':'none'
+    }
+  },icon+' '+label);
+
+  return React.createElement('div',{style:{animation:'fadeUp .35s ease',maxWidth:720,margin:'0 auto'}},
+    React.createElement('div',{className:'page-header'},
+      React.createElement('div',null,
+        React.createElement('div',{className:'page-title'},'⚙️ Sozlamalar'),
+        React.createElement('div',{className:'page-subtitle'},'Shaxsiy ma\'lumotlar va akkaunt sozlamalari')
+      )
+    ),
+    React.createElement('div',{style:{display:'flex',gap:4,padding:4,background:'var(--surface3)',borderRadius:12,marginBottom:18}},
+      _tab('profile','👤','Profil'),
+      _tab('password','🔐','Parol'),
+      _tab('prefs','🌐','Umumiy')
+    ),
+
+    // ═══ PROFILE TAB ═══
+    tab==='profile'&&React.createElement('div',null,
+      // Photo card
+      React.createElement('div',{style:_cs},
+        React.createElement('div',{style:{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}},
+          React.createElement('div',{style:{width:96,height:96,borderRadius:'50%',background:'var(--accent-gradient)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0,boxShadow:'0 4px 16px -2px rgba(59,91,255,.3)'}},
+            profile&&profile.photo
+              ? React.createElement('img',{src:profile.photo,alt:'',style:{width:'100%',height:'100%',objectFit:'cover'}})
+              : React.createElement('span',{style:{color:'#fff',fontSize:36,fontWeight:800,fontFamily:"'Plus Jakarta Sans',sans-serif"}},(user.name||'?').charAt(0))
+          ),
+          React.createElement('div',{style:{flex:1,minWidth:200}},
+            React.createElement('div',{style:{fontSize:18,fontWeight:800,color:'var(--t1)',letterSpacing:'-.02em',fontFamily:"'Plus Jakarta Sans','Inter',sans-serif"}},user.name||'Xodim'),
+            React.createElement('div',{style:{fontSize:13,color:'var(--t3)',marginTop:2}},profile&&profile.position||user.title||'Lavozim'),
+            React.createElement('div',{style:{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}},
+              React.createElement('input',{type:'file',accept:'image/*',ref:fileInputRef,style:{display:'none'},onChange:handlePhotoUpload}),
+              React.createElement('button',{className:'action-btn primary',onClick:()=>fileInputRef.current&&fileInputRef.current.click()},'📸 Rasm yuklash'),
+              profile&&profile.photo&&React.createElement('button',{className:'action-btn',onClick:removePhoto},'🗑 O\'chirish')
+            )
+          )
+        )
+      ),
+
+      // Profile fields
+      React.createElement('div',{style:_cs},
+        React.createElement('div',{style:{fontSize:15,fontWeight:800,color:'var(--t1)',marginBottom:16,fontFamily:"'Plus Jakarta Sans',sans-serif"}},'👤 Shaxsiy ma\'lumotlar'),
+        React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:14}},
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Ism'),
+            React.createElement('input',{className:'form-input',value:profile.firstName||'',onChange:e=>updateField('firstName',e.target.value)})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Familiya'),
+            React.createElement('input',{className:'form-input',value:profile.lastName||'',onChange:e=>updateField('lastName',e.target.value)})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Lavozim'),
+            React.createElement('input',{className:'form-input',value:profile.position||'',onChange:e=>updateField('position',e.target.value)})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Bo\'lim / Shu\'ba'),
+            React.createElement('input',{className:'form-input',value:profile.department||'',onChange:e=>updateField('department',e.target.value)})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Telefon'),
+            React.createElement('input',{className:'form-input',value:profile.phone||'',onChange:e=>updateField('phone',e.target.value),type:'tel'})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Tug\'ilgan sana'),
+            React.createElement('input',{className:'form-input',value:profile.birthDate||'',onChange:e=>updateField('birthDate',e.target.value),placeholder:'DD.MM.YYYY'})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Tug\'ilgan joy'),
+            React.createElement('input',{className:'form-input',value:profile.birthPlace||'',onChange:e=>updateField('birthPlace',e.target.value)})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Ma\'lumoti'),
+            React.createElement('input',{className:'form-input',value:profile.education||'',onChange:e=>updateField('education',e.target.value)})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Mutaxassisligi'),
+            React.createElement('input',{className:'form-input',value:profile.specialty||'',onChange:e=>updateField('specialty',e.target.value)})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',{className:'form-label'},'Tillar'),
+            React.createElement('input',{className:'form-input',value:profile.languages||'',onChange:e=>updateField('languages',e.target.value)})
+          )
+        ),
+        React.createElement('div',{style:{marginTop:16,display:'flex',gap:10}},
+          React.createElement('button',{className:'action-btn primary',onClick:saveProfile,disabled:saving},saving?'💾 Saqlanmoqda...':'💾 Saqlash')
+        )
+      )
+    ),
+
+    // ═══ PASSWORD TAB ═══
+    tab==='password'&&React.createElement('div',{style:_cs},
+      React.createElement('div',{style:{fontSize:15,fontWeight:800,color:'var(--t1)',marginBottom:10,fontFamily:"'Plus Jakarta Sans',sans-serif"}},'🔐 Parolni o\'zgartirish'),
+      React.createElement('div',{style:{fontSize:12.5,color:'var(--t3)',marginBottom:16,lineHeight:1.6}},'Keyingi kirishlarda shu parol bilan kirasiz. Kamida 6 belgi, harf va raqam aralash tavsiya etiladi.'),
+      React.createElement('div',{className:'form-group'},
+        React.createElement('label',{className:'form-label'},'Yangi parol'),
+        React.createElement('input',{className:'form-input',type:'password',placeholder:'••••••••',value:newPw,onChange:e=>setNewPw(e.target.value)})
+      ),
+      React.createElement('div',{className:'form-group'},
+        React.createElement('label',{className:'form-label'},'Parolni takrorlang'),
+        React.createElement('input',{className:'form-input',type:'password',placeholder:'••••••••',value:newPw2,onChange:e=>setNewPw2(e.target.value),onKeyDown:e=>e.key==='Enter'&&!pwSaving&&handlePasswordChange()})
+      ),
+      React.createElement('button',{className:'action-btn primary',onClick:handlePasswordChange,disabled:pwSaving,style:{width:'100%',marginTop:8}},pwSaving?'Saqlanmoqda...':'🔐 Parolni saqlash'),
+      React.createElement('div',{style:{marginTop:20,padding:'12px 14px',background:'rgba(59,91,255,.06)',borderRadius:10,border:'1px solid rgba(59,91,255,.15)',fontSize:12,color:'var(--t2)',lineHeight:1.6}},
+        React.createElement('b',null,'💡 Eslatma: '),'Agar parolni unutib qo\'ysangiz, Telegram orqali qaytadan kirib, yangi parol o\'rnatishingiz mumkin.'
+      )
+    ),
+
+    // ═══ PREFS TAB ═══
+    tab==='prefs'&&React.createElement('div',{style:_cs},
+      React.createElement('div',{style:{fontSize:15,fontWeight:800,color:'var(--t1)',marginBottom:16,fontFamily:"'Plus Jakarta Sans',sans-serif"}},'🌐 Umumiy sozlamalar'),
+      React.createElement('div',{style:{marginBottom:18}},
+        React.createElement('div',{style:{fontSize:12,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:.6,marginBottom:8}},'Til tanlash'),
+        React.createElement('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+          [['uz','🇺🇿 O\'zbekcha'],['ru','🇷🇺 Русский'],['en','🇬🇧 English']].map(([c,l])=>{
+            const active=getLang()===c;
+            return React.createElement('button',{key:c,onClick:()=>{setLang(c);window.location.reload();},style:{
+              padding:'10px 16px',borderRadius:10,
+              border:active?'2px solid var(--navy)':'1.5px solid var(--border)',
+              background:active?'var(--gold-pale)':'var(--white)',
+              color:active?'var(--navy)':'var(--t2)',
+              fontSize:13,fontWeight:active?700:500,cursor:'pointer',
+              fontFamily:"'Plus Jakarta Sans','Inter',sans-serif"
+            }},l);
+          })
+        )
+      ),
+      React.createElement('div',{style:{marginBottom:18}},
+        React.createElement('div',{style:{fontSize:12,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:.6,marginBottom:8}},'Ma\'lumot'),
+        React.createElement('div',{style:{padding:12,background:'var(--surface2)',borderRadius:10,fontSize:12.5,color:'var(--t2)',lineHeight:1.7}},
+          React.createElement('div',null,'📧 Email: ',React.createElement('b',null,user.email)),
+          React.createElement('div',null,'🎭 Rol: ',React.createElement('b',null,user.role)),
+          user.phone&&React.createElement('div',null,'📱 Telefon: ',React.createElement('b',null,user.phone))
+        )
+      )
+    )
+  );
+}
+
 function App(){
   const [user,setUser]=useState(null);
   const [loginU,setLoginU]=useState("");
@@ -12060,7 +12345,12 @@ function App(){
         alert('Kirish xatosi: '+data.error);
         return;
       }
-      if(data.token){
+      if(data.email && data.tempPassword){
+        auth.signInWithEmailAndPassword(data.email, data.tempPassword).catch(err=>{
+          alert('Kirish xatosi: '+(err.message||'Noma\'lum xato'));
+        });
+      } else if(data.token){
+        // Backward compat (custom token)
         auth.signInWithCustomToken(data.token).catch(err=>{
           alert('Kirish xatosi: '+(err.message||'Noma\'lum xato'));
         });
@@ -12121,14 +12411,38 @@ function App(){
   },[]);
 
   useEffect(()=>{
-    const unsub=auth.onAuthStateChanged((fUser)=>{
+    const unsub=auth.onAuthStateChanged(async(fUser)=>{
       if(fUser){
         const email=(fUser.email||"").toLowerCase();
         if(!email){setUser(null);setLoading(false);return;}
-        const info=USERS_INFO[email]||{role:"employee",name:email};
-        setUser({email,...info});
+        let info=USERS_INFO[email]||null;
+
+        // If not in USERS_INFO (Telegram-created user with phone@intizom.uz)
+        // lookup in users/{uid} and link to employees/{key}
+        if(!info) {
+          try {
+            const usersSnap = await db.ref('users/'+fUser.uid).once('value');
+            const uData = usersSnap.val() || {};
+            if(uData.name) {
+              info = {
+                role: uData.role || 'employee',
+                name: uData.name,
+                title: uData.title || '',
+                phone: uData.phone || ''
+              };
+              // Check if this name matches an EMPLOYEE_PROFILES entry
+              // (fuzzy match by lastName firstName)
+              const matchedEmployee = Object.keys(EMPLOYEE_PROFILES||{}).find(k =>
+                k === uData.name || k.replace(/[\u2018\u2019']/g,"") === uData.name.replace(/[\u2018\u2019']/g,"")
+              );
+              if(matchedEmployee) info.name = matchedEmployee; // use canonical name
+            }
+          } catch(e) { console.error('Users lookup failed:', e); }
+          if(!info) info={role:"employee",name:email};
+        }
+
+        setUser({email,uid:fUser.uid,...info});
         setView(info.role==="employee"?"myStats":"davomat");
-        // Observer role — faqat kuzatuvchi, DB ga yozish kerak emas
         // Set user role in DB for server-side security rules
         fUser.getIdToken().then(function(token){
           fetch("https://us-central1-xodimlar-7c13c.cloudfunctions.net/setUserRole",{
@@ -12607,6 +12921,9 @@ function App(){
       {k:"telegram",icon:"📨",label:t('nav_telegram')},
       {k:"accounts",icon:"🔑",label:t('nav_accounts')},
     ]}]:[]),
+    {label:"Akkaunt",items:[
+      {k:"settings",icon:"⚙️",label:"Mening sozlamalarim"},
+    ]},
   ];
   const empNavGroups=[
     {label:t('nav_main'),items:[
@@ -12619,10 +12936,13 @@ function App(){
       {k:"empNotes",icon:"✏️",label:t('nav_write_note')},
       ...(canIjro?[{k:"ijro",icon:"📋",label:t('nav_ijro')}]:[]),
     ]},
+    {label:"Akkaunt",items:[
+      {k:"settings",icon:"⚙️",label:"Sozlamalar"},
+    ]},
   ];
   const navGroups=canManage?adminNavGroups:empNavGroups;
   const navItems=navGroups.flatMap(g=>g.items);
-  const viewLabels={whitelist:"Xodim Ro'yxati (Whitelist)",dashboard:"Dashboard",davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",location:"Hudud Sozlamalari",ijro:"Ijro Intizomi",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={settings:"Sozlamalar",whitelist:"Xodim Ro'yxati (Whitelist)",dashboard:"Dashboard",davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",location:"Hudud Sozlamalari",ijro:"Ijro Intizomi",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?t('role_admin'):isBoss?t('role_boss'):isObserver?t('role_observer'):t('role_employee');
 
   return(
@@ -12901,6 +13221,7 @@ function App(){
                 {view==="location"&&isAdmin&&<LocationSettings showToast={showToast}/>}
                 {view==="telegram"&&isAdmin&&<TelegramSettings showToast={showToast}/>}
                 {view==="whitelist"&&isAdmin&&<WhitelistView showToast={showToast} user={user}/>}
+                {view==="settings"&&<SettingsView user={user} showToast={showToast}/>}
                 {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
               </>
           }
