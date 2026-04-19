@@ -300,17 +300,15 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
   const cmd = message.text.trim().split(" ")[0].split("@")[0].toLowerCase();
   const todayKey = fmtDate(new Date());
 
-  // chatId is set manually by admin via Firebase console — not auto-overridden from incoming messages
-  if (message.chat.type === "group" || message.chat.type === "supergroup") {
-    // Verify webhook secret if configured
-    const secretSnap = await db.ref("config/webhook_secret").once("value");
-    const webhookSecret = secretSnap.val();
-    if (webhookSecret) {
-      const headerSecret = req.headers["x-telegram-bot-api-secret-token"] || req.query.secret || "";
-      if (headerSecret !== webhookSecret) {
-        res.status(403).send("Forbidden");
-        return;
-      }
+  // Verify webhook secret on EVERY request (group AND DM)
+  const secretSnap = await db.ref("config/webhook_secret").once("value");
+  const webhookSecret = secretSnap.val();
+  if (webhookSecret) {
+    const headerSecret = req.headers["x-telegram-bot-api-secret-token"] || req.query.secret || "";
+    if (headerSecret !== webhookSecret) {
+      console.warn("[webhook] Secret mismatch — blocked");
+      res.status(403).send("Forbidden");
+      return;
     }
   }
 
@@ -404,6 +402,16 @@ exports.onAttendanceChange = functions.database
 
 // ═══ SELFIE → ATTENDANCE AVTOMATIK YOZISH ═══
 // Xodim selfie tushganda checkins ga yoziladi, shu trigger attendance ni ham yangilaydi
+// Haversine GPS distance in meters
+function gpsDistanceMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 exports.onCheckinWrite = functions.database
   .ref("checkins/{dateKey}/{empKey}/{session}")
   .onCreate(async (snapshot, context) => {
@@ -411,10 +419,41 @@ exports.onCheckinWrite = functions.database
     const checkin = snapshot.val();
     if (!checkin) return null;
 
-    const lateMinutes = checkin.lateMinutes || 0;
-    const timeStr = checkin.time || "";
-    const empNote = checkin.empNote || "";
-    const notePrefix = empNote ? (" | Izoh: " + empNote) : "";
+    // ═══ SERVER-SIDE GPS VALIDATION ═══
+    try {
+      const officeSnap = await db.ref("office_location").once("value");
+      const office = officeSnap.val();
+      if (office && typeof checkin.gpsLat === "number" && typeof checkin.gpsLng === "number") {
+        const dist = gpsDistanceMeters(office.lat, office.lng, checkin.gpsLat, checkin.gpsLng);
+        const radius = office.radius || 300;
+        const serverGpsOk = dist <= radius;
+        // Override client-sent values — prevent GPS spoofing
+        if (checkin.gpsOk !== serverGpsOk || Math.abs((checkin.gpsDistance || 0) - dist) > 10) {
+          await snapshot.ref.update({
+            gpsOk: serverGpsOk,
+            gpsDistance: Math.round(dist),
+            serverValidated: true,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("GPS validation failed:", e.message);
+    }
+
+    // ═══ SERVER-SIDE LATE-MINUTES CALCULATION ═══
+    let lateMinutes = 0;
+    try {
+      const timeStr2 = checkin.time || "";
+      const [hh, mm] = timeStr2.split(":").map(Number);
+      if (!isNaN(hh) && !isNaN(mm)) {
+        const totalMin = hh * 60 + mm;
+        const deadlineMin = session === "morning" ? (9 * 60 + 10) : (14 * 60 + 10);
+        lateMinutes = Math.max(0, totalMin - deadlineMin);
+        if (lateMinutes !== (checkin.lateMinutes || 0)) {
+          await snapshot.ref.update({ lateMinutes });
+        }
+      }
+    } catch (_) {}
 
     // Mavjud attendance recordni olish
     const attRef = db.ref(`attendance/${dateKey}/${empKey}`);
@@ -982,18 +1021,39 @@ exports.setUserRole = functions.https.onRequest(async (req, res) => {
 
   const ADMIN_EMAILS = ["kadr@boshqarma.uz"];
   const BOSS_EMAILS = ["ravshan.azimov@boshqarma.uz", "elbek.gafforov@boshqarma.uz"];
+  const OBSERVER_EMAILS = [];
 
   try {
-    const decoded = await admin.auth().verifyIdToken(idToken);
+    const decoded = await admin.auth().verifyIdToken(idToken, true);
     const email = (decoded.email || "").toLowerCase();
     const uid = decoded.uid;
-    let role = "employee";
-    if (ADMIN_EMAILS.includes(email)) role = "admin";
-    else if (BOSS_EMAILS.includes(email)) role = "boss";
+    const emailVerified = decoded.email_verified === true;
+
+    // Security: check existing role first — never demote or elevate arbitrarily
+    const existingSnap = await db.ref(`user_roles/${uid}`).once("value");
+    const existing = existingSnap.val();
+
+    let role;
+    // Hardcoded admin/boss list only applies to pre-approved emails
+    if (ADMIN_EMAILS.includes(email) && emailVerified) role = "admin";
+    else if (BOSS_EMAILS.includes(email) && emailVerified) role = "boss";
+    else if (OBSERVER_EMAILS.includes(email) && emailVerified) role = "observer";
+    else if (email.endsWith("@intizom.uz")) {
+      // Telegram-created users — role already set by ensureUser during bot flow
+      // Just preserve existing
+      role = existing || "employee";
+    } else {
+      // Unknown email — never elevate
+      role = "employee";
+    }
+
+    // Never downgrade admin → employee automatically
+    if (existing === "admin" && role !== "admin") role = "admin";
 
     await db.ref(`user_roles/${uid}`).set(role);
     res.json({ success: true, role });
   } catch (e) {
+    console.error("setUserRole error:", e.code || e.message);
     res.status(401).json({ error: "Invalid token" });
   }
 });
@@ -1100,12 +1160,18 @@ async function ensureUser(rec) {
   // rec.key = phone normalized; create or get Firebase user
   const phone = normalizePhone(rec.phone);
   const email = phone.replace("+", "").replace(/\D/g, "") + "@intizom.uz";
+  // Canonical employee key (used for checkin ownership check)
+  const empKey = String(rec.name || "").replace(/[\u2018\u2019'`]/g, "").replace(/\s+/g, "_");
   let user;
   const tempPassword = randomPassword();
   try {
     user = await admin.auth().getUserByEmail(email);
     // Existing user — reset password temporarily for one-time login
     await admin.auth().updateUser(user.uid, { password: tempPassword });
+    // Ensure empKey is set (for checkin ownership rule)
+    await db.ref(`users/${user.uid}/empKey`).set(empKey);
+    await db.ref(`users/${user.uid}/name`).set(rec.name);
+    await db.ref(`users/${user.uid}/phone`).set(phone);
   } catch (e) {
     // Create new user
     user = await admin.auth().createUser({
@@ -1119,6 +1185,7 @@ async function ensureUser(rec) {
     await db.ref(`user_roles/${user.uid}`).set(rec.role || "employee");
     await db.ref(`users/${user.uid}`).set({
       name: rec.name,
+      empKey,
       phone,
       role: rec.role || "employee",
       title: rec.title || "",
@@ -1135,6 +1202,18 @@ exports.telegramLoginBot = functions
       if (req.method !== "POST") {
         return res.status(200).send("OK");
       }
+      // Webhook secret check (prevents random POSTs to this function)
+      try {
+        const secretSnap = await db.ref("config/login_bot/webhook_secret").once("value");
+        const expected = secretSnap.val();
+        if (expected) {
+          const got = req.headers["x-telegram-bot-api-secret-token"] || "";
+          if (got !== expected) {
+            console.warn("[loginBot] Secret mismatch");
+            return res.status(403).send("Forbidden");
+          }
+        }
+      } catch (_) {}
       const update = req.body || {};
       const msg = update.message || update.callback_query?.message;
       if (!msg) return res.status(200).send("OK");
@@ -1249,9 +1328,13 @@ exports.telegramLoginBot = functions
  * Saytdan Firebase signInWithCustomToken chaqirish
  */
 exports.claimTelegramLogin = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin || "";
+  if (ALLOWED_ORIGINS.some(o => origin === o)) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
   res.set("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type");
+  res.set("Vary", "Origin");
   if (req.method === "OPTIONS") return res.status(204).send("");
 
   try {
@@ -1285,9 +1368,13 @@ exports.claimTelegramLogin = functions.https.onRequest(async (req, res) => {
  * Foydalanuvchi Telegram orqali kirgandan keyin ushbu HTTPS funksiyani chaqiradi
  */
 exports.setUserPassword = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin || "";
+  if (ALLOWED_ORIGINS.some(o => origin === o)) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
   res.set("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  res.set("Vary", "Origin");
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -1302,8 +1389,17 @@ exports.setUserPassword = functions.https.onRequest(async (req, res) => {
     if (!password || typeof password !== "string") {
       return res.status(400).json({ error: "Password required" });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: "Parol kamida 6 belgidan iborat bo'lishi kerak" });
+    if (password.length < 8) {
+      return res.status(400).json({ error: "Parol kamida 8 belgidan iborat bo'lishi kerak" });
+    }
+    // Check complexity: at least 1 letter and 1 digit
+    if (!/[a-zA-Z]/.test(password) || !/\d/.test(password)) {
+      return res.status(400).json({ error: "Parol harf va raqamdan iborat bo'lishi kerak" });
+    }
+    // Check against top common passwords
+    const COMMON = new Set(["password","12345678","qwerty123","admin123","letmein123","welcome1","123456789","password1","qwertyui","abc12345"]);
+    if (COMMON.has(password.toLowerCase())) {
+      return res.status(400).json({ error: "Bu parol juda keng tarqalgan — boshqasini tanlang" });
     }
     if (password.length > 128) {
       return res.status(400).json({ error: "Parol juda uzun" });

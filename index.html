@@ -20,16 +20,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js" integrity="sha384-3k8kxVAXIf47vgdf3Q4mXcBDdvMrYx80aK5RjODMB70JWXm6MEkDdtSu0zpHWpJ+" crossorigin="anonymous"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js" integrity="sha384-uic5NV27Y056/arxaoI4ZEI+gCZOns0NP+6MM8z+eGF1ba9Lifv7ZHI+IdxTDYQn" crossorigin="anonymous"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js" integrity="sha384-5PDE6CZvnNIJI5xu68GIFoOO3U73lAnRLBwPBmmKjWnYnYwKEHWr/ghtGooEOXGb" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js" integrity="sha384-dqDn4UOhYWNxmtwnMX6yC3WtZZ6Li8rF6rLB7cu0i/R7btvb+p+kObgEHto7VsJK" crossorigin="anonymous"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous" async></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js" integrity="sha384-Xl/CUCfJbzsngMp0CFxkmF0VW/8C160IsGujqeQlIhaGxKz2+JsIGORFqtCPeldF" crossorigin="anonymous" async></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous" async></script>
+  <script src="/vendor/firebase-app-compat.js"></script>
+  <script src="/vendor/firebase-auth-compat.js"></script>
+  <script src="/vendor/firebase-database-compat.js"></script>
+  <script src="/vendor/react.min.js"></script>
+  <script src="/vendor/react-dom.min.js"></script>
+  <script src="/vendor/babel.min.js"></script>
+  <script src="/vendor/xlsx.full.min.js"></script>
+  <script src="/vendor/jspdf.umd.min.js" async></script>
+  <script src="/vendor/jspdf-autotable.min.js" async></script>
+  <script src="/vendor/chart.umd.min.js" async></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -3476,11 +3476,37 @@
     /* END OF GLASS LAYER                                           */
     /* ═══════════════════════════════════════════════════════════ */
   </style>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="/vendor/leaflet.css"/>
+  <script src="/vendor/leaflet.js"></script>
 </head>
 <body>
 <div id="root"></div>
+<!-- Bootstrap: global error handler + service worker cleanup (runs before Babel) -->
+<script>
+(function(){
+  // Global error handler — show errors instead of white screen
+  window.addEventListener('error', function(e){
+    try {
+      var root = document.getElementById('root');
+      if(root && !root.hasChildNodes()){
+        root.innerHTML = '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;font-family:-apple-system,system-ui,sans-serif;background:#0f1e3d;color:#fff;text-align:center"><div style="font-size:56px;margin-bottom:20px">⚠️</div><h2 style="margin:0 0 12px">Sayt yuklanmadi</h2><p style="max-width:500px;color:#f87171;font-size:13px;line-height:1.6;margin:0 0 20px">'+String(e.message||e.error||'Noma\'lum xato').replace(/</g,'&lt;')+'</p><button onclick="(async()=>{if(navigator.serviceWorker){const regs=await navigator.serviceWorker.getRegistrations();for(const r of regs){await r.unregister()}}if(window.caches){const ks=await caches.keys();for(const k of ks){await caches.delete(k)}}location.reload(true)})()" style="padding:12px 28px;background:#c8962a;color:#0f1e3d;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">🔄 Cache tozalash va qayta yuklash</button></div>';
+      }
+    } catch(err){}
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    console.error('Unhandled rejection:', e.reason);
+  });
+  // Auto-unregister stale service workers (old cache buster)
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      regs.forEach(function(r){
+        // If SW is serving stale version, force update
+        r.update().catch(function(){});
+      });
+    }).catch(function(){});
+  }
+})();
+</script>
 <script type="text/babel">
 // ═══ Capacitor Native APIs ═══
 const isCapacitor = typeof window.Capacitor !== 'undefined';
@@ -3733,6 +3759,7 @@ function getDeviceId() {
 /* 🛡️  MAXIMUM SECURITY LAYER — Anti-hack protection             */
 /* ═══════════════════════════════════════════════════════════ */
 const SEC = (function(){
+  try {
   const LOCKOUT_KEY = '__ilk';
   const FP_KEY = '__ifp';
   const ENC_KEY_NAME = '__iek';
@@ -3911,6 +3938,27 @@ const SEC = (function(){
     setupVisibilityLogout, auditSecure, clearClipboard,
     MAX_FAILED, LOCKOUT_MS
   };
+  } catch(e) {
+    console.warn('[SEC] Init failed, using fallback:', e);
+    // Fallback no-op implementations — app should not crash
+    return {
+      fingerprint: () => '0',
+      checkFingerprint: () => true,
+      isLocked: () => false,
+      lockoutRemaining: () => 0,
+      recordLoginFail: () => ({fails:0, until:0}),
+      resetLoginFails: () => {},
+      encrypt: async () => null,
+      decrypt: async () => null,
+      setSecure: async () => {},
+      getSecure: async () => null,
+      setupVisibilityLogout: () => {},
+      auditSecure: async () => {},
+      clearClipboard: () => {},
+      MAX_FAILED: 5,
+      LOCKOUT_MS: 900000
+    };
+  }
 })();
 /* ═══════════════════════════════════════════════════════════ */
 
@@ -6269,10 +6317,15 @@ function AIAnalysisView({showToast}){
   }
   function handleKeyDown(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSend()}}
 
+  // XSS-safe HTML escape
+  function escHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
   function formatAI(text){
-    // Sanitize: strip all HTML tags first to prevent XSS
-    var clean=text.replace(/<[^>]*>/g,"");
-    return clean
+    // Step 1: Escape ALL HTML in source (removes any script/tag injection)
+    var safe = escHtml(String(text||''));
+    // Step 2: Apply markdown-like formatting on the already-escaped text
+    return safe
       .replace(/\*\*(.*?)\*\*/g,"<strong style='color:var(--t1)'>$1</strong>")
       .replace(/#{1,3}\s*(.*?)(\n|$)/g,"<div style='font-size:14px;font-weight:700;color:var(--navy);margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)'>$1</div>")
       .replace(/\n- /g,"<br/><span style='color:var(--gold);margin:0 6px 0 8px'>&#9679;</span> ")
@@ -12075,7 +12128,8 @@ function SettingsView({user, showToast, darkMode, setDarkMode}){
   }
 
   async function handlePasswordChange(){
-    if(!newPw||newPw.length<6){showToast && showToast('⚠️ Kamida 6 belgi');return;}
+    if(!newPw||newPw.length<8){showToast && showToast('⚠️ Parol kamida 8 belgi');return;}
+    if(!/[a-zA-Z]/.test(newPw)||!/\d/.test(newPw)){showToast && showToast('⚠️ Harf va raqam aralash bo\'lsin');return;}
     if(newPw!==newPw2){showToast && showToast('⚠️ Parollar mos emas');return;}
     setPwSaving(true);
     try{
@@ -12699,7 +12753,8 @@ function App(){
   }
 
   async function handleSetPassword(){
-    if(!newPw || newPw.length < 6){showToast && showToast('⚠️ Parol kamida 6 belgi');return;}
+    if(!newPw || newPw.length < 8){showToast && showToast('⚠️ Parol kamida 8 belgi');return;}
+    if(!/[a-zA-Z]/.test(newPw)||!/\d/.test(newPw)){showToast && showToast('⚠️ Harf va raqam aralash bo\'lsin');return;}
     if(newPw !== newPw2){showToast && showToast('⚠️ Parollar mos emas');return;}
     setSetPwLoading(true);
     try{
