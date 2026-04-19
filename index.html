@@ -6737,27 +6737,30 @@ var _thumbCallbacks=[];
 /* EmpAvatar — React component: gradient → foto */
 function EmpAvatar(props){
   var{useState:uS,useEffect:uE}=React;
-  var name=props.name;
+  var name=props.name||"";
   var sz=props.size||34;
+  var directPhoto=props.photo||null; // User's own uploaded photo (highest priority)
   var[thumb,setThumb]=uS(_thumbCache[name]||null);
 
   uE(function(){
-    if(thumb)return;
+    if(directPhoto||thumb)return;
     if(_thumbCache[name]){setThumb(_thumbCache[name]);return;}
     if(_thumbReady)return;
     var cb=function(){if(_thumbCache[name])setThumb(_thumbCache[name])};
     _thumbCallbacks.push(cb);
     return function(){var i=_thumbCallbacks.indexOf(cb);if(i>=0)_thumbCallbacks.splice(i,1)};
-  },[name]);
+  },[name,directPhoto]);
 
-  if(thumb){
-    return React.createElement("img",{src:thumb,alt:name,width:sz,height:sz,decoding:"async",
+  // Priority: user's own photo > cached thumb > initials
+  var photo = directPhoto || thumb;
+  if(photo){
+    return React.createElement("img",{src:photo,alt:name,width:sz,height:sz,decoding:"async",
       style:{width:sz,height:sz,minWidth:sz,borderRadius:sz/2,objectFit:"cover",flexShrink:0,border:"2px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,.12)"}});
   }
-  var g=_AVG[_avHash(name)%_AVG.length];
-  var parts=name.split(" ");
+  var g=_AVG[_avHash(name||"?")%_AVG.length];
+  var parts=(name||"").split(" ");
   var initials=(parts[0]?parts[0][0]:"")+(parts[1]?parts[1][0]:"");
-  return React.createElement("div",{style:{width:sz,height:sz,minWidth:sz,borderRadius:sz/2,background:"linear-gradient(135deg,"+g[0]+","+g[1]+")",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:sz*0.38,fontWeight:800,fontFamily:"system-ui,sans-serif",textTransform:"uppercase",boxShadow:"0 2px 8px "+g[0]+"44",letterSpacing:".5px",flexShrink:0}},initials);
+  return React.createElement("div",{style:{width:sz,height:sz,minWidth:sz,borderRadius:sz/2,background:"linear-gradient(135deg,"+g[0]+","+g[1]+")",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:sz*0.38,fontWeight:800,fontFamily:"system-ui,sans-serif",textTransform:"uppercase",boxShadow:"0 2px 8px "+g[0]+"44",letterSpacing:".5px",flexShrink:0}},initials||"?");
 }
 
 function empAvatar(name,size){
@@ -9080,7 +9083,7 @@ function MobileEmpHome({user, checkinsData, attendanceData, announcements, holid
     <div className="mhome">
       <div className="mhome-greet">
         <div className="mhome-avatar-wrap" onClick={()=>onNavigate&&onNavigate("settings")} style={{cursor:"pointer"}}>
-          <EmpAvatar name={user.name} size={44}/>
+          <EmpAvatar name={user.name} photo={user.photo} size={44}/>
         </div>
         <div className="mhome-greet-text">
           <div className="mhome-greet-hi">{greeting},</div>
@@ -11953,67 +11956,87 @@ function SettingsView({user, showToast, onPasswordChange}){
   const[pwSaving,setPwSaving]=useState(false);
   const fileInputRef=useRef(null);
 
-  // Find employee key for this user
-  const empKey=useMemo(()=>{
-    if(!user||!user.name)return null;
-    // Try canonical key (FirstLast format)
-    const clean=user.name.replace(/[\u2018\u2019'`]/g,"").replace(/\s+/g,"_");
-    return clean;
-  },[user]);
-
   useEffect(()=>{
-    if(!empKey){setLoading(false);return;}
-    const ref=db.ref('employees/'+empKey);
-    ref.once('value',snap=>{
-      const d=snap.val()||{};
-      // Also merge EMPLOYEE_PROFILES photo if exists
-      const prof=EMPLOYEE_PROFILES[user.name]||{};
-      setProfile({
-        firstName: d.firstName || (user.name||"").split(" ")[1] || "",
-        lastName: d.lastName || (user.name||"").split(" ")[0] || "",
-        fullName: d.fullName || user.name || "",
-        position: d.position || user.title || prof.position || "",
-        department: d.department || prof.department || "",
-        phone: d.phone || user.phone || "",
-        email: user.email || "",
-        birthDate: d.birthDate || prof.birthDate || "",
-        birthPlace: d.birthPlace || prof.birthPlace || "",
-        education: d.education || prof.education || "",
-        specialty: d.specialty || prof.specialty || "",
-        languages: d.languages || prof.languages || "",
-        photo: d.photo || prof.photo || "",
-        schedule: d.schedule || "Dush-Jum 09:00-18:00"
+    if(!user||!user.uid){setLoading(false);return;}
+    // Load from users/{uid} (editable by user) merged with employees/{key} (admin-managed)
+    const uidRef=db.ref('users/'+user.uid);
+    uidRef.once('value',uidSnap=>{
+      const uidData=uidSnap.val()||{};
+      const empKey=(user.name||"").replace(/[\u2018\u2019'`]/g,"").replace(/\s+/g,"_");
+      // Try employees/{key}
+      db.ref('employees/'+empKey).once('value',empSnap=>{
+        const empData=empSnap.val()||{};
+        // Fuzzy match if not found
+        let mergedEmp=empData;
+        if(!empData.firstName){
+          // try alternative keys
+          const altKey=(user.name||"").replace(/[\u2018\u2019'`]/g,"_").replace(/\s+/g,"_");
+          db.ref('employees/'+altKey).once('value',altSnap=>{
+            const altData=altSnap.val()||{};
+            mergedEmp=altData;
+            finalizeProfile(uidData, mergedEmp);
+          });
+          return;
+        }
+        finalizeProfile(uidData, mergedEmp);
+      },err=>{
+        console.error(err);
+        finalizeProfile(uidData, {});
       });
-      setLoading(false);
     },err=>{
       console.error(err);
       setLoading(false);
     });
-  },[empKey,user]);
+
+    function finalizeProfile(uidData, empData){
+      const prof=EMPLOYEE_PROFILES[user.name]||{};
+      // Priority: user's own edits > employee record > default profile
+      setProfile({
+        firstName: uidData.firstName || empData.firstName || (user.name||"").split(" ")[1] || "",
+        lastName: uidData.lastName || empData.lastName || (user.name||"").split(" ")[0] || "",
+        fullName: uidData.fullName || empData.fullName || user.name || "",
+        position: uidData.position || empData.position || user.title || prof.position || "",
+        department: uidData.department || empData.department || prof.department || "",
+        phone: uidData.phone || empData.phone || user.phone || "",
+        email: user.email || "",
+        birthDate: uidData.birthDate || empData.birthDate || prof.birthDate || "",
+        birthPlace: uidData.birthPlace || empData.birthPlace || prof.birthPlace || "",
+        education: uidData.education || empData.education || prof.education || "",
+        specialty: uidData.specialty || empData.specialty || prof.specialty || "",
+        languages: uidData.languages || empData.languages || prof.languages || "",
+        photo: uidData.photo || empData.photo || prof.photo || "",
+        schedule: uidData.schedule || empData.schedule || "Dush-Jum 09:00-18:00"
+      });
+      setLoading(false);
+    }
+  },[user]);
 
   function updateField(field, value){
     setProfile(p=>({...p,[field]:value}));
   }
 
   function saveProfile(){
-    if(!empKey||!profile)return;
+    if(!user||!user.uid||!profile)return;
     setSaving(true);
     const data={
+      name: user.name || profile.fullName || "",
       firstName: profile.firstName||"",
       lastName: profile.lastName||"",
-      fullName: profile.fullName||(profile.lastName+" "+profile.firstName),
+      fullName: profile.fullName||(profile.lastName+" "+profile.firstName).trim(),
       position: profile.position||"",
       department: profile.department||"",
       phone: profile.phone||"",
+      title: profile.position||user.title||"",
       birthDate: profile.birthDate||"",
       birthPlace: profile.birthPlace||"",
       education: profile.education||"",
       specialty: profile.specialty||"",
       languages: profile.languages||"",
       photo: profile.photo||"",
-      schedule: profile.schedule||"Dush-Jum 09:00-18:00"
+      schedule: profile.schedule||"Dush-Jum 09:00-18:00",
+      role: user.role||"employee"
     };
-    db.ref('employees/'+empKey).update(data).then(()=>{
+    db.ref('users/'+user.uid).update(data).then(()=>{
       showToast && showToast('✅ Saqlandi');
       setSaving(false);
     }).catch(e=>{
@@ -12411,50 +12434,68 @@ function App(){
   },[]);
 
   useEffect(()=>{
-    const unsub=auth.onAuthStateChanged(async(fUser)=>{
+    const unsub=auth.onAuthStateChanged((fUser)=>{
       if(fUser){
         const email=(fUser.email||"").toLowerCase();
         if(!email){setUser(null);setLoading(false);return;}
-        let info=USERS_INFO[email]||null;
 
-        // If not in USERS_INFO (Telegram-created user with phone@intizom.uz)
-        // lookup in users/{uid} and link to employees/{key}
-        if(!info) {
-          try {
-            const usersSnap = await db.ref('users/'+fUser.uid).once('value');
-            const uData = usersSnap.val() || {};
-            if(uData.name) {
-              info = {
-                role: uData.role || 'employee',
-                name: uData.name,
-                title: uData.title || '',
-                phone: uData.phone || ''
-              };
-              // Check if this name matches an EMPLOYEE_PROFILES entry
-              // (fuzzy match by lastName firstName)
-              const matchedEmployee = Object.keys(EMPLOYEE_PROFILES||{}).find(k =>
-                k === uData.name || k.replace(/[\u2018\u2019']/g,"") === uData.name.replace(/[\u2018\u2019']/g,"")
-              );
-              if(matchedEmployee) info.name = matchedEmployee; // use canonical name
-            }
-          } catch(e) { console.error('Users lookup failed:', e); }
-          if(!info) info={role:"employee",name:email};
-        }
+        // Background: load users/{uid} (own edits + photo)
+        db.ref('users/'+fUser.uid).once('value').then(snap=>{
+          const uData=snap.val()||{};
+          // Determine name/role/title
+          let info=USERS_INFO[email];
+          if(!info && uData.name){
+            // Telegram-created user — lookup via users/
+            info={
+              role: uData.role || 'employee',
+              name: uData.name,
+              title: uData.title || uData.position || '',
+              phone: uData.phone || ''
+            };
+            // Try to match canonical name from EMPLOYEE_PROFILES
+            const match=Object.keys(EMPLOYEE_PROFILES||{}).find(k=>
+              k===uData.name || k.replace(/[\u2018\u2019'`]/g,"")===(uData.name||"").replace(/[\u2018\u2019'`]/g,"")
+            );
+            if(match) info.name=match;
+          }
+          if(!info) info={role:'employee',name:email};
 
-        setUser({email,uid:fUser.uid,...info});
-        setView(info.role==="employee"?"myStats":"davomat");
-        // Set user role in DB for server-side security rules
-        fUser.getIdToken().then(function(token){
-          fetch("https://us-central1-xodimlar-7c13c.cloudfunctions.net/setUserRole",{
-            method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token}
-          }).catch(function(){});
-        }).catch(function(){});
+          // Merge self-edits from users/{uid}
+          const userObj={
+            email,
+            uid: fUser.uid,
+            role: info.role,
+            name: info.name,
+            title: uData.position || uData.title || info.title || '',
+            phone: uData.phone || info.phone || '',
+            photo: uData.photo || '',
+            firstName: uData.firstName || '',
+            lastName: uData.lastName || '',
+            fullName: uData.fullName || info.name,
+          };
+          setUser(userObj);
+          setView(info.role==='employee'?'myStats':'davomat');
+          setLoading(false);
+
+          // Set role via Cloud Function
+          fUser.getIdToken().then(token=>{
+            fetch('https://us-central1-xodimlar-7c13c.cloudfunctions.net/setUserRole',{
+              method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}
+            }).catch(()=>{});
+          }).catch(()=>{});
+        }).catch(err=>{
+          console.error('users/ lookup failed:', err);
+          const info=USERS_INFO[email]||{role:'employee',name:email};
+          setUser({email, uid: fUser.uid, ...info});
+          setView(info.role==='employee'?'myStats':'davomat');
+          setLoading(false);
+        });
       }else{
         setUser(null);
         setData({});
         setCheckinsData({});
+        setLoading(false);
       }
-      setLoading(false);
     });
     return()=>unsub();
   },[]);
@@ -13019,8 +13060,8 @@ function App(){
 
         <div className="sidebar-footer">
           <div className="sidebar-user">
-            <div className="sidebar-avatar" style={{padding:0,overflow:"hidden"}}>
-              <EmpAvatar name={user.name} size={36}/>
+            <div className="sidebar-avatar" style={{padding:0,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setView("settings");setSidebarOpen(false);}}>
+              <EmpAvatar name={user.name} photo={user.photo} size={36}/>
             </div>
             <div style={{minWidth:0}}>
               <div className="sidebar-user-name">{user.name.split(" ").slice(0,2).join(" ")}</div>

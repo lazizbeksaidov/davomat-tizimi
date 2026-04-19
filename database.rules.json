@@ -142,7 +142,24 @@
     "users": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && (auth.uid === $uid || root.child('user_roles').child(auth.uid).val() === 'admin')"
+        ".write": "auth != null && (auth.uid === $uid || root.child('user_roles').child(auth.uid).val() === 'admin')",
+        "name": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "firstName": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "lastName": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "fullName": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "phone": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "position": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "department": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "title": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "birthDate": { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "birthPlace": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "education": { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "specialty": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "languages": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "photo": { ".validate": "newData.isString() && newData.val().length <= 800000" },
+        "schedule": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "role": { ".validate": "newData.isString() && newData.val().matches(/^(admin|boss|observer|employee)$/)" },
+        "createdAt": { ".validate": "newData.isNumber()" }
       }
     },
     "$other": {
