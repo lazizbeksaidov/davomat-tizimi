@@ -3522,7 +3522,9 @@ function initPullToRefresh(){
   ptrInitialized = true;
   const indicator = document.createElement('div');
   indicator.className='ptr-indicator';
-  indicator.innerHTML='<div class="ptr-spinner"></div>';
+  const spinner = document.createElement('div');
+  spinner.className='ptr-spinner';
+  indicator.appendChild(spinner);
   document.body.appendChild(indicator);
   const onStart = (e)=>{if(main.scrollTop<=0){ptrStart=e.touches[0].clientY;ptrActive=true;}};
   const onMove = (e)=>{if(!ptrActive)return;const dy=e.touches[0].clientY-ptrStart;if(dy>40&&dy<120){indicator.classList.add('pulling');indicator.classList.remove('refreshing');}};
@@ -3703,7 +3705,20 @@ function markOnboarded() { localStorage.setItem('intizom_onboarded', '1'); }
 // ═══ Device Management ═══
 function getDeviceId() {
   let id = localStorage.getItem('intizom_device_id');
-  if(!id) { id = 'dev_' + Math.random().toString(36).substr(2,12) + Date.now().toString(36); localStorage.setItem('intizom_device_id', id); }
+  if(!id) {
+    // Crypto-secure UUID (not predictable Math.random)
+    if(window.crypto && window.crypto.randomUUID) {
+      id = 'dev_' + window.crypto.randomUUID();
+    } else if(window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint8Array(16);
+      window.crypto.getRandomValues(arr);
+      id = 'dev_' + Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+    } else {
+      // Legacy fallback (should never reach modern browsers)
+      id = 'dev_' + Date.now().toString(36) + Math.random().toString(36).substr(2,12);
+    }
+    localStorage.setItem('intizom_device_id', id);
+  }
   return id;
 }
 
@@ -6028,6 +6043,14 @@ function AIAnalysisView({showToast}){
   async function getToken(){var u=firebase.auth().currentUser;return u?await u.getIdToken():null}
 
   async function sendAI(q,empName,m){
+    // Input validation & length limit (DoS + abuse protection)
+    if(q && q.length > 2000){showToast("Savol uzun (max 2000 belgi)");return}
+    if(empName && empName.length > 100){showToast("Xodim ismi xato");return}
+    // Simple rate limit: 1 req/2sec
+    var now=Date.now();
+    var last=window.__aiLastReq||0;
+    if(now-last<2000){showToast("Juda tez so'rov. Biroz kuting.");return}
+    window.__aiLastReq=now;
     var token=await getToken();
     if(!token){showToast("Avval tizimga kiring");return}
     setLoading(true);
@@ -11567,7 +11590,7 @@ function App(){
   // Session timeout — 30 daqiqa harakatsizlikda avtomatik chiqish
   useEffect(()=>{
     if(!user)return;
-    var timeout=30*60*1000;
+    var timeout=15*60*1000; // 15 daqiqa — xavfsizlik uchun
     var timer=null;
     function resetTimer(){
       if(timer)clearTimeout(timer);
