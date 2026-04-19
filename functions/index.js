@@ -59,9 +59,7 @@ function safeKey(name) {
 }
 
 function fmtDate(d) {
-  /* Cloud Functions UTC da ishlaydi — Toshkent vaqtiga o'tkazish (UTC+5) */
-  const tz = new Date(d.getTime() + 5 * 60 * 60 * 1000);
-  return `${tz.getUTCFullYear()}-${String(tz.getUTCMonth()+1).padStart(2,"0")}-${String(tz.getUTCDate()).padStart(2,"0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
 function fmtMins(m) {
@@ -302,8 +300,18 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
   const cmd = message.text.trim().split(" ")[0].split("@")[0].toLowerCase();
   const todayKey = fmtDate(new Date());
 
+  // chatId is set manually by admin via Firebase console — not auto-overridden from incoming messages
   if (message.chat.type === "group" || message.chat.type === "supergroup") {
-    await db.ref("telegram_config/chatId").set(chatId).catch(() => {});
+    // Verify webhook secret if configured
+    const secretSnap = await db.ref("config/webhook_secret").once("value");
+    const webhookSecret = secretSnap.val();
+    if (webhookSecret) {
+      const headerSecret = req.headers["x-telegram-bot-api-secret-token"] || req.query.secret || "";
+      if (headerSecret !== webhookSecret) {
+        res.status(403).send("Forbidden");
+        return;
+      }
+    }
   }
 
   const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
@@ -394,6 +402,47 @@ exports.onAttendanceChange = functions.database
     return null;
   });
 
+// ═══ SELFIE → ATTENDANCE AVTOMATIK YOZISH ═══
+// Xodim selfie tushganda checkins ga yoziladi, shu trigger attendance ni ham yangilaydi
+exports.onCheckinWrite = functions.database
+  .ref("checkins/{dateKey}/{empKey}/{session}")
+  .onCreate(async (snapshot, context) => {
+    const { dateKey, empKey, session } = context.params;
+    const checkin = snapshot.val();
+    if (!checkin) return null;
+
+    const lateMinutes = checkin.lateMinutes || 0;
+    const timeStr = checkin.time || "";
+    const empNote = checkin.empNote || "";
+    const notePrefix = empNote ? (" | Izoh: " + empNote) : "";
+
+    // Mavjud attendance recordni olish
+    const attRef = db.ref(`attendance/${dateKey}/${empKey}`);
+    const attSnap = await attRef.once("value");
+    const existing = attSnap.val() || { status: "present", morning: 0, afternoon: 0, note: "" };
+
+    const updates = {};
+
+    if (session === "morning") {
+      updates.morning = lateMinutes;
+      updates.status = lateMinutes > 0 ? "late" : "present";
+      const label = lateMinutes === 0
+        ? "Ertalab selfie (09:10 gacha): "
+        : "Selfie 09:10 dan keyin: ";
+      updates.note = (existing.note ? existing.note + " | " : "") + label + timeStr + notePrefix;
+    } else if (session === "afternoon") {
+      updates.afternoon = lateMinutes;
+      if (lateMinutes > 0 || existing.morning > 0) updates.status = "late";
+      const label = lateMinutes === 0
+        ? "Tushlikdan keyingi selfie (14:10 gacha): "
+        : "Selfie 14:10 dan keyin: ";
+      updates.note = (existing.note ? existing.note + " | " : "") + label + timeStr + notePrefix;
+    }
+
+    await attRef.update(updates);
+    return null;
+  });
+
 // ═══ TUG'ILGAN KUN — 08:00 ═══
 exports.birthdayNotify = functions.pubsub
   .schedule("0 8 * * *").timeZone("Asia/Tashkent")
@@ -422,33 +471,73 @@ exports.morningSelfieCheck = functions.pubsub
   .onRun(async () => {
     const chatId = await getChatId();
     if (!chatId) return null;
-    const todayKey = fmtDate(new Date());
+    const now = new Date();
+    const todayKey = fmtDate(now);
+    const d = todayKey.split("-");
+    const dateObj = new Date(parseInt(d[0]), parseInt(d[1])-1, parseInt(d[2]));
+    const dayName = DAYS_UZ[dateObj.getDay()];
+    const dateDisp = `${d[2]}.${d[1]}.${d[0]}`;
+
     const [attSnap, checkSnap] = await Promise.all([
       db.ref(`attendance/${todayKey}`).once("value"),
       db.ref(`checkins/${todayKey}`).once("value")
     ]);
     const attData = attSnap.val() || {};
     const checkins = checkSnap.val() || {};
-    const notDone = [];
-    let skipped = 0;
+
+    const kelganlar = [];
+    const sababli = [];
+    const kelmagan = [];
+
     EMPLOYEES.forEach(emp => {
       const key = safeKey(emp);
       const att = attData[key];
-      if (att && NON_WORKING.includes(att.status)) { skipped++; return; }
-      if (att && att.status === "absent") return;
-      const rec = checkins[key];
-      if (!rec || !rec.morning) notDone.push(emp);
+      const check = checkins[key];
+      const status = att?.status;
+
+      if (status && NON_WORKING.includes(status)) {
+        sababli.push({ name: emp, icon: STATUS_ICONS[status], label: STATUS_LABELS[status] });
+        return;
+      }
+      if (check && check.morning) {
+        const lateMin = att?.morning || 0;
+        kelganlar.push({ name: emp, lateMin });
+        return;
+      }
+      if (status === "present" || status === "late") {
+        kelganlar.push({ name: emp, lateMin: att?.morning || 0 });
+        return;
+      }
+      kelmagan.push(emp);
     });
-    const working = EMPLOYEES.length - skipped;
-    if (notDone.length === 0) {
-      await sendMessage(chatId, "✅ <b>Ertalabki selfie — 09:20</b>\n\nBarcha xodimlar selfie qilgan! 👏");
-      return null;
+
+    const workingTotal = EMPLOYEES.length - sababli.length;
+    const pct = workingTotal > 0 ? Math.round(kelganlar.length / workingTotal * 100) : 0;
+
+    let text = `📋 <b>ERTALABKI DAVOMAT</b>\n`;
+    text += `📅 ${dateDisp} | ${dayName} | 09:20\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    text += `✅ <b>Kelganlar (${kelganlar.length}):</b>\n`;
+    kelganlar.forEach((e, i) => {
+      let line = `  ${i+1}. ${e.name}`;
+      if (e.lateMin > 0) line += ` ⏰ (${fmtMins(e.lateMin)} kechikdi)`;
+      text += line + "\n";
+    });
+
+    if (sababli.length > 0) {
+      text += `\n📋 <b>Sababli (${sababli.length}):</b>\n`;
+      sababli.forEach((e, i) => { text += `  ${i+1}. ${e.name} (${e.icon} ${e.label})\n`; });
     }
-    let text = `📸 <b>Ertalabki selfie — 09:20</b>\n━━━━━━━━━━━━━━━━━━\n`;
-    text += `⚠️ <b>${notDone.length} xodim selfie qilmagan:</b>\n\n`;
-    notDone.forEach((e, i) => { text += `${i+1}. ${e}\n`; });
-    text += `\n✅ Qilgan: <b>${working - notDone.length}</b>/${working}`;
-    if (skipped > 0) text += `\n🌴 Ishda emas: <b>${skipped}</b>`;
+
+    if (kelmagan.length > 0) {
+      text += `\n❌ <b>Kelmagan / Selfie qilmagan (${kelmagan.length}):</b>\n`;
+      kelmagan.forEach((e, i) => { text += `  ${i+1}. ${e}\n`; });
+    }
+
+    text += `\n━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `📊 Davomat: ${kelganlar.length}/${workingTotal} (${pct}%)`;
+
     await sendMessage(chatId, text);
     return null;
   });
@@ -459,33 +548,73 @@ exports.afternoonSelfieCheck = functions.pubsub
   .onRun(async () => {
     const chatId = await getChatId();
     if (!chatId) return null;
-    const todayKey = fmtDate(new Date());
+    const now = new Date();
+    const todayKey = fmtDate(now);
+    const d = todayKey.split("-");
+    const dateObj = new Date(parseInt(d[0]), parseInt(d[1])-1, parseInt(d[2]));
+    const dayName = DAYS_UZ[dateObj.getDay()];
+    const dateDisp = `${d[2]}.${d[1]}.${d[0]}`;
+
     const [attSnap, checkSnap] = await Promise.all([
       db.ref(`attendance/${todayKey}`).once("value"),
       db.ref(`checkins/${todayKey}`).once("value")
     ]);
     const attData = attSnap.val() || {};
     const checkins = checkSnap.val() || {};
-    const notDone = [];
-    let skipped = 0;
+
+    const kelganlar = [];
+    const sababli = [];
+    const kelmagan = [];
+
     EMPLOYEES.forEach(emp => {
       const key = safeKey(emp);
       const att = attData[key];
-      if (att && NON_WORKING.includes(att.status)) { skipped++; return; }
-      if (att && att.status === "absent") return;
-      const rec = checkins[key];
-      if (!rec || !rec.afternoon) notDone.push(emp);
+      const check = checkins[key];
+      const status = att?.status;
+
+      if (status && NON_WORKING.includes(status)) {
+        sababli.push({ name: emp, icon: STATUS_ICONS[status], label: STATUS_LABELS[status] });
+        return;
+      }
+      if (check && check.afternoon) {
+        const lateMin = att?.afternoon || 0;
+        kelganlar.push({ name: emp, lateMin });
+        return;
+      }
+      if (status === "present" || status === "late") {
+        kelganlar.push({ name: emp, lateMin: att?.afternoon || 0 });
+        return;
+      }
+      kelmagan.push(emp);
     });
-    const working = EMPLOYEES.length - skipped;
-    if (notDone.length === 0) {
-      await sendMessage(chatId, "✅ <b>Tushlik selfie — 14:20</b>\n\nBarcha xodimlar selfie qilgan! 👏");
-      return null;
+
+    const workingTotal = EMPLOYEES.length - sababli.length;
+    const pct = workingTotal > 0 ? Math.round(kelganlar.length / workingTotal * 100) : 0;
+
+    let text = `📋 <b>TUSHLIK DAVOMAT</b>\n`;
+    text += `📅 ${dateDisp} | ${dayName} | 14:20\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    text += `✅ <b>Kelganlar (${kelganlar.length}):</b>\n`;
+    kelganlar.forEach((e, i) => {
+      let line = `  ${i+1}. ${e.name}`;
+      if (e.lateMin > 0) line += ` ⏰ (${fmtMins(e.lateMin)} kechikdi)`;
+      text += line + "\n";
+    });
+
+    if (sababli.length > 0) {
+      text += `\n📋 <b>Sababli (${sababli.length}):</b>\n`;
+      sababli.forEach((e, i) => { text += `  ${i+1}. ${e.name} (${e.icon} ${e.label})\n`; });
     }
-    let text = `📸 <b>Tushlik selfie — 14:20</b>\n━━━━━━━━━━━━━━━━━━\n`;
-    text += `⚠️ <b>${notDone.length} xodim selfie qilmagan:</b>\n\n`;
-    notDone.forEach((e, i) => { text += `${i+1}. ${e}\n`; });
-    text += `\n✅ Qilgan: <b>${working - notDone.length}</b>/${working}`;
-    if (skipped > 0) text += `\n🌴 Ishda emas: <b>${skipped}</b>`;
+
+    if (kelmagan.length > 0) {
+      text += `\n❌ <b>Kelmagan / Selfie qilmagan (${kelmagan.length}):</b>\n`;
+      kelmagan.forEach((e, i) => { text += `  ${i+1}. ${e}\n`; });
+    }
+
+    text += `\n━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `📊 Davomat: ${kelganlar.length}/${workingTotal} (${pct}%)`;
+
     await sendMessage(chatId, text);
     return null;
   });
@@ -574,15 +703,13 @@ exports.weeklyReport = functions.pubsub
 // ═══ AI TAHLIL (GEMINI) ═══
 // API kalit Firebase DB'dan olinadi — kodda saqlanmaydi
 const ALLOWED_ORIGINS = [
-  "https://lazizbeksaidov.github.io",
-  "http://localhost:5000",
-  "http://localhost:3000"
+  "https://lazizbeksaidov.github.io"
 ];
 
 exports.aiAnalysis = functions.https.onRequest(async (req, res) => {
   // CORS — faqat ruxsat berilgan saytlardan
   const origin = req.headers.origin || "";
-  if (ALLOWED_ORIGINS.some(o => origin.startsWith(o))) {
+  if (ALLOWED_ORIGINS.some(o => origin === o)) {
     res.set("Access-Control-Allow-Origin", origin);
   }
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -689,36 +816,52 @@ Quyidagilarni o'zbek tilida tahlil qil:
 
 Professional, qisqa va aniq yoz. Raqamlar bilan asosla.`;
     } else if (employeeName && targetEmps.length > 0) {
-      prompt = `Sen — Navoiy viloyati Investitsiyalar boshqarmasi xodimlar intizomi bo'yicha mutaxassissan.
+      prompt = `Sen — Navoiy viloyati Investitsiyalar va tashqi savdo boshqarmasi xodimlar intizomi bo'yicha yuqori malakali AI tahlilchisan.
 
-"${targetEmps[0]}" xodimi haqida ${months[mon]} ${yr} oyi uchun tahlil ber.
+Tahlil davri: ${months[mon]} ${yr}
+Jami ish kunlari: ${dates.length} kun
 
-Ma'lumot:
+"${targetEmps[0]}" xodimining TO'LIQ ma'lumoti:
 ${JSON.stringify(empStats[0], null, 1)}
 
-Quyidagilarni o'zbek tilida tahlil qil:
-1. Umumiy davomat holati
-2. Kechikish sabablari tahlili (qaysi kunlarda ko'p kechikadi?)
-3. Selfie intizomi (ertalab va tushlik)
-4. Kuchli tomonlari
-5. Yaxshilash uchun aniq tavsiyalar
+Boshqa xodimlar bilan solishtirish uchun umumiy statistika:
+${JSON.stringify(empStats.map(e => ({ism: e.ism, kelgan: e.kelgan, kechikkan: e.kechikkan, kelmagan: e.kelmagan, kechikish_daqiqa: e.kechikish_daqiqa})), null, 1)}
+
+Quyidagilarni o'zbek tilida CHUQUR tahlil qil:
+1. DAVOMAT HOLATI — necha kun keldi, kelmadi, foizlarda ko'rsat, boshqalar bilan solishtir
+2. KECHIKISH TAHLILI — jami necha marta, jami necha daqiqa, qaysi kunlarda ko'p, tendensiya
+3. SELFIE INTIZOMI — ertalab va tushlik selfilarni har kun tekshir, qaysi kunlari olmagan
+4. KUNLIK XARITA — har bir ish kunini qisqacha ko'rsat (keldi/kelmadi/kechikdi)
+5. KUCHLI TOMONLARI — aniq faktlarga asoslangan
+6. TAVSIYALAR — aniq va amaliy tavsiyalar
+7. UMUMIY BAL — 100 ballik tizimda baho ber va asosla
 
 ${question ? "Qo'shimcha savol: " + question : ""}
 
-Professional, qisqa va aniq yoz. Raqamlar bilan asosla.`;
+MUHIM: Har bir da'voni raqam bilan asosla. O'ylab topma, faqat yuqoridagi ma'lumotga asoslan.`;
     } else {
-      prompt = `Sen — Navoiy viloyati Investitsiyalar boshqarmasi xodimlar intizomi bo'yicha AI yordamchisan. ${months[mon]} ${yr} oyidagi ma'lumotlar asosida javob ber.
+      prompt = `Sen — Navoiy viloyati Investitsiyalar va tashqi savdo boshqarmasi xodimlar intizomi bo'yicha yuqori malakali AI tahlilchisan. Sening vazifang — aniq raqamlar va faktlarga asoslangan chuqur tahlil berish.
 
-Xodimlar: ${EMPLOYEES.join(", ")}
-Ish kunlari: ${dates.length}
+Hozirgi sana: ${fmtDate(now)}
+Tahlil davri: ${months[mon]} ${yr}
+Jami xodimlar: ${EMPLOYEES.length} nafar
+O'tgan ish kunlari: ${dates.length} kun
 
-Ma'lumot:
-${JSON.stringify(empStats.slice(0, 5), null, 1)}
-... (jami ${empStats.length} xodim)
+BARCHA xodimlar statistikasi:
+${JSON.stringify(empStats, null, 1)}
 
-Savol: ${question}
+Foydalanuvchi savoli: ${question}
 
-O'zbek tilida, professional va aniq javob ber. Raqamlar bilan asosla.`;
+MUHIM QOIDALAR:
+- Faqat yuqoridagi ma'lumotlarga asoslan, o'ylab topma
+- Har bir da'voni aniq raqam bilan asosla (masalan: "21 kundan 18 kun kelgan — 85.7%")
+- Agar savol aniq xodim haqida bo'lsa, uning kunlik ma'lumotlarini chuqur tahlil qil
+- Agar umumiy savol bo'lsa, barcha xodimlarni solishtir va reyting ber
+- Kechikish daqiqalarini aniq ko'rsat
+- Selfie intizomini (ertalab/tushlik) ham tekshir
+- Professional, tizimli va o'zbek tilida javob ber
+- Zarur bo'lsa jadval ko'rinishida ma'lumot ber
+- Qisqa emas, to'liq va chuqur tahlil ber`;
     }
 
     // Gemini API call — kalit Firebase DB'dan xavfsiz olinadi
@@ -732,7 +875,7 @@ O'zbek tilida, professional va aniq javob ber. Raqamlar bilan asosla.`;
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+        generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" }
@@ -753,26 +896,384 @@ O'zbek tilida, professional va aniq javob ber. Raqamlar bilan asosla.`;
   }
 });
 
-// ═══ CLIENT-SIDE DAN TELEGRAM XABAR YUBORISH ═══
-// Admin paneldan qo'lda hisobot yuborish uchun
+// ═══ TELEGRAM NOTIFY — Frontend orqali xabar yuborish ═══
 exports.sendTelegramNotify = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
+  // CORS — faqat ruxsat berilgan saytlardan (aiAnalysis bilan bir xil)
+  const origin = req.headers.origin || "";
+  if (ALLOWED_ORIGINS.some(o => origin === o)) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.set("X-Content-Type-Options", "nosniff");
+  res.set("X-Frame-Options", "DENY");
   if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+  if (req.method !== "POST") { res.status(405).json({ error: "POST only" }); return; }
+
+  // Auth check — faqat admin/boss
+  const authHeader = req.headers.authorization || "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!idToken) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const ADMIN_EMAILS = ["kadr@boshqarma.uz"];
+  const BOSS_EMAILS = ["ravshan.azimov@boshqarma.uz", "elbek.gafforov@boshqarma.uz"];
   try {
-    const authHeader = req.headers.authorization || "";
-    const idToken = authHeader.replace("Bearer ", "");
-    if (!idToken) { res.status(401).json({ ok: false, description: "No auth token" }); return; }
-    await admin.auth().verifyIdToken(idToken);
-    const chatId = await getChatId();
-    if (!chatId) { res.status(400).json({ ok: false, description: "Chat ID not configured" }); return; }
-    const { text, parseMode } = req.body;
-    const result = await sendMessage(chatId, text);
-    res.json(result || { ok: true });
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const email = (decoded.email || "").toLowerCase();
+    if (!ADMIN_EMAILS.includes(email) && !BOSS_EMAILS.includes(email)) {
+      res.status(403).json({ error: "Ruxsat yo'q" }); return;
+    }
+  } catch (e) {
+    res.status(401).json({ error: "Invalid token" }); return;
+  }
+
+  const { text, parseMode } = req.body;
+  if (!text) { res.status(400).json({ error: "text maydoni kerak" }); return; }
+
+  try {
+    // Bot token va chatId ni Firebase DB dan olish
+    const [tokenSnap, chatIdSnap] = await Promise.all([
+      db.ref("config/bot_token").once("value"),
+      db.ref("telegram_config/chatId").once("value")
+    ]);
+    const botToken = tokenSnap.val();
+    const chatId = chatIdSnap.val();
+
+    if (!botToken) { res.status(500).json({ error: "Bot token sozlanmagan" }); return; }
+    if (!chatId) { res.status(500).json({ error: "Chat ID sozlanmagan" }); return; }
+
+    const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const telegramRes = await fetch(telegramUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: parseMode || "HTML",
+        disable_web_page_preview: true
+      })
+    });
+    const telegramData = await telegramRes.json();
+
+    if (!telegramData.ok) {
+      res.status(500).json({ error: "Telegram xatolik: " + (telegramData.description || "Noma'lum") }); return;
+    }
+
+    res.json({ success: true, message_id: telegramData.result?.message_id });
   } catch (err) {
     console.error("sendTelegramNotify error:", err);
-    res.status(500).json({ ok: false, description: err.message });
+    res.status(500).json({ error: "Xabar yuborishda xatolik: " + err.message });
   }
 });
 
+// ═══ USER ROLES — Login qilganda rolni DB ga yozish ═══
+exports.setUserRole = functions.https.onRequest(async (req, res) => {
+  const origin = req.headers.origin || "";
+  if (ALLOWED_ORIGINS.some(o => origin === o)) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
+  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+  if (req.method !== "POST") { res.status(405).json({error:"POST only"}); return; }
+
+  const authHeader = req.headers.authorization || "";
+  const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!idToken) { res.status(401).json({error:"Unauthorized"}); return; }
+
+  const ADMIN_EMAILS = ["kadr@boshqarma.uz"];
+  const BOSS_EMAILS = ["ravshan.azimov@boshqarma.uz", "elbek.gafforov@boshqarma.uz"];
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const email = (decoded.email || "").toLowerCase();
+    const uid = decoded.uid;
+    let role = "employee";
+    if (ADMIN_EMAILS.includes(email)) role = "admin";
+    else if (BOSS_EMAILS.includes(email)) role = "boss";
+
+    await db.ref(`user_roles/${uid}`).set(role);
+    res.json({ success: true, role });
+  } catch (e) {
+    res.status(401).json({ error: "Invalid token" });
+  }
+});
+
+
+/* ═══════════════════════════════════════════════════════════ */
+/* 🔐 TELEGRAM LOGIN BOT                                        */
+/* Xodimlar Telegram orqali kirish                              */
+/* ═══════════════════════════════════════════════════════════ */
+
+const TG_LOGIN_PATH = "config/login_bot";
+
+async function getLoginBotToken() {
+  const snap = await db.ref(TG_LOGIN_PATH + "/bot_token").once("value");
+  return snap.val();
+}
+
+async function tgApi(method, body) {
+  const token = await getLoginBotToken();
+  if (!token) throw new Error("Login bot token not configured");
+  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return await res.json();
+}
+
+// ——— Translations ———
+const TG_T = {
+  uz: {
+    welcome: "👋 Xush kelibsiz!\n\nIntizom tizimiga kirish uchun telefon raqamingizni ulashing:",
+    lang_prompt: "🌐 Tilni tanlang / Выберите язык / Select language",
+    share_phone: "📱 Telefon raqamni ulashish",
+    not_found: "❌ Raqamingiz ro'yxatda topilmadi.\n\nIltimos, kadrlar bo'limiga murojaat qiling.\nRaqam: +998 XX XXX XX XX",
+    blocked: "🚫 Akkauntingiz bloklangan.\n\nAdmin bilan bog'laning.",
+    success: "✅ Muvaffaqiyatli!\n\nSizning ismingiz: {name}\nLavozim: {title}\n\n👇 Quyidagi havolani bosib, ilovaga kiring:",
+    open_app: "🔓 Ilovaga kirish",
+    cancel: "❌ Bekor qilish",
+    error: "⚠️ Xatolik yuz berdi. Keyinroq urinib ko'ring.",
+  },
+  ru: {
+    welcome: "👋 Добро пожаловать!\n\nДля входа в систему Intizom поделитесь номером телефона:",
+    lang_prompt: "🌐 Выберите язык",
+    share_phone: "📱 Поделиться номером",
+    not_found: "❌ Ваш номер не найден.\n\nОбратитесь в отдел кадров.",
+    blocked: "🚫 Ваш аккаунт заблокирован.\n\nСвяжитесь с администратором.",
+    success: "✅ Успешно!\n\nВаше имя: {name}\nДолжность: {title}\n\n👇 Нажмите для входа в приложение:",
+    open_app: "🔓 Войти в приложение",
+    cancel: "❌ Отменить",
+    error: "⚠️ Ошибка. Попробуйте позже.",
+  },
+  en: {
+    welcome: "👋 Welcome!\n\nTo sign in to Intizom, please share your phone number:",
+    lang_prompt: "🌐 Select language",
+    share_phone: "📱 Share phone number",
+    not_found: "❌ Your number is not in the whitelist.\n\nPlease contact HR department.",
+    blocked: "🚫 Your account is blocked.\n\nContact administrator.",
+    success: "✅ Success!\n\nName: {name}\nPosition: {title}\n\n👇 Click below to open the app:",
+    open_app: "🔓 Open app",
+    cancel: "❌ Cancel",
+    error: "⚠️ Error. Try again later.",
+  },
+};
+
+function normalizePhone(raw) {
+  if (!raw) return "";
+  let p = String(raw).replace(/[^\d]/g, "");
+  if (p.startsWith("998") && p.length === 12) return "+" + p;
+  if (p.length === 9) return "+998" + p;
+  if (p.length === 12) return "+" + p;
+  return "+" + p;
+}
+
+async function setLang(chatId, lang) {
+  await db.ref(`tg_sessions/${chatId}/lang`).set(lang);
+}
+
+async function getLang(chatId) {
+  const snap = await db.ref(`tg_sessions/${chatId}/lang`).once("value");
+  return snap.val() || "uz";
+}
+
+async function lookupWhitelist(phone) {
+  const snap = await db.ref("whitelist").once("value");
+  const all = snap.val() || {};
+  for (const key in all) {
+    const rec = all[key];
+    if (!rec || !rec.phone) continue;
+    if (normalizePhone(rec.phone) === phone) {
+      return { ...rec, key };
+    }
+  }
+  return null;
+}
+
+async function createLoginToken(uid, claims) {
+  try {
+    return await admin.auth().createCustomToken(uid, claims || {});
+  } catch (e) {
+    console.error("Custom token error:", e);
+    return null;
+  }
+}
+
+async function ensureUser(rec) {
+  // rec.key = phone normalized; create or get Firebase user
+  const phone = normalizePhone(rec.phone);
+  const email = phone.replace("+", "").replace(/\D/g, "") + "@intizom.uz";
+  let user;
+  try {
+    user = await admin.auth().getUserByEmail(email);
+  } catch (e) {
+    // Create new user
+    user = await admin.auth().createUser({
+      email,
+      emailVerified: true,
+      displayName: rec.name,
+      disabled: false,
+    });
+    // Save role
+    await db.ref(`user_roles/${user.uid}`).set(rec.role || "employee");
+    await db.ref(`users/${user.uid}`).set({
+      name: rec.name,
+      phone,
+      role: rec.role || "employee",
+      title: rec.title || "",
+      createdAt: Date.now(),
+    });
+  }
+  return { uid: user.uid, email };
+}
+
+exports.telegramLoginBot = functions
+  .runWith({ timeoutSeconds: 30, memory: "256MB" })
+  .https.onRequest(async (req, res) => {
+    try {
+      if (req.method !== "POST") {
+        return res.status(200).send("OK");
+      }
+      const update = req.body || {};
+      const msg = update.message || update.callback_query?.message;
+      if (!msg) return res.status(200).send("OK");
+
+      const chatId = msg.chat?.id || update.callback_query?.from?.id;
+      if (!chatId) return res.status(200).send("OK");
+
+      // ——— /start ———
+      if (update.message?.text === "/start" || update.message?.text?.startsWith("/start ")) {
+        await tgApi("sendMessage", {
+          chat_id: chatId,
+          text: TG_T.uz.lang_prompt + "\n" + TG_T.ru.lang_prompt + "\n" + TG_T.en.lang_prompt,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🇺🇿 O'zbekcha", callback_data: "lang:uz" }],
+              [{ text: "🇷🇺 Русский", callback_data: "lang:ru" }],
+              [{ text: "🇬🇧 English", callback_data: "lang:en" }],
+            ],
+          },
+        });
+        return res.status(200).send("OK");
+      }
+
+      // ——— Language callback ———
+      if (update.callback_query?.data?.startsWith("lang:")) {
+        const lang = update.callback_query.data.split(":")[1];
+        await setLang(chatId, lang);
+        const t = TG_T[lang] || TG_T.uz;
+        await tgApi("answerCallbackQuery", { callback_query_id: update.callback_query.id });
+        await tgApi("sendMessage", {
+          chat_id: chatId,
+          text: t.welcome,
+          reply_markup: {
+            keyboard: [[{ text: t.share_phone, request_contact: true }]],
+            resize_keyboard: true,
+            one_time_keyboard: true,
+          },
+        });
+        return res.status(200).send("OK");
+      }
+
+      // ——— Contact shared ———
+      if (update.message?.contact) {
+        const contact = update.message.contact;
+        const lang = await getLang(chatId);
+        const t = TG_T[lang] || TG_T.uz;
+
+        // Security: verify phone belongs to the sender
+        if (contact.user_id && contact.user_id !== update.message.from.id) {
+          await tgApi("sendMessage", { chat_id: chatId, text: "⚠️ Faqat o'z raqamingizni ulashing!" });
+          return res.status(200).send("OK");
+        }
+
+        const phone = normalizePhone(contact.phone_number);
+        const rec = await lookupWhitelist(phone);
+
+        if (!rec) {
+          await tgApi("sendMessage", { chat_id: chatId, text: t.not_found, reply_markup: { remove_keyboard: true } });
+          return res.status(200).send("OK");
+        }
+        if (rec.active === false) {
+          await tgApi("sendMessage", { chat_id: chatId, text: t.blocked, reply_markup: { remove_keyboard: true } });
+          return res.status(200).send("OK");
+        }
+
+        // Create/get user, generate custom token
+        const { uid, email } = await ensureUser({ ...rec, phone });
+        const token = await createLoginToken(uid, { phone, role: rec.role || "employee" });
+        if (!token) {
+          await tgApi("sendMessage", { chat_id: chatId, text: t.error, reply_markup: { remove_keyboard: true } });
+          return res.status(200).send("OK");
+        }
+
+        // Store token with expiry for web app to pick up
+        const loginId = "tg_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+        await db.ref(`tg_logins/${loginId}`).set({
+          token,
+          phone,
+          uid,
+          name: rec.name,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 5 * 60 * 1000, // 5 daqiqa
+          used: false,
+        });
+
+        const appUrl = `https://xodimlar-7c13c.web.app/?tg=${loginId}`;
+
+        const successMsg = t.success
+          .replace("{name}", rec.name)
+          .replace("{title}", rec.title || (rec.role === "admin" ? "Kadrlar" : rec.role === "boss" ? "Rahbar" : "Xodim"));
+
+        await tgApi("sendMessage", {
+          chat_id: chatId,
+          text: successMsg,
+          reply_markup: {
+            inline_keyboard: [[{ text: t.open_app, url: appUrl }]],
+          },
+        });
+        await tgApi("sendMessage", {
+          chat_id: chatId,
+          text: "🔒 " + (lang === "ru" ? "Ссылка действительна 5 минут" : lang === "en" ? "Link is valid for 5 minutes" : "Havola 5 daqiqa amal qiladi"),
+          reply_markup: { remove_keyboard: true },
+        });
+        return res.status(200).send("OK");
+      }
+
+      return res.status(200).send("OK");
+    } catch (e) {
+      console.error("telegramLoginBot error:", e);
+      return res.status(200).send("OK");
+    }
+  });
+
+/**
+ * Web app uchun: tg_logins/{id} ni olib, custom token qaytarish
+ * Saytdan Firebase signInWithCustomToken chaqirish
+ */
+exports.claimTelegramLogin = functions.https.onRequest(async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.status(204).send("");
+
+  try {
+    const { loginId } = req.body || {};
+    if (!loginId || typeof loginId !== "string" || loginId.length > 100) {
+      return res.status(400).json({ error: "Invalid loginId" });
+    }
+    const snap = await db.ref(`tg_logins/${loginId}`).once("value");
+    const rec = snap.val();
+    if (!rec) return res.status(404).json({ error: "Not found" });
+    if (rec.used) return res.status(410).json({ error: "Already used" });
+    if (Date.now() > rec.expiresAt) return res.status(410).json({ error: "Expired" });
+
+    // Mark as used (one-time)
+    await db.ref(`tg_logins/${loginId}`).update({ used: true, usedAt: Date.now() });
+
+    return res.json({ token: rec.token, name: rec.name, phone: rec.phone });
+  } catch (e) {
+    console.error("claimTelegramLogin error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+});

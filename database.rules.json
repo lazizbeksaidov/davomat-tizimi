@@ -100,6 +100,28 @@
       ".write": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
       ".validate": "newData.hasChild('lat') && newData.hasChild('lng') && newData.hasChild('radius')"
     },
+    "whitelist": {
+      ".read": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin' || root.child('user_roles').child(auth.uid).val() === 'boss')",
+      ".write": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
+      "$wlId": {
+        ".validate": "newData.hasChild('phone') && newData.hasChild('name')",
+        "phone": { ".validate": "newData.isString() && newData.val().length >= 9 && newData.val().length <= 20" },
+        "name": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "role": { ".validate": "newData.isString() && newData.val().matches(/^(admin|boss|observer|employee)$/)" },
+        "title": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "active": { ".validate": "newData.isBoolean()" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "createdBy": { ".validate": "newData.isString() && newData.val().length <= 100" }
+      }
+    },
+    "tg_sessions": {
+      ".read": false,
+      ".write": false
+    },
+    "tg_logins": {
+      ".read": false,
+      ".write": false
+    },
     "audit_log": {
       ".read": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
       "$logId": {

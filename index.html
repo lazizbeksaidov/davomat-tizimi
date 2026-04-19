@@ -11731,6 +11731,216 @@ function useAnnouncementNotifier(user){
   },[user]);
 }
 
+/* ═══ WHITELIST VIEW — Admin ═══ */
+function WhitelistView({showToast, user}){
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+
+  useEffect(()=>{
+    const ref = db.ref('whitelist');
+    ref.on('value', snap=>{
+      const val = snap.val() || {};
+      const arr = Object.keys(val).map(k=>({id:k, ...val[k]}));
+      arr.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+      setList(arr);
+      setLoading(false);
+    }, err=>{
+      console.error('Whitelist read error:', err);
+      setLoading(false);
+    });
+    return ()=>ref.off();
+  },[]);
+
+  function openEdit(item){
+    setEditItem(item||{phone:'+998',name:'',role:'employee',title:'',active:true});
+    setEditOpen(true);
+  }
+
+  function closeEdit(){
+    setEditOpen(false);
+    setEditItem(null);
+  }
+
+  function normalizePhoneClient(raw){
+    if(!raw)return '';
+    let p = String(raw).replace(/[^\d]/g,'');
+    if(p.startsWith('998') && p.length===12) return '+'+p;
+    if(p.length===9) return '+998'+p;
+    if(p.length===12) return '+'+p;
+    return '+'+p;
+  }
+
+  function saveItem(){
+    if(!editItem) return;
+    const phone = normalizePhoneClient(editItem.phone);
+    if(phone.length < 13){showToast && showToast('⚠️ Telefon raqam to\'liq emas');return;}
+    if(!editItem.name || editItem.name.trim().length<2){showToast && showToast('⚠️ Ism kiriting');return;}
+    const data = {
+      phone,
+      name: editItem.name.trim(),
+      role: editItem.role || 'employee',
+      title: (editItem.title||'').trim(),
+      active: editItem.active !== false,
+      createdAt: editItem.createdAt || Date.now(),
+      createdBy: user?.email || 'admin'
+    };
+    const id = editItem.id || phone.replace(/\D/g,'');
+    db.ref('whitelist/'+id).set(data).then(()=>{
+      showToast && showToast('✅ Saqlandi');
+      closeEdit();
+    }).catch(e=>showToast && showToast('❌ '+e.message));
+  }
+
+  function deleteItem(id){
+    if(!window.confirm('Rostdan o\'chirilsinmi?')) return;
+    db.ref('whitelist/'+id).remove().then(()=>{
+      showToast && showToast('🗑 O\'chirildi');
+    });
+  }
+
+  function toggleActive(item){
+    db.ref('whitelist/'+item.id+'/active').set(!(item.active!==false));
+  }
+
+  return (
+    <div style={{animation:'fadeUp .35s ease'}}>
+      <div className="page-header">
+        <div>
+          <div className="page-title">📱 Xodim Ro'yxati (Whitelist)</div>
+          <div className="page-subtitle">Faqat bu ro'yxatdagi telefon raqamlari Telegram orqali kirishi mumkin</div>
+        </div>
+        <div className="page-actions">
+          <button className="action-btn primary" onClick={()=>openEdit(null)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Yangi xodim
+          </button>
+        </div>
+      </div>
+
+      <div className="table-card">
+        <div className="table-header">
+          <div>
+            <div className="table-title">Jami: {list.length} ta xodim</div>
+            <div className="table-meta">Faol: {list.filter(x=>x.active!==false).length} · Bloklangan: {list.filter(x=>x.active===false).length}</div>
+          </div>
+        </div>
+        {loading ? (
+          <div style={{padding:40,textAlign:'center',color:'var(--t3)'}}>Yuklanmoqda...</div>
+        ) : list.length===0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">📱</div>
+            <div className="empty-title">Ro'yxat bo'sh</div>
+            <div className="empty-sub">Xodimlar qo'shing — ular Telegram orqali kirishi mumkin bo'ladi</div>
+          </div>
+        ) : (
+          <div className="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Ism</th>
+                  <th>Telefon</th>
+                  <th>Lavozim</th>
+                  <th>Rol</th>
+                  <th className="th-center">Holat</th>
+                  <th className="th-right">Amal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((item,i)=>(
+                  <tr key={item.id}>
+                    <td><span className="row-num">{i+1}</span></td>
+                    <td className="emp-name">{item.name}</td>
+                    <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12.5}}>{item.phone}</td>
+                    <td style={{fontSize:12.5,color:'var(--t2)'}}>{item.title||'—'}</td>
+                    <td>
+                      <span className="badge" style={{
+                        background: item.role==='admin'?'rgba(239,68,68,.1)':item.role==='boss'?'rgba(245,158,11,.1)':item.role==='observer'?'rgba(59,91,255,.1)':'rgba(16,185,129,.1)',
+                        color: item.role==='admin'?'#ef4444':item.role==='boss'?'#f59e0b':item.role==='observer'?'var(--navy)':'#10b981'
+                      }}>{item.role}</span>
+                    </td>
+                    <td className="th-center">
+                      <button onClick={()=>toggleActive(item)} style={{
+                        padding:'4px 10px',borderRadius:12,border:'none',cursor:'pointer',
+                        background: item.active!==false?'rgba(16,185,129,.12)':'rgba(239,68,68,.12)',
+                        color: item.active!==false?'#10b981':'#ef4444',
+                        fontSize:11,fontWeight:700
+                      }}>
+                        {item.active!==false?'🟢 Faol':'🔴 Bloklangan'}
+                      </button>
+                    </td>
+                    <td className="th-right">
+                      <button onClick={()=>openEdit(item)} style={{background:'none',border:'none',cursor:'pointer',padding:6,marginRight:4,fontSize:16}}>✏️</button>
+                      <button onClick={()=>deleteItem(item.id)} style={{background:'none',border:'none',cursor:'pointer',padding:6,fontSize:16}}>🗑</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {editOpen && editItem && (
+        <div className="modal-overlay" onClick={closeEdit}>
+          <div className="modal-box" style={{maxWidth:480,padding:'28px 30px'}} onClick={e=>e.stopPropagation()}>
+            <button className="modal-close" onClick={closeEdit}>✕</button>
+            <div style={{fontSize:20,fontWeight:800,color:'var(--t1)',marginBottom:6,fontFamily:'Plus Jakarta Sans,sans-serif',letterSpacing:'-0.02em'}}>
+              {editItem.id?'✏️ Xodim ma\'lumotlari':'➕ Yangi xodim'}
+            </div>
+            <div style={{fontSize:12.5,color:'var(--t3)',marginBottom:20}}>Telegram orqali kirish uchun ro'yxatga qo'shiladi</div>
+            <div className="form-group">
+              <label className="form-label">📱 Telefon raqam</label>
+              <input className="form-input" placeholder="+998901234567"
+                value={editItem.phone}
+                onChange={e=>setEditItem({...editItem,phone:e.target.value})}/>
+            </div>
+            <div className="form-group">
+              <label className="form-label">👤 Ism Familiya</label>
+              <input className="form-input" placeholder="Saidov Lazizbek"
+                value={editItem.name}
+                onChange={e=>setEditItem({...editItem,name:e.target.value})}/>
+            </div>
+            <div className="form-group">
+              <label className="form-label">💼 Lavozim</label>
+              <input className="form-input" placeholder="Yurist"
+                value={editItem.title||''}
+                onChange={e=>setEditItem({...editItem,title:e.target.value})}/>
+            </div>
+            <div className="form-group">
+              <label className="form-label">🎭 Rol</label>
+              <select className="form-input" value={editItem.role||'employee'}
+                onChange={e=>setEditItem({...editItem,role:e.target.value})}>
+                <option value="employee">Xodim (employee)</option>
+                <option value="observer">Kuzatuvchi (observer)</option>
+                <option value="boss">Rahbar (boss)</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20,padding:12,background:'var(--surface2)',borderRadius:10}}>
+              <input type="checkbox" id="wl-active" checked={editItem.active!==false}
+                onChange={e=>setEditItem({...editItem,active:e.target.checked})}
+                style={{width:18,height:18,cursor:'pointer'}}/>
+              <label htmlFor="wl-active" style={{fontSize:13,color:'var(--t2)',cursor:'pointer',flex:1}}>
+                Faol (kirishi mumkin)
+              </label>
+            </div>
+            <div style={{display:'flex',gap:10}}>
+              <button className="action-btn" onClick={closeEdit} style={{flex:1}}>Bekor qilish</button>
+              <button className="action-btn primary" onClick={saveItem} style={{flex:1}}>💾 Saqlash</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ═══ MAIN APP ═══ */
 function App(){
   const [user,setUser]=useState(null);
@@ -11828,6 +12038,32 @@ function App(){
     }, 60000);
     return () => clearInterval(iv);
   },[user]);
+
+  // Telegram Login: claim token from URL ?tg=ID
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const loginId = params.get('tg');
+    if(!loginId) return;
+    // Remove from URL immediately
+    window.history.replaceState({}, '', window.location.pathname);
+    fetch('https://us-central1-xodimlar-7c13c.cloudfunctions.net/claimTelegramLogin', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({loginId})
+    }).then(r=>r.json()).then(data=>{
+      if(data.error){
+        alert('Kirish xatosi: '+data.error);
+        return;
+      }
+      if(data.token){
+        auth.signInWithCustomToken(data.token).catch(err=>{
+          alert('Kirish xatosi: '+(err.message||'Noma\'lum xato'));
+        });
+      }
+    }).catch(err=>{
+      console.error('Telegram claim failed:', err);
+    });
+  },[]);
 
   useEffect(()=>{
     setupPWAAssets();
@@ -12201,6 +12437,36 @@ function App(){
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             Firebase Authentication · SSL himoyalangan
           </div>
+          <button onClick={()=>{
+            window.open('https://t.me/Intizom_login_bot','_blank');
+          }} style={{
+            width:"100%",
+            padding:"13px 16px",
+            marginTop:14,
+            marginBottom:8,
+            border:"1.5px solid #229ED9",
+            background:"#fff",
+            color:"#229ED9",
+            borderRadius:12,
+            fontSize:14,
+            fontWeight:700,
+            fontFamily:"'Plus Jakarta Sans','Inter',sans-serif",
+            cursor:"pointer",
+            display:"flex",
+            alignItems:"center",
+            justifyContent:"center",
+            gap:10,
+            transition:"all .2s ease"
+          }} onMouseEnter={e=>{e.currentTarget.style.background='#229ED9';e.currentTarget.style.color='#fff'}}
+             onMouseLeave={e=>{e.currentTarget.style.background='#fff';e.currentTarget.style.color='#229ED9'}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
+            </svg>
+            Telegram orqali kirish
+          </button>
+          <div style={{textAlign:"center",fontSize:11,color:"var(--t4)",marginTop:4,marginBottom:14}}>
+            Tez va xavfsiz — parolsiz
+          </div>
           <div style={{display:"flex",justifyContent:"center",gap:6,marginTop:20}}>
             {[["uz","🇺🇿 O'zbek"],["ru","🇷🇺 Русский"],["en","🇬🇧 English"]].map(([code,label])=>(
               <button key={code} onClick={()=>changeLang(code)} style={{
@@ -12246,6 +12512,7 @@ function App(){
       {k:"holidays",icon:"🎉",label:t('nav_holidays')},
     ]},
     ...(isAdmin?[{label:t('nav_settings'),items:[
+      {k:"whitelist",icon:"📱",label:"Xodim Ro'yxati"},
       {k:"location",icon:"📍",label:t('nav_location')},
       {k:"telegram",icon:"📨",label:t('nav_telegram')},
       {k:"accounts",icon:"🔑",label:t('nav_accounts')},
@@ -12265,7 +12532,7 @@ function App(){
   ];
   const navGroups=canManage?adminNavGroups:empNavGroups;
   const navItems=navGroups.flatMap(g=>g.items);
-  const viewLabels={dashboard:"Dashboard",davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",location:"Hudud Sozlamalari",ijro:"Ijro Intizomi",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
+  const viewLabels={whitelist:"Xodim Ro'yxati (Whitelist)",dashboard:"Dashboard",davomat:"Davomat",analytics:"Analitika",employees:"Xodimlar Bo'limi",holidays:"Bayramlar",daily:"Kunlik Hisobot",weekly:"Haftalik Hisobot",monthly:"Oylik Hisobot",stats:"Statistika va Tahlil",rankings:"Xodimlar Reytingi",announcements:"E'lonlar",myStats:"Shaxsiy Kabinet",birthdays:"Tug'ilgan Kunlar",selfieHistory:"Selfie Tarix",selfie:"Selfie Davomat",empNotes:"Izohlar",aiAnalysis:"AI Tahlil",location:"Hudud Sozlamalari",ijro:"Ijro Intizomi",telegram:"Telegram Bot",accounts:"Akkauntlar Boshqaruvi"};
   const roleLabel=isAdmin?t('role_admin'):isBoss?t('role_boss'):isObserver?t('role_observer'):t('role_employee');
 
   return(
@@ -12506,6 +12773,7 @@ function App(){
                 {view==="dashboard"&&<DashboardView showToast={showToast}/>}
                 {view==="location"&&isAdmin&&<LocationSettings showToast={showToast}/>}
                 {view==="telegram"&&isAdmin&&<TelegramSettings showToast={showToast}/>}
+                {view==="whitelist"&&isAdmin&&<WhitelistView showToast={showToast} user={user}/>}
                 {view==="accounts"&&isAdmin&&<AccountsManager showToast={showToast}/>}
               </>
           }
