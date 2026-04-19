@@ -1,71 +1,148 @@
 {
   "rules": {
     "attendance": {
-      ".read": "auth != null",
+      ".read": "auth != null && auth.token.email_verified != false",
       "$dateKey": {
+        ".validate": "$dateKey.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
         "$empKey": {
+          ".validate": "$empKey.length <= 100 && newData.hasChild('status')",
           ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin' || root.child('user_roles').child(auth.uid).val() === 'boss')",
-          ".validate": "newData.hasChild('status')",
           "status": {
             ".validate": "newData.isString() && newData.val().matches(/^(present|late|absent|sick|trip|training|vacation|excused|holiday)$/)"
           },
           "morning": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 480" },
           "afternoon": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 480" },
-          "note": { ".validate": "newData.isString() && newData.val().length <= 500" }
+          "note": { ".validate": "newData.isString() && newData.val().length <= 500" },
+          "$other": { ".validate": false }
         }
       }
     },
     "checkins": {
       ".read": "auth != null",
       "$dateKey": {
+        ".validate": "$dateKey.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
         "$empKey": {
+          ".validate": "$empKey.length <= 100",
           "morning": {
-            ".write": "auth != null",
-            ".validate": "newData.hasChild('time')"
+            ".write": "auth != null && !data.exists()",
+            ".validate": "newData.hasChild('time') && newData.child('time').isString() && newData.child('time').val().length <= 20",
+            "time": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "photo": { ".validate": "newData.isString() && newData.val().length <= 500000" },
+            "gpsLat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+            "gpsLng": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+            "gpsDistance": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+            "gpsOk": { ".validate": "newData.isBoolean()" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 100" },
+            "lateMinutes": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 480" },
+            "empNote": { ".validate": "newData.isString() && newData.val().length <= 500" },
+            "session": { ".validate": "newData.isString() && newData.val().matches(/^(morning|afternoon)$/)" },
+            "$other": { ".validate": false }
           },
           "afternoon": {
-            ".write": "auth != null",
-            ".validate": "newData.hasChild('time')"
-          }
+            ".write": "auth != null && !data.exists()",
+            ".validate": "newData.hasChild('time') && newData.child('time').isString() && newData.child('time').val().length <= 20",
+            "time": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "photo": { ".validate": "newData.isString() && newData.val().length <= 500000" },
+            "gpsLat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+            "gpsLng": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+            "gpsDistance": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000" },
+            "gpsOk": { ".validate": "newData.isBoolean()" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 100" },
+            "lateMinutes": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 480" },
+            "empNote": { ".validate": "newData.isString() && newData.val().length <= 500" },
+            "session": { ".validate": "newData.isString() && newData.val().matches(/^(morning|afternoon)$/)" },
+            "$other": { ".validate": false }
+          },
+          "$other": { ".validate": false }
         }
       }
     },
     "employees": {
       ".read": "auth != null",
-      ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')",
+      ".write": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
       "$empKey": {
-        ".validate": "newData.hasChild('firstName') && newData.hasChild('lastName')"
+        ".validate": "newData.hasChild('firstName') && newData.hasChild('lastName')",
+        "firstName": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "lastName": { ".validate": "newData.isString() && newData.val().length <= 100" }
       }
     },
     "holidays": {
       ".read": "auth != null",
       "$holId": {
         ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin' || root.child('user_roles').child(auth.uid).val() === 'boss')",
-        ".validate": "newData.hasChild('name') && newData.hasChild('date')"
+        ".validate": "newData.hasChild('name') && newData.hasChild('date')",
+        "name": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "date": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" },
+        "endDate": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" }
       }
     },
     "employee_notes": {
       ".read": "auth != null",
       "$noteId": {
         ".write": "auth != null",
-        ".validate": "newData.hasChild('empName') && newData.hasChild('text') && newData.hasChild('timestamp')"
+        ".validate": "newData.hasChild('empName') && newData.hasChild('text') && newData.hasChild('timestamp')",
+        "empName": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "text": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+        "timestamp": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" }
       }
     },
     "announcements": {
       ".read": "auth != null",
       "$annId": {
-        ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')",
-        ".validate": "newData.hasChild('title') && newData.hasChild('text') && newData.hasChild('timestamp')"
+        ".write": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
+        ".validate": "newData.hasChild('title') && newData.hasChild('text') && newData.hasChild('timestamp')",
+        "title": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "text": { ".validate": "newData.isString() && newData.val().length <= 5000" },
+        "timestamp": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" }
       }
     },
     "telegram_config": {
-      ".read": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')",
-      ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')"
+      ".read": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
+      ".write": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
+      "chatId": { ".validate": "newData.isString() && newData.val().length <= 50" },
+      "enabled": { ".validate": "newData.isBoolean()" }
+    },
+    "ijro": {
+      ".read": "auth != null",
+      "$dateKey": {
+        ".validate": "$dateKey.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+        "$empKey": {
+          ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin' || root.child('user_roles').child(auth.uid).val() === 'boss')",
+          ".validate": "newData.hasChild('total') && newData.hasChild('overdue')",
+          "total": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
+          "overdue": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" }
+        }
+      }
     },
     "office_location": {
       ".read": "auth != null",
-      ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')",
-      ".validate": "newData.hasChild('lat') && newData.hasChild('lng') && newData.hasChild('radius')"
+      ".write": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
+      ".validate": "newData.hasChild('lat') && newData.hasChild('lng') && newData.hasChild('radius')",
+      "lat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+      "lng": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+      "radius": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 50000" }
+    },
+    "audit_log": {
+      ".read": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
+      "$logId": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChild('action') && newData.hasChild('user') && newData.hasChild('timestamp')",
+        "action": { ".validate": "newData.isString() && newData.val().length <= 50" },
+        "detail": { ".validate": "newData.isString() && newData.val().length <= 1000" },
+        "user": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "timestamp": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+        "fp": { ".validate": "newData.isString() && newData.val().length <= 32" },
+        "ip": { ".validate": "newData.isString() && newData.val().length <= 45" }
+      }
+    },
+    "failed_logins": {
+      ".read": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
+      "$attempt": {
+        ".write": "auth == null || auth != null",
+        ".validate": "newData.hasChild('email') && newData.hasChild('timestamp')",
+        "email": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "timestamp": { ".validate": "newData.isNumber()" }
+      }
     },
     "config": {
       ".read": false,
@@ -74,7 +151,8 @@
     "user_roles": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (root.child('user_roles').child(auth.uid).val() === 'admin')"
+        ".write": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
+        ".validate": "newData.isString() && newData.val().matches(/^(admin|boss|observer|employee)$/)"
       }
     },
     "users": {

@@ -7,6 +7,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Xodimlar" />
+  <!-- Security meta tags -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+  <meta name="googlebot" content="noindex, nofollow" />
+  <meta name="format-detection" content="telephone=no" />
   <title>Intizom — Xodimlar Monitoringi</title>
   <link id="dynamic-manifest" rel="manifest" />
   <link id="dynamic-apple-icon" rel="apple-touch-icon" />
@@ -20,9 +27,9 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js" integrity="sha384-dqDn4UOhYWNxmtwnMX6yC3WtZZ6Li8rF6rLB7cu0i/R7btvb+p+kObgEHto7VsJK" crossorigin="anonymous"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" crossorigin="anonymous" async></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js" crossorigin="anonymous" async></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous" async></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous" async></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js" integrity="sha384-Xl/CUCfJbzsngMp0CFxkmF0VW/8C160IsGujqeQlIhaGxKz2+JsIGORFqtCPeldF" crossorigin="anonymous" async></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous" async></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -3721,6 +3728,191 @@ function getDeviceId() {
   }
   return id;
 }
+
+/* ═══════════════════════════════════════════════════════════ */
+/* 🛡️  MAXIMUM SECURITY LAYER — Anti-hack protection             */
+/* ═══════════════════════════════════════════════════════════ */
+const SEC = (function(){
+  const LOCKOUT_KEY = '__ilk';
+  const FP_KEY = '__ifp';
+  const ENC_KEY_NAME = '__iek';
+  const MAX_FAILED = 5;
+  const LOCKOUT_MS = 15 * 60 * 1000; // 15 daqiqa
+
+  // ——— Device Fingerprint (session hijack himoyasi) ———
+  function fingerprint() {
+    const parts = [
+      navigator.userAgent,
+      navigator.language,
+      navigator.platform,
+      screen.width + 'x' + screen.height,
+      screen.colorDepth,
+      new Date().getTimezoneOffset(),
+      navigator.hardwareConcurrency || 0,
+      navigator.deviceMemory || 0,
+    ].join('|');
+    return sha256(parts);
+  }
+  function sha256(s) {
+    // Simple synchronous hash (non-crypto, fast identity check)
+    let h1=0xdeadbeef, h2=0x41c6ce57;
+    for(let i=0; i<s.length; i++){
+      const ch = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1>>>0)).toString(16);
+  }
+  function checkFingerprint() {
+    const stored = localStorage.getItem(FP_KEY);
+    const current = fingerprint();
+    if(!stored) { localStorage.setItem(FP_KEY, current); return true; }
+    if(stored !== current) {
+      console.warn('[SEC] Device fingerprint mismatch — possible session hijack');
+      return false;
+    }
+    return true;
+  }
+
+  // ——— Brute-force Lockout ———
+  function getLockout() {
+    try { return JSON.parse(localStorage.getItem(LOCKOUT_KEY) || '{"fails":0,"until":0}'); }
+    catch(e) { return {fails:0, until:0}; }
+  }
+  function setLockout(state) {
+    localStorage.setItem(LOCKOUT_KEY, JSON.stringify(state));
+  }
+  function isLocked() {
+    const s = getLockout();
+    return s.until > Date.now();
+  }
+  function lockoutRemaining() {
+    const s = getLockout();
+    return Math.max(0, s.until - Date.now());
+  }
+  function recordLoginFail() {
+    const s = getLockout();
+    s.fails = (s.fails||0) + 1;
+    if(s.fails >= MAX_FAILED) {
+      s.until = Date.now() + LOCKOUT_MS;
+      s.fails = 0;
+      console.warn('[SEC] Login locked for 15 minutes');
+    }
+    setLockout(s);
+    return s;
+  }
+  function resetLoginFails() {
+    setLockout({fails:0, until:0});
+  }
+
+  // ——— AES-GCM Encrypted Storage ———
+  async function getKey() {
+    let keyB64 = sessionStorage.getItem(ENC_KEY_NAME);
+    if(!keyB64) {
+      const k = await window.crypto.subtle.generateKey({name:'AES-GCM', length:256}, true, ['encrypt','decrypt']);
+      const raw = await window.crypto.subtle.exportKey('raw', k);
+      keyB64 = btoa(String.fromCharCode(...new Uint8Array(raw)));
+      sessionStorage.setItem(ENC_KEY_NAME, keyB64);
+    }
+    const bytes = Uint8Array.from(atob(keyB64), c=>c.charCodeAt(0));
+    return await window.crypto.subtle.importKey('raw', bytes, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
+  }
+  async function encrypt(plain) {
+    try {
+      const key = await getKey();
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const data = new TextEncoder().encode(typeof plain === 'string' ? plain : JSON.stringify(plain));
+      const cipher = await window.crypto.subtle.encrypt({name:'AES-GCM', iv}, key, data);
+      const combined = new Uint8Array(iv.length + cipher.byteLength);
+      combined.set(iv, 0);
+      combined.set(new Uint8Array(cipher), iv.length);
+      return btoa(String.fromCharCode(...combined));
+    } catch(e) { return null; }
+  }
+  async function decrypt(cipherB64) {
+    try {
+      const key = await getKey();
+      const combined = Uint8Array.from(atob(cipherB64), c=>c.charCodeAt(0));
+      const iv = combined.slice(0, 12);
+      const data = combined.slice(12);
+      const plain = await window.crypto.subtle.decrypt({name:'AES-GCM', iv}, key, data);
+      return new TextDecoder().decode(plain);
+    } catch(e) { return null; }
+  }
+  async function setSecure(key, value) {
+    const enc = await encrypt(value);
+    if(enc) localStorage.setItem('__enc_'+key, enc);
+  }
+  async function getSecure(key) {
+    const enc = localStorage.getItem('__enc_'+key);
+    if(!enc) return null;
+    const plain = await decrypt(enc);
+    try { return JSON.parse(plain); } catch(e) { return plain; }
+  }
+
+  // ——— Anti-tamper: DevTools detection (warning only) ———
+  let tamperWarned = false;
+  function antiTamper() {
+    const threshold = 160;
+    const onCheck = () => {
+      const w = window.outerWidth - window.innerWidth > threshold;
+      const h = window.outerHeight - window.innerHeight > threshold;
+      if((w||h) && !tamperWarned) {
+        tamperWarned = true;
+        console.warn('%c⚠️ DIQQAT!', 'color:red;font-size:24px;font-weight:700');
+        console.warn('%cBu ilova xodimlar davomati tizimi. Kod bilan o\'ynash huquqingiz yo\'q. Har qanday ruxsatsiz kirish urinishi qayd etiladi.', 'color:red;font-size:14px');
+      }
+    };
+    setInterval(onCheck, 2000);
+  }
+
+  // ——— Auto-logout on tab hidden (5 min) ———
+  function setupVisibilityLogout(onLogout) {
+    let hideTime = 0;
+    document.addEventListener('visibilitychange', () => {
+      if(document.hidden) {
+        hideTime = Date.now();
+      } else if(hideTime && (Date.now() - hideTime) > 5 * 60 * 1000) {
+        console.log('[SEC] Auto-logout: tab was hidden > 5 min');
+        if(typeof onLogout === 'function') onLogout();
+      }
+    });
+  }
+
+  // ——— Audit with encryption ———
+  async function auditSecure(action, detail, user) {
+    const logs = (await getSecure('audit')) || [];
+    logs.unshift({action, detail, user:user||'system', time:new Date().toISOString(), fp:fingerprint().substring(0,8)});
+    if(logs.length > 500) logs.length = 500;
+    await setSecure('audit', logs);
+  }
+
+  // ——— Clipboard clear after sensitive copy ———
+  function clearClipboard(delayMs) {
+    setTimeout(() => {
+      if(navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText('').catch(()=>{});
+      }
+    }, delayMs || 30000);
+  }
+
+  // Initialize
+  if(typeof window !== 'undefined') {
+    checkFingerprint();
+    antiTamper();
+  }
+
+  return {
+    fingerprint, checkFingerprint,
+    isLocked, lockoutRemaining, recordLoginFail, resetLoginFails,
+    encrypt, decrypt, setSecure, getSecure,
+    setupVisibilityLogout, auditSecure, clearClipboard,
+    MAX_FAILED, LOCKOUT_MS
+  };
+})();
+/* ═══════════════════════════════════════════════════════════ */
 
 // ═══ Chart Export ═══
 function exportChartAsImage(canvasId, filename) {
@@ -11609,6 +11801,34 @@ function App(){
   useNotificationScheduler(user,checkinsData);
   useAnnouncementNotifier(user);
 
+  // Security: auto-logout on tab hidden > 5 min
+  useEffect(()=>{
+    if(!user) return;
+    let hideTime = 0;
+    const onVis = () => {
+      if(document.hidden){
+        hideTime = Date.now();
+      } else if(hideTime && (Date.now() - hideTime) > 5*60*1000){
+        console.log('[SEC] Auto-logout: tab hidden > 5 min');
+        auth.signOut();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  },[user]);
+
+  // Security: fingerprint drift check (session hijack)
+  useEffect(()=>{
+    if(!user) return;
+    const iv = setInterval(()=>{
+      if(!SEC.checkFingerprint()){
+        console.warn('[SEC] Fingerprint mismatch — forced logout');
+        auth.signOut();
+      }
+    }, 60000);
+    return () => clearInterval(iv);
+  },[user]);
+
   useEffect(()=>{
     setupPWAAssets();
     if(typeof window==="undefined") return;
@@ -11757,19 +11977,54 @@ function App(){
 
   function handleLogin(){
     if(!loginU.trim()||!loginP.trim())return;
+    // Input length validation — DoS protection
+    if(loginU.length > 100 || loginP.length > 200) {
+      setLoginErr("Kiritilgan ma'lumot juda uzun");
+      return;
+    }
+    // Brute-force lockout check
+    if(SEC.isLocked()){
+      const mins = Math.ceil(SEC.lockoutRemaining()/60000);
+      setLoginErr("Juda ko'p urinish. "+mins+" daqiqa kuting.");
+      return;
+    }
     setAuthLoading(true);
     const fullEmail=loginU.trim().toLowerCase().includes("@")?loginU.trim().toLowerCase():loginU.trim().toLowerCase()+"@boshqarma.uz";
+    // Email format validation
+    if(!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(fullEmail)){
+      setAuthLoading(false);
+      setLoginErr("Email formati noto'g'ri");
+      return;
+    }
     auth.signInWithEmailAndPassword(fullEmail,loginP)
-      .then(()=>{setLoginErr("");setLoginU("");setLoginP("");setAuthLoading(false);})
-      .catch((err)=>{setAuthLoading(false);
-        if(err.code==="auth/user-not-found")setLoginErr("Bu email uchun akkaunt topilmadi. Admin bilan bog'laning.");
-        else if(err.code==="auth/wrong-password"||err.code==="auth/invalid-credential")setLoginErr("Parol noto'g'ri! Qayta urinib ko'ring.");
-        else if(err.code==="auth/too-many-requests")setLoginErr("Juda ko'p urinish. Biroz kutib, qayta urinib ko'ring.");
-        else setLoginErr("Login yoki parol noto'g'ri!");
+      .then(()=>{
+        SEC.resetLoginFails();
+        SEC.auditSecure('login_success', fullEmail, fullEmail).catch(()=>{});
+        setLoginErr("");setLoginU("");setLoginP("");setAuthLoading(false);
+      })
+      .catch((err)=>{
+        setAuthLoading(false);
+        const state = SEC.recordLoginFail();
+        SEC.auditSecure('login_fail', fullEmail+' — '+err.code, fullEmail).catch(()=>{});
+        if(state.until > Date.now()){
+          setLoginErr("Juda ko'p urinish. 15 daqiqa bloklandi.");
+        } else if(err.code==="auth/user-not-found"){
+          // Info leak himoyasi — umumiy xato yuborish
+          setLoginErr("Login yoki parol noto'g'ri! ("+(SEC.MAX_FAILED-state.fails)+" urinish qoldi)");
+        } else if(err.code==="auth/wrong-password"||err.code==="auth/invalid-credential"){
+          setLoginErr("Login yoki parol noto'g'ri! ("+(SEC.MAX_FAILED-state.fails)+" urinish qoldi)");
+        } else if(err.code==="auth/too-many-requests"){
+          setLoginErr("Juda ko'p urinish. Biroz kutib, qayta urinib ko'ring.");
+        } else {
+          setLoginErr("Login yoki parol noto'g'ri! ("+(SEC.MAX_FAILED-state.fails)+" urinish qoldi)");
+        }
       });
   }
 
-  function handleLogout(){auth.signOut();}
+  function handleLogout(){
+    SEC.auditSecure('logout', user?.email||'', user?.email||'').catch(()=>{});
+    auth.signOut();
+  }
 
   function dispatch(dateKey,emp,field,value){
     if(dateKey==="__openModal__"){setModalEmp(emp);return;}
