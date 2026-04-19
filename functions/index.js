@@ -1277,3 +1277,40 @@ exports.claimTelegramLogin = functions.https.onRequest(async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 });
+
+/**
+ * Parol o'rnatish — faqat autentifikatsiya qilingan foydalanuvchi o'zi uchun
+ * Foydalanuvchi Telegram orqali kirgandan keyin ushbu HTTPS funksiyani chaqiradi
+ */
+exports.setUserPassword = functions.https.onRequest(async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  try {
+    const authHeader = req.headers.authorization || "";
+    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!idToken) return res.status(401).json({ error: "Missing auth" });
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const { password } = req.body || {};
+
+    if (!password || typeof password !== "string") {
+      return res.status(400).json({ error: "Password required" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Parol kamida 6 belgidan iborat bo'lishi kerak" });
+    }
+    if (password.length > 128) {
+      return res.status(400).json({ error: "Parol juda uzun" });
+    }
+
+    await admin.auth().updateUser(decoded.uid, { password });
+    return res.json({ success: true });
+  } catch (e) {
+    console.error("setUserPassword error:", e);
+    return res.status(500).json({ error: "Server error" });
+  }
+});

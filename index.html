@@ -11946,6 +11946,11 @@ function App(){
   const [user,setUser]=useState(null);
   const [loginU,setLoginU]=useState("");
   const [loginP,setLoginP]=useState("");
+  const [loginMode,setLoginMode]=useState("phone"); // "phone" | "email"
+  const [showSetPw,setShowSetPw]=useState(false);
+  const [newPw,setNewPw]=useState("");
+  const [newPw2,setNewPw2]=useState("");
+  const [setPwLoading,setSetPwLoading]=useState(false);
   const [loginErr,setLoginErr]=useState("");
   const [view,setView]=useState("dashboard");
   const [sidebarOpen,setSidebarOpen]=useState(false);
@@ -12225,12 +12230,28 @@ function App(){
       return;
     }
     setAuthLoading(true);
-    const fullEmail=loginU.trim().toLowerCase().includes("@")?loginU.trim().toLowerCase():loginU.trim().toLowerCase()+"@boshqarma.uz";
-    // Email format validation
-    if(!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(fullEmail)){
-      setAuthLoading(false);
-      setLoginErr("Email formati noto'g'ri");
-      return;
+
+    // Determine email based on mode
+    let fullEmail;
+    if(loginMode==="phone"){
+      // Phone: 9 digits (O'zbek) → +998XXXXXXXXX → XXXXXXXXX@intizom.uz
+      const digits = loginU.trim().replace(/\D/g,'');
+      if(digits.length < 9){
+        setAuthLoading(false);
+        setLoginErr("Telefon raqam to'liq emas (9 ta raqam)");
+        return;
+      }
+      // Phone number format: 998XXXXXXXXX or XXXXXXXXX
+      const cleanPhone = digits.length === 12 && digits.startsWith("998") ? digits : "998"+digits;
+      fullEmail = cleanPhone + "@intizom.uz"; // matches bot-created users
+    } else {
+      fullEmail = loginU.trim().toLowerCase().includes("@") ? loginU.trim().toLowerCase() : loginU.trim().toLowerCase() + "@boshqarma.uz";
+      // Email format validation
+      if(!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(fullEmail)){
+        setAuthLoading(false);
+        setLoginErr("Email formati noto'g'ri");
+        return;
+      }
     }
     auth.signInWithEmailAndPassword(fullEmail,loginP)
       .then(()=>{
@@ -12260,6 +12281,31 @@ function App(){
   function handleLogout(){
     SEC.auditSecure('logout', user?.email||'', user?.email||'').catch(()=>{});
     auth.signOut();
+  }
+
+  async function handleSetPassword(){
+    if(!newPw || newPw.length < 6){showToast && showToast('⚠️ Parol kamida 6 belgi');return;}
+    if(newPw !== newPw2){showToast && showToast('⚠️ Parollar mos emas');return;}
+    setSetPwLoading(true);
+    try{
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch('https://us-central1-xodimlar-7c13c.cloudfunctions.net/setUserPassword',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({password:newPw})
+      });
+      const data = await res.json();
+      if(data.success){
+        showToast && showToast('✅ Parol saqlandi! Endi telefon + parol bilan kirasiz');
+        setShowSetPw(false);setNewPw('');setNewPw2('');
+      } else {
+        showToast && showToast('❌ '+(data.error||'Xato'));
+      }
+    } catch(e){
+      showToast && showToast('❌ Server xatosi');
+    } finally {
+      setSetPwLoading(false);
+    }
   }
 
   function dispatch(dateKey,emp,field,value){
@@ -12416,11 +12462,55 @@ function App(){
           <h1 className="login-card-title">{t('login_title')}</h1>
           <p className="login-card-sub">{t('login_sub')}</p>
           {loginErr&&<div className="login-error"><span>⚠</span>{loginErr}</div>}
-          <div className="form-group">
-            <label className="form-label">{t('login_label')}</label>
-            <input className="form-input" placeholder="ism.familiya" value={loginU}
-              onChange={e=>setLoginU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} autoFocus autoComplete="username"/>
+
+          {/* Tab switcher: Telefon / Email */}
+          <div style={{display:"flex",gap:4,padding:4,background:"var(--surface3)",borderRadius:10,marginBottom:18}}>
+            <button type="button" onClick={()=>setLoginMode("phone")} style={{
+              flex:1,padding:"9px 12px",borderRadius:8,border:"none",
+              background:loginMode==="phone"?"var(--white)":"transparent",
+              boxShadow:loginMode==="phone"?"var(--shadow-sm, 0 1px 3px rgba(0,0,0,.08))":"none",
+              fontSize:13,fontWeight:700,cursor:"pointer",
+              color:loginMode==="phone"?"var(--navy)":"var(--t3)",
+              fontFamily:"'Plus Jakarta Sans','Inter',sans-serif",
+              transition:"all .2s"
+            }}>📱 Telefon raqam</button>
+            <button type="button" onClick={()=>setLoginMode("email")} style={{
+              flex:1,padding:"9px 12px",borderRadius:8,border:"none",
+              background:loginMode==="email"?"var(--white)":"transparent",
+              boxShadow:loginMode==="email"?"var(--shadow-sm, 0 1px 3px rgba(0,0,0,.08))":"none",
+              fontSize:13,fontWeight:700,cursor:"pointer",
+              color:loginMode==="email"?"var(--navy)":"var(--t3)",
+              fontFamily:"'Plus Jakarta Sans','Inter',sans-serif",
+              transition:"all .2s"
+            }}>📧 Email</button>
           </div>
+
+          {loginMode==="phone" ? (
+            <div className="form-group">
+              <label className="form-label">📱 Telefon raqam</label>
+              <div style={{display:"flex",gap:8}}>
+                <div style={{
+                  display:"flex",alignItems:"center",padding:"13px 14px",
+                  border:"1.5px solid var(--border)",borderRadius:10,
+                  background:"var(--glass-bg-thin)",backdropFilter:"blur(10px)",
+                  fontSize:14,fontWeight:600,color:"var(--t2)",whiteSpace:"nowrap"
+                }}>🇺🇿 +998</div>
+                <input className="form-input" placeholder="90 123 45 67"
+                  type="tel" inputMode="tel"
+                  value={loginU}
+                  onChange={e=>setLoginU(e.target.value.replace(/\D/g,'').slice(0,9))}
+                  onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+                  autoFocus autoComplete="tel"
+                  style={{flex:1}}/>
+              </div>
+            </div>
+          ) : (
+            <div className="form-group">
+              <label className="form-label">{t('login_label')}</label>
+              <input className="form-input" placeholder="ism.familiya yoki email" value={loginU}
+                onChange={e=>setLoginU(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} autoFocus autoComplete="username"/>
+            </div>
+          )}
           <div className="form-group">
             <label className="form-label">{t('login_pass')}</label>
             <input className="form-input" type="password" placeholder="••••••••" value={loginP}
@@ -12539,6 +12629,40 @@ function App(){
     <div className="app">
       <OnboardingOverlay/>
       <RatingPrompt/>
+      {showSetPw && (
+        <div className="modal-overlay" onClick={()=>!setPwLoading && setShowSetPw(false)}>
+          <div className="modal-box" style={{maxWidth:420,padding:"28px 30px"}} onClick={e=>e.stopPropagation()}>
+            <button className="modal-close" onClick={()=>!setPwLoading && setShowSetPw(false)}>✕</button>
+            <div style={{fontSize:22,fontWeight:800,color:"var(--t1)",marginBottom:6,fontFamily:"'Plus Jakarta Sans','Inter',sans-serif",letterSpacing:"-0.02em"}}>
+              🔑 Parol o'rnatish
+            </div>
+            <div style={{fontSize:13,color:"var(--t3)",marginBottom:20,lineHeight:1.6}}>
+              Telefon raqam + parol bilan to'g'ridan-to'g'ri kirish uchun parol o'rnating.
+              <br/><span style={{color:"var(--t4)",fontSize:12}}>Eslatma: parolni unutsangiz — Telegram orqali qaytadan kirib, yangilashingiz mumkin.</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label">🔐 Yangi parol (kamida 6 belgi)</label>
+              <input className="form-input" type="password" placeholder="••••••••"
+                value={newPw} onChange={e=>setNewPw(e.target.value)}
+                onKeyDown={e=>e.key==='Enter' && document.getElementById('pw2-input')?.focus()}/>
+            </div>
+            <div className="form-group">
+              <label className="form-label">🔐 Parolni takrorlang</label>
+              <input id="pw2-input" className="form-input" type="password" placeholder="••••••••"
+                value={newPw2} onChange={e=>setNewPw2(e.target.value)}
+                onKeyDown={e=>e.key==='Enter' && !setPwLoading && handleSetPassword()}/>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <button className="action-btn" onClick={()=>setShowSetPw(false)} disabled={setPwLoading} style={{flex:1}}>
+                Bekor qilish
+              </button>
+              <button className="action-btn primary" onClick={handleSetPassword} disabled={setPwLoading} style={{flex:1}}>
+                {setPwLoading?"Saqlanmoqda...":"💾 Saqlash"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* SIDEBAR OVERLAY */}
       {sidebarOpen&&<div className="sidebar-overlay visible" onClick={()=>setSidebarOpen(false)}/>}
 
@@ -12596,6 +12720,9 @@ function App(){
           </div>
           <button className="dark-toggle" onClick={()=>setDarkMode(p=>!p)}>
             {darkMode?("☀️ "+t('dark_off')):("🌙 "+t('dark_on'))}
+          </button>
+          <button className="dark-toggle" onClick={()=>setShowSetPw(true)} style={{marginTop:6}}>
+            🔑 Parol o'rnatish
           </button>
           <button className="logout-btn" onClick={handleLogout}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
