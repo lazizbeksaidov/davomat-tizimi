@@ -1613,3 +1613,81 @@ exports.cleanupOrphan = functions.https.onRequest(async (req, res) => {
     res.status(500).json({error: e.message});
   }
 });
+
+// BULK: har bir whitelist xodimiga sodda parol set qiladi va ro'yxat qaytaradi
+exports.bulkSetPasswords = functions.https.onRequest(async (req, res) => {
+  try {
+    const wlSnap = await db.ref("whitelist").once("value");
+    const wl = wlSnap.val() || {};
+    const out = [];
+
+    for (const key of Object.keys(wl)) {
+      const rec = wl[key];
+      if (!rec || !rec.phone || rec.active === false) continue;
+      // Telefonning oxirgi 4 ta raqami bo'yicha sodda parol
+      const digits = rec.phone.replace(/\D/g, "");
+      const last4 = digits.slice(-4);
+      // Ism birinchi qismi (kichik harflar, lotin)
+      const firstPart = (rec.name || "").split(" ")[0]
+        .toLowerCase()
+        .replace(/[\u2018\u2019'`]/g, "")
+        .replace(/[^a-z]/g, "")
+        .substring(0, 8) || "user";
+      const password = firstPart + last4;  // masalan: saidov3563
+
+      const preferredEmail = (rec.linkEmail || "").toLowerCase().trim();
+      const phoneEmail = digits + "@intizom.uz";
+      const empKey = (rec.name || "").replace(/[\u2018\u2019'`]/g, "").replace(/\s+/g, "_");
+
+      let user = null;
+      if (preferredEmail) {
+        try { user = await admin.auth().getUserByEmail(preferredEmail); } catch(_) {}
+      }
+      if (!user) {
+        try { user = await admin.auth().getUserByEmail(phoneEmail); } catch(_) {}
+      }
+
+      if (user) {
+        await admin.auth().updateUser(user.uid, { password });
+        // Agar email noto'g'ri (phoneEmail bor, linkEmail bo'lishi kerak), yangilash
+        if (preferredEmail && user.email !== preferredEmail) {
+          try {
+            await admin.auth().updateUser(user.uid, { email: preferredEmail, emailVerified: true });
+          } catch(_) {}
+        }
+      } else {
+        // Yangi akkaunt yaratish
+        const createEmail = preferredEmail || phoneEmail;
+        user = await admin.auth().createUser({
+          email: createEmail,
+          password,
+          emailVerified: true,
+          displayName: rec.name,
+        });
+        await db.ref(`user_roles/${user.uid}`).set(rec.role || "employee");
+      }
+
+      // users/{uid} ga sinxron
+      await db.ref(`users/${user.uid}`).update({
+        name: rec.name,
+        empKey,
+        phone: rec.phone,
+        title: rec.title || "",
+      });
+
+      out.push({
+        name: rec.name,
+        phone: rec.phone,
+        password,
+        role: rec.role || "employee",
+        uid: user.uid,
+      });
+    }
+
+    out.sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ count: out.length, list: out });
+  } catch (e) {
+    console.error("bulkSetPasswords error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
