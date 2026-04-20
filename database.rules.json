@@ -109,6 +109,7 @@
         "name": { ".validate": "newData.isString() && newData.val().length <= 100" },
         "role": { ".validate": "newData.isString() && newData.val().matches(/^(admin|boss|observer|employee)$/)" },
         "title": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "linkEmail": { ".validate": "newData.isString() && newData.val().length <= 200" },
         "active": { ".validate": "newData.isBoolean()" },
         "createdAt": { ".validate": "newData.isNumber()" },
         "createdBy": { ".validate": "newData.isString() && newData.val().length <= 100" }

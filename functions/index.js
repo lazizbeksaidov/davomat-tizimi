@@ -1157,31 +1157,64 @@ function randomPassword() {
 }
 
 async function ensureUser(rec) {
-  // rec.key = phone normalized; create or get Firebase user
+  // rec.key = phone normalized
   const phone = normalizePhone(rec.phone);
-  const email = phone.replace("+", "").replace(/\D/g, "") + "@intizom.uz";
-  // Canonical employee key (used for checkin ownership check)
   const empKey = String(rec.name || "").replace(/[\u2018\u2019'`]/g, "").replace(/\s+/g, "_");
-  let user;
   const tempPassword = randomPassword();
-  try {
-    user = await admin.auth().getUserByEmail(email);
-    // Existing user — reset password temporarily for one-time login
+
+  // ═══ ACCOUNT LINKING ═══
+  // Priority:
+  // 1. If whitelist has "linkEmail" field → use that existing account (admin/boss etc.)
+  // 2. Otherwise try existing @intizom.uz phone-email
+  // 3. Otherwise create new phone-based account
+  const preferredEmail = (rec.linkEmail || "").toLowerCase().trim();
+  const phoneEmail = phone.replace("+", "").replace(/\D/g, "") + "@intizom.uz";
+
+  let user = null;
+  let emailUsed = phoneEmail;
+
+  // Try linked email first
+  if (preferredEmail) {
+    try {
+      user = await admin.auth().getUserByEmail(preferredEmail);
+      emailUsed = preferredEmail;
+    } catch (_) {}
+  }
+
+  // If no linked email, try phone-based email
+  if (!user) {
+    try {
+      user = await admin.auth().getUserByEmail(phoneEmail);
+      emailUsed = phoneEmail;
+    } catch (_) {}
+  }
+
+  if (user) {
+    // Existing user — set temp password
     await admin.auth().updateUser(user.uid, { password: tempPassword });
-    // Ensure empKey is set (for checkin ownership rule)
-    await db.ref(`users/${user.uid}/empKey`).set(empKey);
-    await db.ref(`users/${user.uid}/name`).set(rec.name);
-    await db.ref(`users/${user.uid}/phone`).set(phone);
-  } catch (e) {
+    // Update/sync metadata (non-destructive)
+    await db.ref(`users/${user.uid}`).update({
+      name: rec.name,
+      empKey,
+      phone,
+      title: rec.title || "",
+      linkedPhone: phone,
+      lastLogin: Date.now(),
+    });
+    // Preserve role — NEVER downgrade admin via Telegram login
+    const existingRole = (await db.ref(`user_roles/${user.uid}`).once("value")).val();
+    if (!existingRole) {
+      await db.ref(`user_roles/${user.uid}`).set(rec.role || "employee");
+    }
+  } else {
     // Create new user
     user = await admin.auth().createUser({
-      email,
+      email: phoneEmail,
       password: tempPassword,
       emailVerified: true,
       displayName: rec.name,
       disabled: false,
     });
-    // Save role
     await db.ref(`user_roles/${user.uid}`).set(rec.role || "employee");
     await db.ref(`users/${user.uid}`).set({
       name: rec.name,
@@ -1190,9 +1223,10 @@ async function ensureUser(rec) {
       role: rec.role || "employee",
       title: rec.title || "",
       createdAt: Date.now(),
+      lastLogin: Date.now(),
     });
   }
-  return { uid: user.uid, email, tempPassword };
+  return { uid: user.uid, email: emailUsed, tempPassword };
 }
 
 exports.telegramLoginBot = functions
