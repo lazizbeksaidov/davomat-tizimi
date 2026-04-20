@@ -1187,12 +1187,17 @@ async function ensureUser(rec) {
   let user = null;
   let emailUsed = phoneEmail;
 
+  console.log("[ensureUser] phone:", phone, "preferredEmail:", preferredEmail, "phoneEmail:", phoneEmail);
+
   // Try linked email first
   if (preferredEmail) {
     try {
       user = await admin.auth().getUserByEmail(preferredEmail);
       emailUsed = preferredEmail;
-    } catch (_) {}
+      console.log("[ensureUser] ✓ Found at preferredEmail, uid:", user.uid);
+    } catch (e) {
+      console.log("[ensureUser] preferredEmail not found:", e.code);
+    }
   }
 
   // If no linked email, try phone-based email
@@ -1503,5 +1508,64 @@ exports.setUserPassword = functions.https.onRequest(async (req, res) => {
   } catch (e) {
     console.error("setUserPassword error:", e);
     return res.status(500).json({ error: "Server error" });
+  }
+});
+// One-shot HTTP function to fix Lazizbek's account
+exports.fixLazizbek = functions.https.onRequest(async (req, res) => {
+  try {
+    const phoneEmail = "998913333563@intizom.uz";
+    const linkEmail = "lazizbek.saidov@boshqarma.uz";
+    const newPassword = "lazizbek123";
+    const result = { phoneEmail: null, linkEmail: null, action: null };
+
+    // Check phoneEmail
+    try {
+      const u = await admin.auth().getUserByEmail(phoneEmail);
+      result.phoneEmail = { uid: u.uid, exists: true };
+    } catch(_) { result.phoneEmail = { exists: false }; }
+
+    // Check linkEmail
+    try {
+      const u = await admin.auth().getUserByEmail(linkEmail);
+      result.linkEmail = { uid: u.uid, exists: true };
+    } catch(_) { result.linkEmail = { exists: false }; }
+
+    // Action: ensure linkEmail account exists with known password
+    if (result.linkEmail.exists) {
+      await admin.auth().updateUser(result.linkEmail.uid, { password: newPassword });
+      result.action = "updated_linkEmail_password";
+    } else if (result.phoneEmail.exists) {
+      await admin.auth().updateUser(result.phoneEmail.uid, { email: linkEmail, emailVerified: true, password: newPassword });
+      result.action = "migrated_phoneEmail_to_linkEmail";
+    } else {
+      const u = await admin.auth().createUser({
+        email: linkEmail,
+        password: newPassword,
+        emailVerified: true,
+        displayName: "Saidov Lazizbek"
+      });
+      result.action = "created_new";
+      result.newUid = u.uid;
+    }
+    result.password = newPassword;
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({error: e.message});
+  }
+});
+
+// One-shot: delete orphan phoneEmail account for Lazizbek
+exports.cleanupOrphan = functions.https.onRequest(async (req, res) => {
+  try {
+    const phoneEmail = "998913333563@intizom.uz";
+    try {
+      const u = await admin.auth().getUserByEmail(phoneEmail);
+      await admin.auth().deleteUser(u.uid);
+      res.json({deleted: u.uid, email: phoneEmail});
+    } catch(e) {
+      res.json({notFound: phoneEmail});
+    }
+  } catch(e) {
+    res.status(500).json({error: e.message});
   }
 });
