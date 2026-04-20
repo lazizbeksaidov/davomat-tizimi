@@ -12750,7 +12750,7 @@ function App(){
         console.error('[login error]', err.code, err.message);
         SEC.auditSecure('login_fail', fullEmail+' — '+err.code, fullEmail).catch(()=>{});
         if(err.code==="auth/user-not-found"){
-          setLoginErr("Akkaunt topilmadi. Telegram orqali kiring: @Intizom_login_bot");
+          setLoginErr("Akkaunt topilmadi. Telegram orqali kiring: @navinvestmonitoring_bot");
         } else if(err.code==="auth/wrong-password"||err.code==="auth/invalid-credential"){
           setLoginErr("Parol noto'g'ri. Telegram botdan yangi parol oling.");
         } else if(err.code==="auth/too-many-requests"){
@@ -13027,7 +13027,7 @@ function App(){
             Firebase Authentication · SSL himoyalangan
           </div>
           <button onClick={()=>{
-            window.open('https://t.me/Intizom_login_bot','_blank');
+            window.open('https://t.me/navinvestmonitoring_bot','_blank');
           }} style={{
             width:"100%",
             padding:"13px 16px",
