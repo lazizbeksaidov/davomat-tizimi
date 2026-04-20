@@ -159,6 +159,28 @@
       display: flex; align-items: center; justify-content: center;
       flex-direction: column; gap: 24px; z-index: 9999;
     }
+
+    /* ═══ Telegram Mini App — clean selfie view ═══ */
+    html.is-tg-miniapp body { overscroll-behavior: none; }
+    html.is-tg-selfie .sidebar,
+    html.is-tg-selfie .sidebar-overlay,
+    html.is-tg-selfie .topbar,
+    html.is-tg-selfie nav[class*="bottom"],
+    html.is-tg-selfie .mobile-nav,
+    html.is-tg-selfie .install-banner,
+    html.is-tg-selfie .notif-bell,
+    html.is-tg-selfie .page-header-row-actions { display: none !important; }
+    html.is-tg-selfie .app-main,
+    html.is-tg-selfie main,
+    html.is-tg-selfie .content { padding: 12px !important; padding-left: 12px !important; margin: 0 !important; }
+    html.is-tg-selfie .app { padding: 0 !important; }
+    html.is-tg-selfie .selfie-wrap { padding: 0 !important; max-width: 100% !important; }
+    html.is-tg-selfie .selfie-history-card,
+    html.is-tg-selfie .page-header { display: none !important; }
+    /* Session cards — keep compact */
+    html.is-tg-selfie .emp-hero-avatar,
+    html.is-tg-selfie .emp-hero-score { display: none; }
+    html.is-tg-miniapp .fullscreen-loader { background: linear-gradient(135deg, #0a0e2a 0%, #1a1f4e 40%, #0d1333 100%); }
     .loader-logo {
       width: 88px; height: 88px;
       background: linear-gradient(135deg, #3b5bff, #7a5af8);
@@ -3646,8 +3668,33 @@ const tg = window.Telegram?.WebApp;
 const isTgMiniApp = !!(tg && tg.initData && tg.initData.length > 0);
 const isMiniAppSelfie = isTgMiniApp && new URLSearchParams(location.search).get('miniapp') === 'selfie';
 if (isTgMiniApp) {
-  try { tg.expand(); tg.ready(); } catch(_e) {}
+  try {
+    tg.expand();
+    tg.ready();
+    tg.enableClosingConfirmation();
+    // Apply Telegram theme colors so Mini App matches user's Telegram theme
+    if (tg.themeParams) {
+      const tp = tg.themeParams;
+      if (tp.bg_color) document.documentElement.style.setProperty('--tg-bg', tp.bg_color);
+      if (tp.text_color) document.documentElement.style.setProperty('--tg-text', tp.text_color);
+    }
+    document.documentElement.classList.add('is-tg-miniapp');
+    if (isMiniAppSelfie) document.documentElement.classList.add('is-tg-selfie');
+  } catch(_e) {}
 }
+const tgHaptic = (kind) => {
+  try {
+    if (!tg?.HapticFeedback) return;
+    if (kind === 'success' || kind === 'error' || kind === 'warning') tg.HapticFeedback.notificationOccurred(kind);
+    else tg.HapticFeedback.impactOccurred(kind || 'light');
+  } catch(_e) {}
+};
+const tgAlert = (msg) => {
+  return new Promise(r => {
+    try { tg?.showAlert ? tg.showAlert(msg, r) : (alert(msg), r()); }
+    catch(_e) { r(); }
+  });
+};
 
 // ═══ Capacitor Native APIs ═══
 const isCapacitor = typeof window.Capacitor !== 'undefined';
@@ -10371,7 +10418,9 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
   var confirmCheckin=useCallback(function(){
     if(!capturedPhoto||submitting)return;
     if(gpsStatus!=="ok"){
-      showToast("📍 Selfie faqat ishxona hududida ("+OFFICE_LOCATION.radius+"m) olinadi! Hozirgi masofa: "+(gpsData?gpsData.distance+"m":"noma'lum"));
+      const msg="📍 Selfie faqat ishxona hududida ("+OFFICE_LOCATION.radius+"m) olinadi! Hozirgi masofa: "+(gpsData?gpsData.distance+"m":"noma'lum");
+      if(isTgMiniApp){tgAlert(msg);}else{showToast(msg);}
+      tgHaptic('warning');
       return;
     }
     setSubmitting(true);
@@ -10425,13 +10474,17 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
       return Promise.resolve();
     })
     .then(function(){
-      showToast("\u2713 "+(uiSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!"+(late>0?" ("+late+" daq kechikish)":""));
+      const msg="\u2713 "+(uiSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!"+(late>0?" ("+late+" daq kechikish)":"");
+      showToast(msg);
       lockedSessionRef.current=null;
       setCapturedPhoto(null);setSubmitting(false);setEmpNote("");
-      // Telegram Mini App — auto-close 2s after successful check-in
+      // Telegram Mini App — show native success alert then close
       if (isTgMiniApp && tg) {
-        try { tg.HapticFeedback?.notificationOccurred?.('success'); } catch(_){ }
-        setTimeout(() => { try { tg.close(); } catch(_){ } }, 2000);
+        tgHaptic('success');
+        (async () => {
+          await tgAlert(msg);
+          try { tg.close(); } catch(_){ }
+        })();
       }
     })
     .catch(function(e){
@@ -10439,6 +10492,51 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
       setSubmitting(false);
     });
   },[capturedPhoto,submitting,user,todayKey,empKey,gpsData,gpsStatus,attendanceData,uiSession]);
+
+  // Telegram MainButton — show when photo captured, bind to confirmCheckin
+  useEffect(function(){
+    if(!isTgMiniApp||!tg?.MainButton)return;
+    const mb=tg.MainButton;
+    if(capturedPhoto&&!submitting){
+      if(gpsStatus==="ok"){
+        mb.setText("✅ YUBORISH");
+        mb.enable();
+        mb.color="#0d7a5b";
+      }else{
+        mb.setText("🚫 HUDUD TASHQARIDA");
+        mb.disable();
+      }
+      mb.show();
+      mb.onClick(confirmCheckin);
+      return function(){ try{ mb.offClick(confirmCheckin); mb.hide(); } catch(_e){} };
+    } else if(submitting){
+      mb.setText("SAQLANMOQDA...");
+      mb.showProgress(true);
+      mb.disable();
+      mb.show();
+      return function(){ try{ mb.hideProgress(); mb.hide(); } catch(_e){} };
+    } else {
+      try{ mb.hide(); }catch(_e){}
+    }
+  },[capturedPhoto,submitting,gpsStatus,confirmCheckin]);
+
+  // Telegram BackButton — on capture, allow retake
+  useEffect(function(){
+    if(!isTgMiniApp||!tg?.BackButton)return;
+    const bb=tg.BackButton;
+    if(capturedPhoto&&!submitting){
+      bb.show();
+      const onBack=()=>{ setCapturedPhoto(null); tgHaptic('light'); };
+      bb.onClick(onBack);
+      return function(){ try{ bb.offClick(onBack); bb.hide(); }catch(_e){} };
+    } else {
+      try{ bb.hide(); }catch(_e){}
+    }
+  },[capturedPhoto,submitting]);
+
+  // Haptic on camera start & capture
+  useEffect(function(){ if(isTgMiniApp&&cameraActive)tgHaptic('light'); },[cameraActive]);
+  useEffect(function(){ if(isTgMiniApp&&capturedPhoto)tgHaptic('medium'); },[capturedPhoto]);
 
   // Admin list
   var todayList=useMemo(function(){
@@ -12743,17 +12841,26 @@ function App(){
           if (res.ok) {
             const {token} = await res.json();
             if (token) {
+              tgHaptic('success');
               await auth.signInWithCustomToken(token);
-              // If miniapp=selfie, jump to selfie tab after login
               if (isMiniAppSelfie) setView('selfie');
               return;
             }
           } else {
-            const err = await res.json().catch(() => ({error: 'unknown'}));
-            console.warn('[tgMiniApp] auth failed:', err.error);
+            const err = await res.json().catch(() => ({error: 'Ulanishda xatolik'}));
+            tgHaptic('error');
+            let msg = err.error || 'Ulanishda xatolik';
+            if (msg.includes('Not linked')) msg = 'Avval botda "🔐 Tizimga kirish" tugmasi orqali ro\'yxatdan o\'ting.';
+            if (msg.includes('blocked')) msg = 'Akkauntingiz bloklangan. Kadrlar bo\'limiga murojaat qiling.';
+            if (msg.includes('whitelist')) msg = 'Telefon raqamingiz ro\'yxatda yo\'q. Kadrlar bo\'limiga murojaat qiling.';
+            await tgAlert('⚠️ ' + msg);
+            setTimeout(() => { try { tg.close(); } catch(_){} }, 500);
           }
         } catch (e) {
           console.warn('[tgMiniApp] auth error:', e.message);
+          tgHaptic('error');
+          await tgAlert('⚠️ Tarmoq xatosi. Qayta urinib ko\'ring.');
+          setTimeout(() => { try { tg.close(); } catch(_){} }, 500);
         }
       })();
     }
@@ -12843,6 +12950,14 @@ function App(){
 
   useEffect(()=>{
     if(!user)return;
+    // In Mini App selfie mode — fetch ONLY today's attendance (smaller query, faster)
+    if(isMiniAppSelfie){
+      const today=new Date();
+      const todayKey=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+      const ref=db.ref("attendance/"+todayKey);
+      ref.on("value",(snap)=>setData({[todayKey]:snap.val()||{}}),(err)=>console.error(err));
+      return()=>ref.off();
+    }
     var now=new Date();
     var startD=new Date(now.getFullYear(),now.getMonth()-5,1);
     var startKey=startD.getFullYear()+"-"+String(startD.getMonth()+1).padStart(2,"0")+"-01";
@@ -12854,6 +12969,13 @@ function App(){
 
   useEffect(()=>{
     if(!user)return;
+    if(isMiniAppSelfie){
+      const today=new Date();
+      const todayKey=today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+      const ref=db.ref("checkins/"+todayKey);
+      ref.on("value",(snap)=>setCheckinsData({[todayKey]:snap.val()||{}}),(err)=>console.error(err));
+      return()=>ref.off();
+    }
     var now=new Date();
     var startD=new Date(now.getFullYear(),now.getMonth()-5,1);
     var startKey=startD.getFullYear()+"-"+String(startD.getMonth()+1).padStart(2,"0")+"-01";
@@ -12865,6 +12987,7 @@ function App(){
 
   useEffect(()=>{
     if(!user)return;
+    if(isMiniAppSelfie)return; // Skip holidays in Mini App — not needed for selfie
     const ref=db.ref("holidays");
     ref.on("value",(snap)=>{
       var d=snap.val()||{};
@@ -13109,11 +13232,13 @@ function App(){
   if(loading)return(
     <div className="fullscreen-loader">
       <div className="loader-logo">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 2-5 10"/><path d="m17 2 5 10"/></svg>
+        {isTgMiniApp
+          ? <svg width="40" height="40" viewBox="0 0 24 24" fill="#fff"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+          : <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 2-5 10"/><path d="m17 2 5 10"/></svg>}
       </div>
       <div className="loader-brand">
-        <div className="loader-brand-name">INTIZOM</div>
-        <div className="loader-brand-sub">Xodimlar Monitoringi</div>
+        <div className="loader-brand-name">{isTgMiniApp ? "TELEGRAM" : "INTIZOM"}</div>
+        <div className="loader-brand-sub">{isTgMiniApp ? "Avtomatik kirilmoqda..." : "Xodimlar Monitoringi"}</div>
       </div>
       <div className="loader-progress"><div className="loader-progress-bar"></div></div>
     </div>
