@@ -102,11 +102,32 @@
     .glass-card:hover { box-shadow: var(--s3); }
 
     html { scroll-behavior: smooth; height: 100%; }
-    /* Show dark background while React is mounting — prevents white flash */
-    #root:empty {
-      position: fixed; inset: 0;
+    /* Boot loader — shown before React mounts (2-3 seconds on first load while Babel parses) */
+    .boot-loader {
+      position: fixed; inset: 0; z-index: 99999;
       background: linear-gradient(135deg,#0a0e2a 0%,#1a1f4e 40%,#0d1333 100%);
+      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;
+      font-family: -apple-system, system-ui, 'Inter', sans-serif;
+      color: #fff;
     }
+    .boot-logo {
+      width: 72px; height: 72px; border-radius: 18px;
+      background: linear-gradient(135deg,#3b5bff,#7a5af8);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 60px rgba(59,91,255,.4);
+      animation: bootPulse 1.6s ease infinite;
+    }
+    @keyframes bootPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+    .boot-title { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+    .boot-sub { font-size: 12px; color: rgba(255,255,255,.5); margin-top: -12px; }
+    .boot-dots { display: flex; gap: 6px; margin-top: 4px; }
+    .boot-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #7a5af8;
+      animation: bootDot 1.2s ease infinite;
+    }
+    .boot-dot:nth-child(2) { animation-delay: .15s; }
+    .boot-dot:nth-child(3) { animation-delay: .3s; }
+    @keyframes bootDot { 0%,60%,100%{opacity:.2;transform:translateY(0)} 30%{opacity:1;transform:translateY(-5px)} }
     body {
       font-family: 'Inter', sans-serif;
       background: var(--ink);
@@ -3584,7 +3605,14 @@
   <script src="vendor/leaflet.js"></script>
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><div class="boot-loader">
+  <div class="boot-logo">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m22 2-5 10"/><path d="m17 2 5 10"/></svg>
+  </div>
+  <div class="boot-title">INTIZOM</div>
+  <div class="boot-sub">Yuklanmoqda...</div>
+  <div class="boot-dots"><div class="boot-dot"></div><div class="boot-dot"></div><div class="boot-dot"></div></div>
+</div></div>
 <!-- Bootstrap: global error handler + service worker cleanup (runs before Babel) -->
 <script>
 (function(){
