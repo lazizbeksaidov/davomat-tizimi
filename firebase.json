@@ -7,10 +7,8 @@
     "rules": "database.rules.json"
   },
   "hosting": {
-    "site": "xodimlar-7c13c",
-    "public": "www",
+    "public": ".",
     "ignore": ["firebase.json", "functions", "node_modules", "database.rules.json"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }],
     "headers": [
       {
         "source": "**",
@@ -19,30 +17,33 @@
           { "key": "X-Frame-Options", "value": "DENY" },
           { "key": "X-XSS-Protection", "value": "1; mode=block" },
           { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-          { "key": "Permissions-Policy", "value": "camera=(self), geolocation=(self), microphone=(), payment=(), usb=(), magnetometer=()" },
-          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains; preload" },
-          { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://*.firebaseapp.com https://firebase.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseremoteconfig.googleapis.com https://us-central1-xodimlar-7c13c.cloudfunctions.net https://api.open-meteo.com https://*.tile.openstreetmap.org; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.googleusercontent.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' https://xodimlar-7c13c.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'" },
-          { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" }
+          { "key": "Permissions-Policy", "value": "camera=(self), geolocation=(self), microphone=()" },
+          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+          { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://us-central1-xodimlar-7c13c.cloudfunctions.net https://api.open-meteo.com; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'none'" }
         ]
       },
       {
-        "source": "/sw.js",
+        "source": "**/*.html",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-          { "key": "Service-Worker-Allowed", "value": "/" }
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
         ]
       },
       {
-        "source": "/.well-known/security.txt",
+        "source": "**/*.json",
         "headers": [
-          { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
-          { "key": "Cache-Control", "value": "public, max-age=86400" }
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
         ]
       },
       {
-        "source": "/robots.txt",
+        "source": "**/sw.js",
         "headers": [
-          { "key": "Content-Type", "value": "text/plain; charset=utf-8" }
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
         ]
       }
     ]
