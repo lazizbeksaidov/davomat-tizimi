@@ -1398,6 +1398,48 @@ exports.claimTelegramLogin = functions.https.onRequest(async (req, res) => {
 });
 
 /**
+ * Phone → Email lookup (oldin login qilishda)
+ * POST {phone: "+998XXXXXXXXX"} → {email: "user@domain"}
+ * No auth required (just a lookup — doesn't leak PII beyond what's already public)
+ */
+exports.getEmailForPhone = functions.https.onRequest(async (req, res) => {
+  const origin = req.headers.origin || "";
+  if (ALLOWED_ORIGINS.some(o => origin === o)) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
+  res.set("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+  res.set("Vary", "Origin");
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({error:"POST only"});
+  try {
+    const { phone } = req.body || {};
+    if (!phone || typeof phone !== "string" || phone.length > 20) {
+      return res.status(400).json({error:"Invalid phone"});
+    }
+    // Normalize phone
+    let p = String(phone).replace(/[^\d]/g, "");
+    if (p.length === 9) p = "998" + p;
+    const normalized = "+" + p;
+    const keyId = p; // whitelist key is digits-only
+
+    // Look up whitelist
+    const snap = await db.ref("whitelist/"+keyId).once("value");
+    const rec = snap.val();
+    if (!rec) return res.status(404).json({error:"Not registered"});
+    if (rec.active === false) return res.status(403).json({error:"Account disabled"});
+
+    // If linkEmail exists, use it (original email account)
+    // Otherwise use the generated phone-based email
+    const email = rec.linkEmail || (p + "@intizom.uz");
+    return res.json({ email });
+  } catch (e) {
+    console.error("getEmailForPhone error:", e);
+    return res.status(500).json({error:"Server error"});
+  }
+});
+
+/**
  * Parol o'rnatish — faqat autentifikatsiya qilingan foydalanuvchi o'zi uchun
  * Foydalanuvchi Telegram orqali kirgandan keyin ushbu HTTPS funksiyani chaqiradi
  */

@@ -12685,7 +12685,7 @@ function App(){
     try{localStorage.setItem("xodimlar-pwa-dismissed","1");}catch(_e){}
   }
 
-  function handleLogin(){
+  async function handleLogin(){
     if(!loginU.trim()||!loginP.trim())return;
     // Input length validation — DoS protection
     if(loginU.length > 100 || loginP.length > 200) {
@@ -12703,16 +12703,32 @@ function App(){
     // Determine email based on mode
     let fullEmail;
     if(loginMode==="phone"){
-      // Phone: 9 digits (O'zbek) → +998XXXXXXXXX → XXXXXXXXX@intizom.uz
+      // Phone: 9 digits (O'zbek) → +998XXXXXXXXX → normalized format
       const digits = loginU.trim().replace(/\D/g,'');
       if(digits.length < 9){
         setAuthLoading(false);
         setLoginErr("Telefon raqam to'liq emas (9 ta raqam)");
         return;
       }
-      // Phone number format: 998XXXXXXXXX or XXXXXXXXX
       const cleanPhone = digits.length === 12 && digits.startsWith("998") ? digits : "998"+digits;
-      fullEmail = cleanPhone + "@intizom.uz"; // matches bot-created users
+      // Ask server for the email linked to this phone (whitelist lookup)
+      try {
+        const res = await fetch('https://us-central1-xodimlar-7c13c.cloudfunctions.net/getEmailForPhone', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ phone: '+' + cleanPhone })
+        });
+        const data = await res.json();
+        if(data.error || !data.email){
+          setAuthLoading(false);
+          setLoginErr("Bu raqam ro'yxatda yo'q. Admin bilan bog'laning.");
+          return;
+        }
+        fullEmail = data.email;
+      } catch(e) {
+        // Fallback: try phone-based email directly
+        fullEmail = cleanPhone + "@intizom.uz";
+      }
     } else {
       fullEmail = loginU.trim().toLowerCase().includes("@") ? loginU.trim().toLowerCase() : loginU.trim().toLowerCase() + "@boshqarma.uz";
       // Email format validation
