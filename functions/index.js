@@ -1325,7 +1325,20 @@ async function getLoginBotToken() {
   return snap.val();
 }
 
+// tgApi uses MAIN bot token (for @navinvestmonitoring_bot webhook)
 async function tgApi(method, body) {
+  const token = await getBotToken();
+  if (!token) throw new Error("Main bot token not configured");
+  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return await res.json();
+}
+
+// Login bot token (eski) — faqat telegramLoginBot funksiyasi uchun
+async function tgApiLogin(method, body) {
   const token = await getLoginBotToken();
   if (!token) throw new Error("Login bot token not configured");
   const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
@@ -1544,7 +1557,7 @@ exports.telegramLoginBot = functions
 
       // ——— /start ———
       if (update.message?.text === "/start" || update.message?.text?.startsWith("/start ")) {
-        await tgApi("sendMessage", {
+        await tgApiLogin("sendMessage", {
           chat_id: chatId,
           text: TG_T.uz.lang_prompt + "\n" + TG_T.ru.lang_prompt + "\n" + TG_T.en.lang_prompt,
           reply_markup: {
@@ -1563,8 +1576,8 @@ exports.telegramLoginBot = functions
         const lang = update.callback_query.data.split(":")[1];
         await setLang(chatId, lang);
         const t = TG_T[lang] || TG_T.uz;
-        await tgApi("answerCallbackQuery", { callback_query_id: update.callback_query.id });
-        await tgApi("sendMessage", {
+        await tgApiLogin("answerCallbackQuery", { callback_query_id: update.callback_query.id });
+        await tgApiLogin("sendMessage", {
           chat_id: chatId,
           text: t.welcome,
           reply_markup: {
@@ -1584,7 +1597,7 @@ exports.telegramLoginBot = functions
 
         // Security: verify phone belongs to the sender
         if (contact.user_id && contact.user_id !== update.message.from.id) {
-          await tgApi("sendMessage", { chat_id: chatId, text: "⚠️ Faqat o'z raqamingizni ulashing!" });
+          await tgApiLogin("sendMessage", { chat_id: chatId, text: "⚠️ Faqat o'z raqamingizni ulashing!" });
           return res.status(200).send("OK");
         }
 
@@ -1592,11 +1605,11 @@ exports.telegramLoginBot = functions
         const rec = await lookupWhitelist(phone);
 
         if (!rec) {
-          await tgApi("sendMessage", { chat_id: chatId, text: t.not_found, reply_markup: { remove_keyboard: true } });
+          await tgApiLogin("sendMessage", { chat_id: chatId, text: t.not_found, reply_markup: { remove_keyboard: true } });
           return res.status(200).send("OK");
         }
         if (rec.active === false) {
-          await tgApi("sendMessage", { chat_id: chatId, text: t.blocked, reply_markup: { remove_keyboard: true } });
+          await tgApiLogin("sendMessage", { chat_id: chatId, text: t.blocked, reply_markup: { remove_keyboard: true } });
           return res.status(200).send("OK");
         }
 
@@ -1613,7 +1626,7 @@ exports.telegramLoginBot = functions
           .replace(/\{password\}/g, tempPassword)
           .replace(/\{url\}/g, appUrl);
 
-        await tgApi("sendMessage", {
+        await tgApiLogin("sendMessage", {
           chat_id: chatId,
           text: successMsg,
           parse_mode: "HTML",
