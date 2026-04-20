@@ -1034,17 +1034,25 @@ exports.setUserRole = functions.https.onRequest(async (req, res) => {
     const existing = existingSnap.val();
 
     let role;
-    // Hardcoded admin/boss list only applies to pre-approved emails
+    // 1) Hardcoded admin/boss list (highest priority)
     if (ADMIN_EMAILS.includes(email) && emailVerified) role = "admin";
     else if (BOSS_EMAILS.includes(email) && emailVerified) role = "boss";
     else if (OBSERVER_EMAILS.includes(email) && emailVerified) role = "observer";
-    else if (email.endsWith("@intizom.uz")) {
-      // Telegram-created users — role already set by ensureUser during bot flow
-      // Just preserve existing
-      role = existing || "employee";
-    } else {
-      // Unknown email — never elevate
-      role = "employee";
+    else {
+      // 2) Lookup whitelist by linkEmail to find canonical role
+      try {
+        const wlSnap = await db.ref("whitelist").once("value");
+        const wl = wlSnap.val() || {};
+        for (const k in wl) {
+          const rec = wl[k];
+          if (rec && (rec.linkEmail || "").toLowerCase() === email) {
+            role = rec.role || "employee";
+            break;
+          }
+        }
+      } catch (_) {}
+      // 3) Fallback: preserve existing or default to employee
+      if (!role) role = existing || "employee";
     }
 
     // Never downgrade admin → employee automatically

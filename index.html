@@ -12693,12 +12693,8 @@ function App(){
       setLoginErr("Kiritilgan ma'lumot juda uzun");
       return;
     }
-    // Brute-force lockout check
-    if(SEC.isLocked()){
-      const mins = Math.ceil(SEC.lockoutRemaining()/60000);
-      setLoginErr("Juda ko'p urinish. "+mins+" daqiqa kuting.");
-      return;
-    }
+    // Client-side lockout removed (was too aggressive); Firebase has own rate limits
+    try { SEC.resetLoginFails(); } catch(_){}
     setAuthLoading(true);
 
     // Determine email based on mode
@@ -12739,7 +12735,10 @@ function App(){
         return;
       }
     }
-    auth.signInWithEmailAndPassword(fullEmail,loginP)
+    // Trim whitespace (common when pasting from Telegram)
+    const cleanPw = loginP.trim();
+    console.log('[login] email:', fullEmail, 'pwLen:', cleanPw.length);
+    auth.signInWithEmailAndPassword(fullEmail, cleanPw)
       .then(()=>{
         SEC.resetLoginFails();
         SEC.auditSecure('login_success', fullEmail, fullEmail).catch(()=>{});
@@ -12747,19 +12746,18 @@ function App(){
       })
       .catch((err)=>{
         setAuthLoading(false);
-        const state = SEC.recordLoginFail();
+        console.error('[login error]', err.code, err.message);
         SEC.auditSecure('login_fail', fullEmail+' — '+err.code, fullEmail).catch(()=>{});
-        if(state.until > Date.now()){
-          setLoginErr("Juda ko'p urinish. 15 daqiqa bloklandi.");
-        } else if(err.code==="auth/user-not-found"){
-          // Info leak himoyasi — umumiy xato yuborish
-          setLoginErr("Login yoki parol noto'g'ri! ("+(SEC.MAX_FAILED-state.fails)+" urinish qoldi)");
+        if(err.code==="auth/user-not-found"){
+          setLoginErr("Akkaunt topilmadi. Telegram orqali kiring: @Intizom_login_bot");
         } else if(err.code==="auth/wrong-password"||err.code==="auth/invalid-credential"){
-          setLoginErr("Login yoki parol noto'g'ri! ("+(SEC.MAX_FAILED-state.fails)+" urinish qoldi)");
+          setLoginErr("Parol noto'g'ri. Telegram botdan yangi parol oling.");
         } else if(err.code==="auth/too-many-requests"){
-          setLoginErr("Juda ko'p urinish. Biroz kutib, qayta urinib ko'ring.");
+          setLoginErr("Juda ko'p urinish. 15 daqiqa kuting yoki Telegram orqali kiring.");
+        } else if(err.code==="auth/network-request-failed"){
+          setLoginErr("Internet aloqasi yo'q. Ulanishni tekshiring.");
         } else {
-          setLoginErr("Login yoki parol noto'g'ri! ("+(SEC.MAX_FAILED-state.fails)+" urinish qoldi)");
+          setLoginErr("Xato: "+(err.code||err.message||"no'malum"));
         }
       });
   }
