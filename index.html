@@ -128,9 +128,7 @@
       background: linear-gradient(135deg, #0a0e2a 0%, #1a1f4e 40%, #0d1333 100%);
       display: flex; align-items: center; justify-content: center;
       flex-direction: column; gap: 24px; z-index: 9999;
-      animation: loaderFade 0.4s ease 2s forwards;
     }
-    @keyframes loaderFade { to { opacity: 0; pointer-events: none; } }
     .loader-logo {
       width: 88px; height: 88px;
       background: linear-gradient(135deg, #3b5bff, #7a5af8);
@@ -3578,7 +3576,7 @@
   <script src="vendor/leaflet.js"></script>
 </head>
 <body>
-<div id="root"></div>
+<div id="root" style="min-height:100vh;background:linear-gradient(135deg,#0a0e2a 0%,#1a1f4e 40%,#0d1333 100%)"></div>
 <!-- Bootstrap: global error handler + service worker cleanup (runs before Babel) -->
 <script>
 (function(){
