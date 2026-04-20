@@ -458,7 +458,7 @@ function mainMenu(t, role, isLoggedIn) {
   const isAdmin = role === "admin" || role === "boss";
   // Employee rows (everyone sees)
   kb.push([{ text: t.menu_today || "📸 Bugun", callback_data: "act:today" }, { text: t.menu_monthly || "📊 Oylik", callback_data: "act:monthly" }]);
-  kb.push([{ text: t.menu_note || "💬 Izoh", callback_data: "act:note" }, { text: t.menu_vacation || "🏖 Ta'til", callback_data: "act:vacation" }]);
+  kb.push([{ text: t.menu_note || "💬 Izoh yozish", callback_data: "act:note" }]);
   kb.push([{ text: t.menu_birthdays || "🎂 Tug'ilgan kunlar", callback_data: "act:birthdays" }, { text: t.menu_champions || "🏆 Chempionlar", callback_data: "act:champions" }]);
   kb.push([{ text: t.menu_announcements || "📢 E'lonlar", callback_data: "act:announcements" }]);
   // Admin-only rows
@@ -466,7 +466,7 @@ function mainMenu(t, role, isLoggedIn) {
     kb.push([{ text: t.menu_absent_now || "🚨 Hozir kim yo'q", callback_data: "act:absent_now" }]);
     kb.push([{ text: t.menu_today_report || "📋 Bugungi hisobot", callback_data: "act:today_report" }]);
     kb.push([{ text: t.menu_send_ann || "📢 E'lon yuborish", callback_data: "act:send_ann" }]);
-    kb.push([{ text: t.menu_vac_requests || "✅ Ta'til so'rovlar", callback_data: "act:vac_requests" }, { text: t.menu_find_emp || "👥 Xodim qidirish", callback_data: "act:find_emp" }]);
+    kb.push([{ text: t.menu_find_emp || "👥 Xodim qidirish", callback_data: "act:find_emp" }]);
   }
   // Footer
   kb.push([{ text: t.menu_site, url: "https://xodimlar-7c13c.web.app/" }]);
@@ -788,8 +788,8 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
       }
 
       // ═══ NEW FEATURE HANDLERS (require login) ═══
-      const needLoginActs = ["act:today","act:monthly","act:note","act:vacation","act:birthdays","act:champions","act:announcements","act:absent_now","act:today_report","act:send_ann","act:vac_requests","act:find_emp"];
-      const isAdminAct = ["act:absent_now","act:today_report","act:send_ann","act:vac_requests","act:find_emp"].includes(data) || data.startsWith("act:vac_approve:") || data.startsWith("act:vac_reject:");
+      const needLoginActs = ["act:today","act:monthly","act:note","act:birthdays","act:champions","act:announcements","act:absent_now","act:today_report","act:send_ann","act:find_emp"];
+      const isAdminAct = ["act:absent_now","act:today_report","act:send_ann","act:find_emp"].includes(data);
       if (needLoginActs.includes(data) || data.startsWith("note:") || isAdminAct) {
         const lang = await getUserLang(chatId);
         const t = BOT_T[lang] || BOT_T.uz;
@@ -858,11 +858,6 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
             await tgApi("sendMessage", { chat_id: chatId, text: t.note_text_prompt, parse_mode: "HTML" });
             return res.status(200).send("OK");
           }
-          if (data === "act:vacation") {
-            await setUserMode(chatId, "vac:start");
-            await tgApi("sendMessage", { chat_id: chatId, text: t.vac_start_prompt, parse_mode: "HTML" });
-            return res.status(200).send("OK");
-          }
           if (data === "act:send_ann") {
             await setUserMode(chatId, "ann:title");
             await tgApi("sendMessage", { chat_id: chatId, text: t.send_ann_title, parse_mode: "HTML" });
@@ -871,58 +866,6 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
           if (data === "act:find_emp") {
             await setUserMode(chatId, "find:query");
             await tgApi("sendMessage", { chat_id: chatId, text: t.find_emp_prompt, parse_mode: "HTML" });
-            return res.status(200).send("OK");
-          }
-          if (data === "act:vac_requests") {
-            const { text, items } = await buildVacRequests(t);
-            if (items.length === 0) {
-              await tgApi("sendMessage", { chat_id: chatId, text, parse_mode: "HTML", reply_markup: mainMenu(t, ctx.role, true) });
-            } else {
-              await tgApi("sendMessage", { chat_id: chatId, text, parse_mode: "HTML" });
-              // Send each pending request with approve/reject buttons
-              for (const r of items) {
-                await tgApi("sendMessage", {
-                  chat_id: chatId,
-                  text: `<b>${r.name}</b>\n📅 ${r.start} — ${r.end}\n✍️ ${r.reason || "-"}`,
-                  parse_mode: "HTML",
-                  reply_markup: { inline_keyboard: [[
-                    { text: "✅ Tasdiqlash", callback_data: `act:vac_approve:${r.id}` },
-                    { text: "❌ Rad etish", callback_data: `act:vac_reject:${r.id}` }
-                  ]]}
-                });
-              }
-            }
-            return res.status(200).send("OK");
-          }
-          if (data.startsWith("act:vac_approve:") || data.startsWith("act:vac_reject:")) {
-            const id = data.split(":")[2];
-            const approve = data.startsWith("act:vac_approve:");
-            const reqSnap = await db.ref(`vacation_requests/${id}`).once("value");
-            const rec = reqSnap.val();
-            if (!rec) {
-              await tgApi("sendMessage", { chat_id: chatId, text: "⚠️ So'rov topilmadi." });
-              return res.status(200).send("OK");
-            }
-            await db.ref(`vacation_requests/${id}`).update({ status: approve ? "approved" : "rejected", decidedBy: ctx.name, decidedAt: Date.now() });
-            // If approved, create attendance records for each day as vacation
-            if (approve && rec.start && rec.end && rec.empKey) {
-              const start = new Date(rec.start), end = new Date(rec.end);
-              const updates = {};
-              for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                const dk = fmtDate(d);
-                updates[`attendance/${dk}/${rec.empKey}`] = { status: "vacation", morning: 0, afternoon: 0, note: `Ta'til: ${rec.start} — ${rec.end}` };
-              }
-              await db.ref().update(updates).catch(() => {});
-            }
-            const msg = approve ? t.vac_approved.replace("{name}", rec.name) : t.vac_rejected.replace("{name}", rec.name);
-            await tgApi("sendMessage", { chat_id: chatId, text: msg, parse_mode: "HTML" });
-            // Notify applicant if chat_id saved
-            if (rec.chatId) {
-              const notifyMsg = approve
-                ? `✅ Ta'til so'rovingiz tasdiqlandi!\n📅 ${rec.start} — ${rec.end}`
-                : `❌ Ta'til so'rovingiz rad etildi.\n📅 ${rec.start} — ${rec.end}`;
-              await tgApi("sendMessage", { chat_id: rec.chatId, text: notifyMsg }).catch(() => {});
-            }
             return res.status(200).send("OK");
           }
         } catch (err) {
@@ -1016,64 +959,6 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
             await tgApi("sendMessage", { chat_id: chatId, parse_mode: "HTML",
               text: t.note_saved.replace("{type}", typeLabels[noteType] || noteType).replace("{date}", todayKey),
               reply_markup: mainMenu(t, ctx.role, true) });
-            return res.status(200).send("OK");
-          }
-          // Ta'til so'rash — step 1: start date
-          if (currentMode === "vac:start" && ctx) {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(textIn)) {
-              await tgApi("sendMessage", { chat_id: chatId, text: t.vac_date_invalid });
-              return res.status(200).send("OK");
-            }
-            await db.ref(`tg_sessions/${chatId}`).update({ mode: "vac:end", vac_start: textIn });
-            await tgApi("sendMessage", { chat_id: chatId, text: t.vac_end_prompt, parse_mode: "HTML" });
-            return res.status(200).send("OK");
-          }
-          if (currentMode === "vac:end" && ctx) {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(textIn)) {
-              await tgApi("sendMessage", { chat_id: chatId, text: t.vac_date_invalid });
-              return res.status(200).send("OK");
-            }
-            await db.ref(`tg_sessions/${chatId}`).update({ mode: "vac:reason", vac_end: textIn });
-            await tgApi("sendMessage", { chat_id: chatId, text: t.vac_reason_prompt, parse_mode: "HTML" });
-            return res.status(200).send("OK");
-          }
-          if (currentMode === "vac:reason" && ctx) {
-            const sessSnap = await db.ref(`tg_sessions/${chatId}`).once("value");
-            const sess = sessSnap.val() || {};
-            const reason = textIn === "-" ? "" : textIn.slice(0, 300);
-            const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-            await db.ref(`vacation_requests/${id}`).set({
-              empName: ctx.name, name: ctx.name, empKey: ctx.empKey, chatId,
-              start: sess.vac_start, end: sess.vac_end, reason,
-              status: "pending", timestamp: Date.now()
-            });
-            await db.ref(`tg_sessions/${chatId}`).update({ mode: null, vac_start: null, vac_end: null });
-            await tgApi("sendMessage", { chat_id: chatId, parse_mode: "HTML",
-              text: t.vac_saved.replace("{start}", sess.vac_start).replace("{end}", sess.vac_end).replace("{reason}", reason || "-"),
-              reply_markup: mainMenu(t, ctx.role, true) });
-            // Notify admin (first admin in whitelist with chatId linked)
-            const wlSnap = await db.ref("whitelist").once("value");
-            const wl = wlSnap.val() || {};
-            for (const k in wl) {
-              if (wl[k].role === "admin") {
-                // Find admin's chatId via tg_sessions
-                const sessAll = await db.ref("tg_sessions").once("value");
-                const allSess = sessAll.val() || {};
-                for (const adminChatId in allSess) {
-                  if (normalizePhone(allSess[adminChatId].linkedPhone || "") === normalizePhone(wl[k].phone || "")) {
-                    await tgApi("sendMessage", {
-                      chat_id: adminChatId,
-                      parse_mode: "HTML",
-                      text: `🔔 <b>Yangi ta'til so'rovi</b>\n\n<b>${ctx.name}</b>\n📅 ${sess.vac_start} — ${sess.vac_end}\n✍️ ${reason || "-"}`,
-                      reply_markup: { inline_keyboard: [[
-                        { text: "✅ Tasdiqlash", callback_data: `act:vac_approve:${id}` },
-                        { text: "❌ Rad etish", callback_data: `act:vac_reject:${id}` }
-                      ]]}
-                    }).catch(() => {});
-                  }
-                }
-              }
-            }
             return res.status(200).send("OK");
           }
           // E'lon yuborish — admin only
