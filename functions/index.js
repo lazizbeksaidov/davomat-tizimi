@@ -1837,13 +1837,17 @@ exports.bulkSetPasswords = functions.https.onRequest(async (req, res) => {
       // Telefonning oxirgi 4 ta raqami bo'yicha sodda parol
       const digits = rec.phone.replace(/\D/g, "");
       const last4 = digits.slice(-4);
-      // Ism birinchi qismi (kichik harflar, lotin)
+      // Familiya to'liq (qisqartirmaydi) + oxirgi 4 raqam
       const firstPart = (rec.name || "").split(" ")[0]
         .toLowerCase()
         .replace(/[\u2018\u2019'`]/g, "")
-        .replace(/[^a-z]/g, "")
-        .substring(0, 8) || "user";
-      const password = firstPart + last4;  // masalan: saidov3563
+        .replace(/[^a-z]/g, "") || "user";
+      const password = firstPart + last4;  // masalan: ermamatov8697
+
+      // Admin/boss/observer-ni skip qilish (ularda kuchli parol bor)
+      if (rec.role === "admin" || rec.role === "boss" || rec.role === "observer") {
+        continue;
+      }
 
       const preferredEmail = (rec.linkEmail || "").toLowerCase().trim();
       const phoneEmail = digits + "@intizom.uz";
@@ -1982,4 +1986,16 @@ exports.deleteOldPlaceholders = functions.https.onRequest(async (req, res) => {
     }
   }
   res.json(out);
+});
+
+// Saidov Lazizbek \u2014 admin, lekin sodda parol xohlayapti
+exports.fixSaidov = functions.https.onRequest(async (req, res) => {
+  try {
+    const user = await admin.auth().getUserByEmail("lazizbek.saidov@boshqarma.uz");
+    const password = "saidov3563";
+    await admin.auth().updateUser(user.uid, { password });
+    res.json({ email: "lazizbek.saidov@boshqarma.uz", password });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
