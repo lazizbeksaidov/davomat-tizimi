@@ -3473,6 +3473,15 @@
       border-color: rgba(255,255,255,0.08);
     }
     /* ═══════════════════════════════════════════════════════════ */
+    /* 📱 SIDEBAR — Mobilda pastdagi user bekitishi muammosi        */
+    /* ═══════════════════════════════════════════════════════════ */
+    .sidebar { z-index: 900 !important; }
+    .sidebar-overlay { z-index: 850 !important; }
+    /* Sidebar ochiq bo'lganda mobile bottom nav yashiradi */
+    body:has(.sidebar.open) .mhome-bottom-nav,
+    body:has(.sidebar.open) .mobile-bottom-nav { display: none !important; }
+
+    /* ═══════════════════════════════════════════════════════════ */
     /* 📱 MOBIL FIX — UI muammolarini tuzatish                     */
     /* ═══════════════════════════════════════════════════════════ */
     @media (max-width: 640px) {
@@ -12638,7 +12647,14 @@ function App(){
   },[]);
 
   useEffect(()=>{
+    // Safety timeout — if auth doesn't respond in 8s, force login screen
+    const safetyTimer = setTimeout(() => {
+      console.warn('[auth] timeout — forcing login screen');
+      setLoading(false);
+    }, 8000);
+
     const unsub=auth.onAuthStateChanged((fUser)=>{
+      clearTimeout(safetyTimer);
       if(fUser){
         const email=(fUser.email||"").toLowerCase();
         if(!email){setUser(null);setLoading(false);return;}
@@ -12701,7 +12717,7 @@ function App(){
         setLoading(false);
       }
     });
-    return()=>unsub();
+    return()=>{clearTimeout(safetyTimer);unsub();};
   },[]);
 
   useEffect(()=>{
