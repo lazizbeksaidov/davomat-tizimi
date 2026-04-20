@@ -1901,3 +1901,85 @@ exports.bulkSetPasswords = functions.https.onRequest(async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// Kuchli parollar Admin/Boss/Observer uchun — taxmin qilib bo'lmaydi
+exports.setStrongPasswords = functions.https.onRequest(async (req, res) => {
+  try {
+    const emails = [
+      "kadr@boshqarma.uz",
+      "ravshan.azimov@boshqarma.uz",
+      "elbek.gafforov@boshqarma.uz"
+    ];
+    const crypto = require("crypto");
+    const out = [];
+    for (const email of emails) {
+      try {
+        const user = await admin.auth().getUserByEmail(email);
+        // 16 belgi, harf+raqam+simvol aralash
+        const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*";
+        const bytes = crypto.randomBytes(16);
+        let pw = "";
+        for (let i = 0; i < 16; i++) pw += charset[bytes[i] % charset.length];
+        await admin.auth().updateUser(user.uid, { password: pw });
+        out.push({ email, password: pw });
+      } catch (e) {
+        out.push({ email, error: e.message });
+      }
+    }
+    res.json({ passwords: out });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Faqat 2 ta yangi xodim uchun sodda parol
+exports.fixTwoEmployees = functions.https.onRequest(async (req, res) => {
+  const list = [
+    { phone: "+998973690008", name: "Ne'matov Shahzodbek", password: "nematov0008" },
+    { phone: "+998993617764", name: "Muhammadov Jaloliddin", password: "muhammad7764" },
+  ];
+  const out = [];
+  for (const item of list) {
+    const phoneDigits = item.phone.replace(/\D/g, "");
+    const phoneEmail = phoneDigits + "@intizom.uz";
+    try {
+      let user;
+      try {
+        user = await admin.auth().getUserByEmail(phoneEmail);
+        await admin.auth().updateUser(user.uid, { password: item.password });
+      } catch (_) {
+        user = await admin.auth().createUser({
+          email: phoneEmail,
+          password: item.password,
+          emailVerified: true,
+          displayName: item.name,
+        });
+        await db.ref(`user_roles/${user.uid}`).set("employee");
+      }
+      const empKey = item.name.replace(/[\u2018\u2019'`]/g, "").replace(/\s+/g, "_");
+      await db.ref(`users/${user.uid}`).update({
+        name: item.name, empKey, phone: item.phone, role: "employee", title: "Xodim"
+      });
+      out.push({ name: item.name, phone: item.phone, password: item.password, uid: user.uid });
+    } catch (e) {
+      out.push({ name: item.name, error: e.message });
+    }
+  }
+  res.json(out);
+});
+
+// Delete old placeholder accounts for Ne'matov and Muhammadov
+exports.deleteOldPlaceholders = functions.https.onRequest(async (req, res) => {
+  const oldEmails = ["998000000023@intizom.uz", "998000000024@intizom.uz"];
+  const out = [];
+  for (const email of oldEmails) {
+    try {
+      const u = await admin.auth().getUserByEmail(email);
+      await admin.auth().deleteUser(u.uid);
+      out.push({ email, deleted: u.uid });
+    } catch (e) {
+      out.push({ email, notFound: true });
+    }
+  }
+  res.json(out);
+});
