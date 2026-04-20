@@ -33,6 +33,7 @@
   <script src="vendor/jspdf.umd.min.js?v=1776681921" async></script>
   <script src="vendor/jspdf-autotable.min.js?v=1776681921" async></script>
   <script src="vendor/chart.umd.min.js?v=1776681921" async></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -3640,6 +3641,14 @@
 })();
 </script>
 <script type="text/babel">
+// ═══ Telegram Mini App ═══
+const tg = window.Telegram?.WebApp;
+const isTgMiniApp = !!(tg && tg.initData && tg.initData.length > 0);
+const isMiniAppSelfie = isTgMiniApp && new URLSearchParams(location.search).get('miniapp') === 'selfie';
+if (isTgMiniApp) {
+  try { tg.expand(); tg.ready(); } catch(_e) {}
+}
+
 // ═══ Capacitor Native APIs ═══
 const isCapacitor = typeof window.Capacitor !== 'undefined';
 const haptic = {
@@ -10419,6 +10428,11 @@ function SelfieCheckin({user,attendanceData,checkinsData,showToast}){
       showToast("\u2713 "+(uiSession==="morning"?"Ertalabki":"Tushlik")+" davomat qayd etildi!"+(late>0?" ("+late+" daq kechikish)":""));
       lockedSessionRef.current=null;
       setCapturedPhoto(null);setSubmitting(false);setEmpNote("");
+      // Telegram Mini App — auto-close 2s after successful check-in
+      if (isTgMiniApp && tg) {
+        try { tg.HapticFeedback?.notificationOccurred?.('success'); } catch(_){ }
+        setTimeout(() => { try { tg.close(); } catch(_){ } }, 2000);
+      }
     })
     .catch(function(e){
       showToast("\u26A0 Xatolik: "+(e.message||"Firebase muammo"));
@@ -12717,6 +12731,33 @@ function App(){
   },[]);
 
   useEffect(()=>{
+    // Telegram Mini App — auto sign-in via initData on first mount (no existing session)
+    if (isTgMiniApp && !auth.currentUser) {
+      (async () => {
+        try {
+          const res = await fetch('https://us-central1-xodimlar-7c13c.cloudfunctions.net/telegramMiniAppAuth', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({initData: tg.initData})
+          });
+          if (res.ok) {
+            const {token} = await res.json();
+            if (token) {
+              await auth.signInWithCustomToken(token);
+              // If miniapp=selfie, jump to selfie tab after login
+              if (isMiniAppSelfie) setView('selfie');
+              return;
+            }
+          } else {
+            const err = await res.json().catch(() => ({error: 'unknown'}));
+            console.warn('[tgMiniApp] auth failed:', err.error);
+          }
+        } catch (e) {
+          console.warn('[tgMiniApp] auth error:', e.message);
+        }
+      })();
+    }
+
     // Safety timeout — if auth doesn't respond in 8s, force login screen
     const safetyTimer = setTimeout(() => {
       console.warn('[auth] timeout — forcing login screen');

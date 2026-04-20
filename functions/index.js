@@ -457,7 +457,8 @@ function mainMenu(t, role, isLoggedIn) {
   }
   const isAdmin = role === "admin" || role === "boss";
   // Employee rows (everyone sees)
-  kb.push([{ text: t.menu_today || "📸 Bugun", callback_data: "act:today" }, { text: t.menu_monthly || "📊 Oylik", callback_data: "act:monthly" }]);
+  kb.push([{ text: "📸 Selfie olish", web_app: { url: "https://xodimlar-7c13c.web.app/?miniapp=selfie" } }]);
+  kb.push([{ text: t.menu_today || "📸 Bugungi holat", callback_data: "act:today" }, { text: t.menu_monthly || "📊 Oylik", callback_data: "act:monthly" }]);
   kb.push([{ text: t.menu_note || "💬 Izoh yozish", callback_data: "act:note" }]);
   kb.push([{ text: t.menu_birthdays || "🎂 Tug'ilgan kunlar", callback_data: "act:birthdays" }, { text: t.menu_champions || "🏆 Chempionlar", callback_data: "act:champions" }]);
   kb.push([{ text: t.menu_announcements || "📢 E'lonlar", callback_data: "act:announcements" }]);
@@ -930,9 +931,10 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
           chat_id: chatId, text: msg, parse_mode: "HTML", disable_web_page_preview: true,
           reply_markup: { inline_keyboard: [[{ text: t.open_site, url: appUrl }]], remove_keyboard: true },
         });
+        // After successful login, rec is now in whitelist — pass role + true for isLoggedIn
         await tgApi("sendMessage", {
           chat_id: chatId, text: t.welcome, parse_mode: "HTML",
-          reply_markup: mainMenu(t),
+          reply_markup: mainMenu(t, rec.role || "employee", true),
         });
         return res.status(200).send("OK");
       }
@@ -1024,11 +1026,11 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
           await setUserMode(chatId, "reset");
           await tgApi("sendMessage", { chat_id: chatId, text: t.share_reset, parse_mode: "HTML", reply_markup: shareKeyboard(t) });
           return res.status(200).send("OK");
-        case "/info": case "/menda":
+        case "/info": case "/menda": {
           const userSnap = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
           const phone = userSnap.val();
           if (!phone) {
-            await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML", reply_markup: mainMenu(t) });
+            await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML", reply_markup: mainMenu(t, null, false) });
           } else {
             const rec = await lookupWhitelist(phone);
             if (rec) {
@@ -1036,18 +1038,21 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
               const msg = t.info_line
                 .replace("{name}", rec.name || "-").replace("{title}", rec.title || "-")
                 .replace("{role}", rec.role || "employee").replace("{phone}", phone).replace("{status}", status);
-              await tgApi("sendMessage", { chat_id: chatId, text: msg, parse_mode: "HTML", reply_markup: mainMenu(t) });
+              await tgApi("sendMessage", { chat_id: chatId, text: msg, parse_mode: "HTML", reply_markup: mainMenu(t, rec.role, true) });
             } else {
               await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML" });
             }
           }
           return res.status(200).send("OK");
+        }
         case "/lang": case "/til":
           await tgApi("sendMessage", { chat_id: chatId, text: BOT_T.uz.lang_picker, reply_markup: langKeyboard() });
           return res.status(200).send("OK");
-        case "/yordam": case "/help":
-          await tgApi("sendMessage", { chat_id: chatId, text: t.help, parse_mode: "HTML", reply_markup: mainMenu(t) });
+        case "/yordam": case "/help": {
+          const ctxHelp = await getUserCtx(chatId);
+          await tgApi("sendMessage", { chat_id: chatId, text: t.help, parse_mode: "HTML", reply_markup: mainMenu(t, ctxHelp?.role, !!ctxHelp) });
           return res.status(200).send("OK");
+        }
         default:
           await sendMenu(chatId, userLang);
           return res.status(200).send("OK");
@@ -2473,5 +2478,113 @@ exports.fixSaidov = functions.https.onRequest(async (req, res) => {
     res.json({ email: "lazizbek.saidov@boshqarma.uz", password });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Telegram Mini App auth — takes Web App initData, returns Firebase custom token.
+ * Verifies HMAC signature with bot token, resolves Telegram user to linked phone,
+ * then mints a custom token for the corresponding Firebase user.
+ */
+exports.telegramMiniAppAuth = functions.https.onRequest(async (req, res) => {
+  const origin = req.headers.origin || "";
+  if (ALLOWED_ORIGINS.some(o => origin === o)) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
+  res.set("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+  res.set("Vary", "Origin");
+  if (req.method === "OPTIONS") return res.status(204).send("");
+  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+
+  try {
+    const { initData } = req.body || {};
+    if (!initData || typeof initData !== "string" || initData.length > 10000) {
+      return res.status(400).json({ error: "initData required" });
+    }
+
+    // Parse & verify HMAC
+    const crypto = require("crypto");
+    const botToken = await getBotToken();
+    if (!botToken) return res.status(500).json({ error: "Bot not configured" });
+
+    const urlParams = new URLSearchParams(initData);
+    const providedHash = urlParams.get("hash");
+    urlParams.delete("hash");
+    const dataCheckString = [...urlParams.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n");
+
+    const secretKey = crypto.createHmac("sha256", "WebAppData").update(botToken).digest();
+    const computedHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+
+    if (computedHash !== providedHash) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    const authDate = parseInt(urlParams.get("auth_date") || "0", 10);
+    if (Date.now() / 1000 - authDate > 3600) {
+      return res.status(401).json({ error: "initData expired" });
+    }
+
+    const userJson = urlParams.get("user");
+    if (!userJson) return res.status(400).json({ error: "No user data" });
+    const tgUser = JSON.parse(userJson);
+    const tgChatId = tgUser.id;
+
+    // Look up linked phone from tg_sessions
+    const phoneSnap = await db.ref(`tg_sessions/${tgChatId}/linkedPhone`).once("value");
+    const phone = phoneSnap.val();
+    if (!phone) {
+      return res.status(403).json({ error: "Not linked. Login via bot first." });
+    }
+
+    // Find whitelist record
+    const wlRec = await lookupWhitelist(phone);
+    if (!wlRec) return res.status(403).json({ error: "Not in whitelist" });
+    if (wlRec.active === false) return res.status(403).json({ error: "Account blocked" });
+
+    // Find Firebase user by phoneEmail or linkEmail
+    const phoneEmail = `${phone.replace(/[^0-9]/g, "")}@phone.boshqarma.uz`;
+    const preferredEmail = (wlRec.linkEmail || "").toLowerCase().trim();
+
+    let user;
+    try {
+      if (preferredEmail) user = await admin.auth().getUserByEmail(preferredEmail).catch(() => null);
+      if (!user) user = await admin.auth().getUserByEmail(phoneEmail).catch(() => null);
+    } catch (_) {}
+
+    if (!user) {
+      // Create via ensureUser flow
+      const ensured = await ensureUser({ ...wlRec, phone });
+      user = await admin.auth().getUser(ensured.uid);
+    }
+
+    // Ensure users/{uid}/empKey is set (for DB rules)
+    const empKey = String(wlRec.name || "").replace(/[\u2018\u2019'`]/g, "").replace(/\s+/g, "_");
+    await db.ref(`users/${user.uid}`).update({
+      name: wlRec.name,
+      empKey,
+      phone,
+      title: wlRec.title || "",
+      lastLogin: Date.now(),
+    }).catch(() => {});
+
+    // Mint custom token with 5-min window
+    const customToken = await admin.auth().createCustomToken(user.uid, {
+      source: "telegram_miniapp",
+      tgChatId: String(tgChatId),
+    });
+
+    return res.json({
+      token: customToken,
+      email: user.email,
+      name: wlRec.name,
+      role: wlRec.role || "employee",
+    });
+  } catch (e) {
+    console.error("telegramMiniAppAuth error:", e.message);
+    return res.status(500).json({ error: "Server error" });
   }
 });
