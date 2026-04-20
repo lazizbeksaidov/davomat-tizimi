@@ -290,15 +290,126 @@ async function buildStatistikaReport() {
   return text;
 }
 
+// ═══ BOT i18n ═══
+const BOT_T = {
+  uz: {
+    lang_picker: "🌐 Tilni tanlang / Выберите язык / Select language",
+    welcome: "👋 <b>Xush kelibsiz!</b>\n\n🏢 Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi davomat tizimi.\n\nKerakli amalni tanlang:",
+    menu_login: "🔐 Tizimga kirish",
+    menu_reset: "🔄 Parolni tiklash",
+    menu_info: "👤 Mening ma'lumotim",
+    menu_site: "🌐 Saytni ochish",
+    menu_help: "❓ Yordam",
+    menu_lang: "🌐 Tilni o'zgartirish",
+    share_prompt: "📱 <b>Telefon raqamingizni ulashing</b>\n\nTizimga kirish uchun quyidagi tugmani bosing:",
+    share_reset: "🔄 <b>Parolni tiklash</b>\n\nYangi parol olish uchun raqamingizni ulashing:",
+    share_btn: "📱 Telefon raqamni ulashish",
+    cancel: "❌ Bekor qilish",
+    back: "⬅️ Ortga",
+    not_found: "❌ Raqamingiz ro'yxatda topilmadi.\n\nIltimos, kadrlar bo'limiga murojaat qiling.",
+    blocked: "🚫 Akkauntingiz bloklangan.\n\nAdmin bilan bog'laning.",
+    success: "✅ Salom, <b>{name}</b>!\n{title}\n\n🔓 <b>Kirish ma'lumotlari:</b>\n\n📱 Login: <code>{phone}</code>\n🔑 Parol: <code>{password}</code>\n\n👇 Saytga kiring:",
+    reset_success: "✅ <b>Parol yangilandi!</b>\n\n📱 Login: <code>{phone}</code>\n🔑 Yangi parol: <code>{password}</code>\n\n⚠️ Eski parol endi ishlamaydi.",
+    info_line: "👤 <b>Sizning ma'lumotlaringiz:</b>\n\n🏷 Ism: <b>{name}</b>\n💼 Lavozim: {title}\n🎭 Rol: {role}\n📱 Telefon: <code>{phone}</code>\n📊 Holati: {status}",
+    info_not_logged: "ℹ️ Siz hali tizimda ro'yxatdan o'tmagansiz.\n\n/start orqali kiring.",
+    help: "🤖 <b>Yordam</b>\n\n🔐 /start — Tizimga kirish\n🔄 /reset — Parolni tiklash\n👤 /info — Mening ma'lumotim\n🌐 /lang — Tilni o'zgartirish\n❓ /help — Yordam\n\n📞 Qo'llab-quvvatlash: Kadrlar bo'limi",
+    open_site: "🌐 Saytga o'tish",
+    err: "⚠️ Xatolik yuz berdi. Qayta urinib ko'ring.",
+  },
+  ru: {
+    lang_picker: "🌐 Выберите язык",
+    welcome: "👋 <b>Добро пожаловать!</b>\n\n🏢 Система учёта посещаемости Управления инвестиций, промышленности и торговли Навоийской области.\n\nВыберите действие:",
+    menu_login: "🔐 Вход в систему",
+    menu_reset: "🔄 Сбросить пароль",
+    menu_info: "👤 Моя информация",
+    menu_site: "🌐 Открыть сайт",
+    menu_help: "❓ Помощь",
+    menu_lang: "🌐 Сменить язык",
+    share_prompt: "📱 <b>Поделитесь номером телефона</b>\n\nНажмите кнопку ниже:",
+    share_reset: "🔄 <b>Сброс пароля</b>\n\nПоделитесь номером для получения нового:",
+    share_btn: "📱 Поделиться номером",
+    cancel: "❌ Отменить",
+    back: "⬅️ Назад",
+    not_found: "❌ Ваш номер не найден.\n\nОбратитесь в отдел кадров.",
+    blocked: "🚫 Ваш аккаунт заблокирован.",
+    success: "✅ Здравствуйте, <b>{name}</b>!\n{title}\n\n🔓 <b>Данные для входа:</b>\n\n📱 Логин: <code>{phone}</code>\n🔑 Пароль: <code>{password}</code>\n\n👇 Откройте сайт:",
+    reset_success: "✅ <b>Пароль обновлён!</b>\n\n📱 Логин: <code>{phone}</code>\n🔑 Новый пароль: <code>{password}</code>\n\n⚠️ Старый пароль больше не работает.",
+    info_line: "👤 <b>Ваши данные:</b>\n\n🏷 Имя: <b>{name}</b>\n💼 Должность: {title}\n🎭 Роль: {role}\n📱 Телефон: <code>{phone}</code>\n📊 Статус: {status}",
+    info_not_logged: "ℹ️ Вы ещё не зарегистрированы.\n\nВведите /start для входа.",
+    help: "🤖 <b>Помощь</b>\n\n🔐 /start — Вход\n🔄 /reset — Сброс пароля\n👤 /info — Моя информация\n🌐 /lang — Сменить язык\n❓ /help — Помощь",
+    open_site: "🌐 Открыть сайт",
+    err: "⚠️ Ошибка. Попробуйте снова.",
+  },
+  en: {
+    lang_picker: "🌐 Select language",
+    welcome: "👋 <b>Welcome!</b>\n\n🏢 Navoiy Region Investment, Industry & Trade Department — attendance system.\n\nChoose an action:",
+    menu_login: "🔐 Login",
+    menu_reset: "🔄 Reset password",
+    menu_info: "👤 My info",
+    menu_site: "🌐 Open website",
+    menu_help: "❓ Help",
+    menu_lang: "🌐 Change language",
+    share_prompt: "📱 <b>Share your phone number</b>\n\nTap the button below:",
+    share_reset: "🔄 <b>Reset password</b>\n\nShare your phone to get a new one:",
+    share_btn: "📱 Share phone number",
+    cancel: "❌ Cancel",
+    back: "⬅️ Back",
+    not_found: "❌ Your number is not registered.\n\nContact HR department.",
+    blocked: "🚫 Your account is blocked.",
+    success: "✅ Hello, <b>{name}</b>!\n{title}\n\n🔓 <b>Login credentials:</b>\n\n📱 Login: <code>{phone}</code>\n🔑 Password: <code>{password}</code>\n\n👇 Open website:",
+    reset_success: "✅ <b>Password updated!</b>\n\n📱 Login: <code>{phone}</code>\n🔑 New password: <code>{password}</code>\n\n⚠️ Old password no longer works.",
+    info_line: "👤 <b>Your information:</b>\n\n🏷 Name: <b>{name}</b>\n💼 Position: {title}\n🎭 Role: {role}\n📱 Phone: <code>{phone}</code>\n📊 Status: {status}",
+    info_not_logged: "ℹ️ You are not registered yet.\n\nUse /start to sign in.",
+    help: "🤖 <b>Help</b>\n\n🔐 /start — Sign in\n🔄 /reset — Reset password\n👤 /info — My info\n🌐 /lang — Change language\n❓ /help — Help",
+    open_site: "🌐 Open website",
+    err: "⚠️ Error. Try again.",
+  },
+};
+
+async function getUserLang(chatId) {
+  const snap = await db.ref(`tg_sessions/${chatId}/lang`).once("value");
+  return snap.val() || "uz";
+}
+async function setUserLang(chatId, lang) {
+  await db.ref(`tg_sessions/${chatId}`).update({ lang, mode: null });
+}
+async function setUserMode(chatId, mode) {
+  await db.ref(`tg_sessions/${chatId}/mode`).set(mode);
+}
+async function getUserMode(chatId) {
+  const snap = await db.ref(`tg_sessions/${chatId}/mode`).once("value");
+  return snap.val();
+}
+
+function langKeyboard() {
+  return { inline_keyboard: [
+    [{ text: "🇺🇿 O'zbekcha", callback_data: "lang:uz" }],
+    [{ text: "🇷🇺 Русский", callback_data: "lang:ru" }],
+    [{ text: "🇬🇧 English", callback_data: "lang:en" }],
+  ]};
+}
+function mainMenu(t) {
+  return { inline_keyboard: [
+    [{ text: t.menu_login, callback_data: "act:login" }],
+    [{ text: t.menu_reset, callback_data: "act:reset" }],
+    [{ text: t.menu_info, callback_data: "act:info" }],
+    [{ text: t.menu_site, url: "https://xodimlar-7c13c.web.app/" }],
+    [{ text: t.menu_help, callback_data: "act:help" }, { text: t.menu_lang, callback_data: "act:lang" }],
+  ]};
+}
+function shareKeyboard(t) {
+  return { keyboard: [[{ text: t.share_btn, request_contact: true }]], resize_keyboard: true, one_time_keyboard: true };
+}
+async function sendMenu(chatId, lang) {
+  const t = BOT_T[lang] || BOT_T.uz;
+  await tgApi("sendMessage", {
+    chat_id: chatId, text: t.welcome, parse_mode: "HTML", reply_markup: mainMenu(t),
+  });
+}
+
 // ═══ TELEGRAM WEBHOOK ═══
 exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
   if (req.method !== "POST") { res.status(200).send("OK"); return; }
-  const message = req.body?.message;
-  if (!message?.text) { res.status(200).send("OK"); return; }
-
-  const chatId = message.chat.id;
-  const cmd = message.text.trim().split(" ")[0].split("@")[0].toLowerCase();
-  const todayKey = fmtDate(new Date());
 
   // Verify webhook secret on EVERY request (group AND DM)
   const secretSnap = await db.ref("config/webhook_secret").once("value");
@@ -312,72 +423,171 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
     }
   }
 
+  // ═══ CALLBACK QUERIES (inline keyboard) ═══
+  const cbq = req.body?.callback_query;
+  if (cbq) {
+    try {
+      const chatId = cbq.message.chat.id;
+      const data = cbq.data || "";
+      await tgApi("answerCallbackQuery", { callback_query_id: cbq.id });
+
+      if (data.startsWith("lang:")) {
+        const lang = data.split(":")[1];
+        await setUserLang(chatId, lang);
+        await sendMenu(chatId, lang);
+        return res.status(200).send("OK");
+      }
+      if (data === "act:login" || data === "act:reset") {
+        const lang = await getUserLang(chatId);
+        const t = BOT_T[lang] || BOT_T.uz;
+        await setUserMode(chatId, data === "act:reset" ? "reset" : "login");
+        await tgApi("sendMessage", {
+          chat_id: chatId,
+          text: data === "act:reset" ? t.share_reset : t.share_prompt,
+          parse_mode: "HTML",
+          reply_markup: shareKeyboard(t),
+        });
+        return res.status(200).send("OK");
+      }
+      if (data === "act:info") {
+        const lang = await getUserLang(chatId);
+        const t = BOT_T[lang] || BOT_T.uz;
+        // Check if user linked (by chatId → phone via tg_sessions)
+        const userSnap = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
+        const phone = userSnap.val();
+        if (!phone) {
+          await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML" });
+        } else {
+          const rec = await lookupWhitelist(phone);
+          if (rec) {
+            const status = rec.active === false ? "🚫 Bloklangan" : "✅ Faol";
+            const msg = t.info_line.replace("{name}", rec.name || "-").replace("{title}", rec.title || "-").replace("{role}", rec.role || "employee").replace("{phone}", phone).replace("{status}", status);
+            await tgApi("sendMessage", { chat_id: chatId, text: msg, parse_mode: "HTML" });
+          } else {
+            await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML" });
+          }
+        }
+        return res.status(200).send("OK");
+      }
+      if (data === "act:lang") {
+        await tgApi("sendMessage", { chat_id: chatId, text: BOT_T.uz.lang_picker, reply_markup: langKeyboard() });
+        return res.status(200).send("OK");
+      }
+      if (data === "act:help") {
+        const lang = await getUserLang(chatId);
+        const t = BOT_T[lang] || BOT_T.uz;
+        await tgApi("sendMessage", { chat_id: chatId, text: t.help, parse_mode: "HTML", reply_markup: mainMenu(t) });
+        return res.status(200).send("OK");
+      }
+      return res.status(200).send("OK");
+    } catch (e) {
+      console.error("Callback error:", e);
+      return res.status(200).send("OK");
+    }
+  }
+
+  const message = req.body?.message;
+  if (!message) { res.status(200).send("OK"); return; }
+
+  const chatId = message.chat.id;
+  const cmd = (message.text || "").trim().split(" ")[0].split("@")[0].toLowerCase();
+  const todayKey = fmtDate(new Date());
+
   const isGroup = message.chat.type === "group" || message.chat.type === "supergroup";
 
   try {
     let reply = "";
 
     if (!isGroup) {
-      // ═══ CONTACT SHARE = LOGIN ═══
+      const userLang = await getUserLang(chatId);
+      const t = BOT_T[userLang] || BOT_T.uz;
+
+      // ═══ CONTACT SHARE = LOGIN / RESET ═══
       if (message.contact) {
         if (message.contact.user_id && message.contact.user_id !== message.from.id) {
-          await sendMessage(chatId, "⚠️ Faqat o'z raqamingizni ulashing!");
+          await tgApi("sendMessage", { chat_id: chatId, text: "⚠️ Faqat o'z raqamingizni ulashing!" });
           return res.status(200).send("OK");
         }
         const phone = normalizePhone(message.contact.phone_number);
         const rec = await lookupWhitelist(phone);
         if (!rec) {
-          await sendMessage(chatId, "❌ Raqamingiz ro'yxatda topilmadi.\n\nIltimos, kadrlar bo'limiga murojaat qiling.");
+          await tgApi("sendMessage", { chat_id: chatId, text: t.not_found, reply_markup: { remove_keyboard: true } });
           return res.status(200).send("OK");
         }
         if (rec.active === false) {
-          await sendMessage(chatId, "🚫 Akkauntingiz bloklangan.\n\nAdmin bilan bog'laning.");
+          await tgApi("sendMessage", { chat_id: chatId, text: t.blocked, reply_markup: { remove_keyboard: true } });
           return res.status(200).send("OK");
         }
         const { tempPassword } = await ensureUser({ ...rec, phone });
         const appUrl = "https://xodimlar-7c13c.web.app/";
         const roleLabel = rec.title || (rec.role === "admin" ? "Kadrlar bo'limi" : rec.role === "boss" ? "Rahbar" : rec.role === "observer" ? "Kuzatuvchi" : "Xodim");
-        const loginPhone = phone;
-        const msg = `✅ Salom, <b>${rec.name}</b>!\n${roleLabel}\n\n🔓 <b>Kirish ma'lumotlaringiz:</b>\n\n📱 Login: <code>${loginPhone}</code>\n🔑 Parol: <code>${tempPassword}</code>\n\n👇 Saytga kiring va parolni kiritib login qiling.\n\n<i>⚠️ Parolni saqlab qo'ying yoki sayt ichida Sozlamalarda o'zgartiring.</i>`;
+        const mode = await getUserMode(chatId);
+        await db.ref(`tg_sessions/${chatId}/linkedPhone`).set(phone);
+        await setUserMode(chatId, null);
+
+        const template = mode === "reset" ? t.reset_success : t.success;
+        const msg = template
+          .replace("{name}", rec.name || "-")
+          .replace("{title}", roleLabel)
+          .replace(/\{phone\}/g, phone)
+          .replace(/\{password\}/g, tempPassword);
         await tgApi("sendMessage", {
-          chat_id: chatId,
-          text: msg,
-          parse_mode: "HTML",
-          disable_web_page_preview: true,
-          reply_markup: { inline_keyboard: [[{ text: "🌐 Saytga kirish", url: appUrl }]], remove_keyboard: true },
+          chat_id: chatId, text: msg, parse_mode: "HTML", disable_web_page_preview: true,
+          reply_markup: { inline_keyboard: [[{ text: t.open_site, url: appUrl }]], remove_keyboard: true },
+        });
+        await tgApi("sendMessage", {
+          chat_id: chatId, text: t.welcome, parse_mode: "HTML",
+          reply_markup: mainMenu(t),
         });
         return res.status(200).send("OK");
       }
 
-      // Shaxsiy chat — salomlashish + login taklifi
+      // Shaxsiy chat — buyruqlar
       switch (cmd) {
         case "/start":
-        case "/login":
-        case "/kirish":
-          await tgApi("sendMessage", {
-            chat_id: chatId,
-            text: "👋 <b>Assalomu alaykum!</b>\n\n"
-              + "🏢 Bu bot — Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi "
-              + "xodimlarining davomatini kuzatish uchun.\n\n"
-              + "🔐 <b>Tizimga kirish uchun</b> quyidagi tugma orqali telefon raqamingizni ulashing:",
-            parse_mode: "HTML",
-            reply_markup: {
-              keyboard: [[{ text: "📱 Telefon raqamni ulashish", request_contact: true }]],
-              resize_keyboard: true,
-              one_time_keyboard: true,
-            },
-          });
+          // Show language picker on first start
+          const langSnap = await db.ref(`tg_sessions/${chatId}/lang`).once("value");
+          if (!langSnap.val()) {
+            await tgApi("sendMessage", { chat_id: chatId, text: BOT_T.uz.lang_picker, reply_markup: langKeyboard() });
+          } else {
+            await sendMenu(chatId, userLang);
+          }
+          return res.status(200).send("OK");
+        case "/login": case "/kirish":
+          await setUserMode(chatId, "login");
+          await tgApi("sendMessage", { chat_id: chatId, text: t.share_prompt, parse_mode: "HTML", reply_markup: shareKeyboard(t) });
+          return res.status(200).send("OK");
+        case "/reset": case "/parol":
+          await setUserMode(chatId, "reset");
+          await tgApi("sendMessage", { chat_id: chatId, text: t.share_reset, parse_mode: "HTML", reply_markup: shareKeyboard(t) });
+          return res.status(200).send("OK");
+        case "/info": case "/menda":
+          const userSnap = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
+          const phone = userSnap.val();
+          if (!phone) {
+            await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML", reply_markup: mainMenu(t) });
+          } else {
+            const rec = await lookupWhitelist(phone);
+            if (rec) {
+              const status = rec.active === false ? "🚫 Bloklangan" : "✅ Faol";
+              const msg = t.info_line
+                .replace("{name}", rec.name || "-").replace("{title}", rec.title || "-")
+                .replace("{role}", rec.role || "employee").replace("{phone}", phone).replace("{status}", status);
+              await tgApi("sendMessage", { chat_id: chatId, text: msg, parse_mode: "HTML", reply_markup: mainMenu(t) });
+            } else {
+              await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML" });
+            }
+          }
+          return res.status(200).send("OK");
+        case "/lang": case "/til":
+          await tgApi("sendMessage", { chat_id: chatId, text: BOT_T.uz.lang_picker, reply_markup: langKeyboard() });
           return res.status(200).send("OK");
         case "/yordam": case "/help":
-          reply = "🤖 <b>Xodimlar Monitoring Bot</b>\n\n"
-            + "📱 /start — Tizimga kirish (telefon raqamni ulashing)\n"
-            + "❓ /help — Yordam\n\n"
-            + "📊 Davomat buyruqlari faqat guruh chatida ishlaydi.\n\n"
-            + "🌐 <b>Veb tizim:</b>\nhttps://xodimlar-7c13c.web.app";
-          break;
+          await tgApi("sendMessage", { chat_id: chatId, text: t.help, parse_mode: "HTML", reply_markup: mainMenu(t) });
+          return res.status(200).send("OK");
         default:
-          reply = "ℹ️ Tizimga kirish uchun /start ni bosing.";
-          break;
+          await sendMenu(chatId, userLang);
+          return res.status(200).send("OK");
       }
     } else {
       // Guruh chat — davomat buyruqlari ishlaydi
