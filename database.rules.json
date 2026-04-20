@@ -123,6 +123,14 @@
       ".read": false,
       ".write": false
     },
+    "vacation_requests": {
+      ".read": "auth != null",
+      ".indexOn": ["status", "empKey", "timestamp"],
+      "$reqId": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChild('empKey') && newData.hasChild('start') && newData.hasChild('end') && newData.hasChild('status')"
+      }
+    },
     "audit_log": {
       ".read": "auth != null && root.child('user_roles').child(auth.uid).val() === 'admin'",
       "$logId": {
