@@ -99,6 +99,11 @@
     .glass-card:hover { box-shadow: var(--s3); }
 
     html { scroll-behavior: smooth; height: 100%; }
+    /* Show dark background while React is mounting — prevents white flash */
+    #root:empty {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg,#0a0e2a 0%,#1a1f4e 40%,#0d1333 100%);
+    }
     body {
       font-family: 'Inter', sans-serif;
       background: var(--ink);
@@ -3576,7 +3581,7 @@
   <script src="vendor/leaflet.js"></script>
 </head>
 <body>
-<div id="root" style="min-height:100vh;background:linear-gradient(135deg,#0a0e2a 0%,#1a1f4e 40%,#0d1333 100%)"></div>
+<div id="root"></div>
 <!-- Bootstrap: global error handler + service worker cleanup (runs before Babel) -->
 <script>
 (function(){
