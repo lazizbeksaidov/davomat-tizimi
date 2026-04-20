@@ -1088,10 +1088,11 @@ const TG_T = {
     welcome: "👋 Xush kelibsiz!\n\nIntizom tizimiga kirish uchun telefon raqamingizni ulashing:",
     lang_prompt: "🌐 Tilni tanlang / Выберите язык / Select language",
     share_phone: "📱 Telefon raqamni ulashish",
-    not_found: "❌ Raqamingiz ro'yxatda topilmadi.\n\nIltimos, kadrlar bo'limiga murojaat qiling.\nRaqam: +998 XX XXX XX XX",
+    not_found: "❌ Raqamingiz ro'yxatda topilmadi.\n\nIltimos, kadrlar bo'limiga murojaat qiling.",
     blocked: "🚫 Akkauntingiz bloklangan.\n\nAdmin bilan bog'laning.",
-    success: "✅ Muvaffaqiyatli!\n\nSizning ismingiz: {name}\nLavozim: {title}\n\n👇 Quyidagi havolani bosib, ilovaga kiring:",
-    open_app: "🔓 Ilovaga kirish",
+    success: "✅ Salom, {name}!\n{title}\n\n🔓 <b>Kirish ma'lumotlaringiz:</b>\n\n📱 Login: <code>{phone}</code>\n🔑 Parol: <code>{password}</code>\n\n👇 Quyidagi tugma orqali saytga kiring yoki <a href=\"{url}\">{url}</a>\n\n<i>⚠️ Parolni saqlab qo'ying yoki kirgandan keyin Sozlamalarda o'zgartiring.</i>",
+    open_app: "🌐 Saytga kirish",
+    change_pw: "🔐 Parolni yangilash",
     cancel: "❌ Bekor qilish",
     error: "⚠️ Xatolik yuz berdi. Keyinroq urinib ko'ring.",
   },
@@ -1101,8 +1102,9 @@ const TG_T = {
     share_phone: "📱 Поделиться номером",
     not_found: "❌ Ваш номер не найден.\n\nОбратитесь в отдел кадров.",
     blocked: "🚫 Ваш аккаунт заблокирован.\n\nСвяжитесь с администратором.",
-    success: "✅ Успешно!\n\nВаше имя: {name}\nДолжность: {title}\n\n👇 Нажмите для входа в приложение:",
-    open_app: "🔓 Войти в приложение",
+    success: "✅ Здравствуйте, {name}!\n{title}\n\n🔓 <b>Данные для входа:</b>\n\n📱 Логин: <code>{phone}</code>\n🔑 Пароль: <code>{password}</code>\n\n👇 Откройте сайт или перейдите: <a href=\"{url}\">{url}</a>\n\n<i>⚠️ Сохраните пароль или измените его в Настройках после входа.</i>",
+    open_app: "🌐 Открыть сайт",
+    change_pw: "🔐 Изменить пароль",
     cancel: "❌ Отменить",
     error: "⚠️ Ошибка. Попробуйте позже.",
   },
@@ -1112,8 +1114,9 @@ const TG_T = {
     share_phone: "📱 Share phone number",
     not_found: "❌ Your number is not in the whitelist.\n\nPlease contact HR department.",
     blocked: "🚫 Your account is blocked.\n\nContact administrator.",
-    success: "✅ Success!\n\nName: {name}\nPosition: {title}\n\n👇 Click below to open the app:",
-    open_app: "🔓 Open app",
+    success: "✅ Hello, {name}!\n{title}\n\n🔓 <b>Your login credentials:</b>\n\n📱 Login: <code>{phone}</code>\n🔑 Password: <code>{password}</code>\n\n👇 Open website: <a href=\"{url}\">{url}</a>\n\n<i>⚠️ Save the password or change it in Settings after login.</i>",
+    open_app: "🌐 Open website",
+    change_pw: "🔐 Change password",
     cancel: "❌ Cancel",
     error: "⚠️ Error. Try again later.",
   },
@@ -1151,9 +1154,20 @@ async function lookupWhitelist(phone) {
 }
 
 function randomPassword() {
-  // Kuchli, 32 belgi, bazada saqlanmaydi — faqat login uchun 1 marta
-  const b = require("crypto").randomBytes(24);
-  return b.toString("base64").replace(/[+/=]/g, "x");
+  // Kuchli lekin insonga qulay: 10 belgi, aniq harflar (0/O/l/1 yo'q)
+  const letters = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const all = letters + digits;
+  const bytes = require("crypto").randomBytes(16);
+  let out = "";
+  // Kafolat: kamida 2 ta harf va 2 ta raqam (parol talabiga mos)
+  out += letters[bytes[0] % letters.length];
+  out += letters[bytes[1] % letters.length];
+  out += digits[bytes[2] % digits.length];
+  out += digits[bytes[3] % digits.length];
+  for (let i = 4; i < 10; i++) out += all[bytes[i] % all.length];
+  // Shuffle
+  return out.split("").sort(() => bytes[15] % 2 ? 1 : -1).join("");
 }
 
 async function ensureUser(rec) {
@@ -1313,39 +1327,28 @@ exports.telegramLoginBot = functions
           return res.status(200).send("OK");
         }
 
-        // Create/get user with temporary password
+        // Create/get user + generate fresh password
         const { uid, email, tempPassword } = await ensureUser({ ...rec, phone });
 
-        // Store creds with expiry for web app to pick up (one-time use)
-        const loginId = "tg_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
-        await db.ref(`tg_logins/${loginId}`).set({
-          email,
-          tempPassword,
-          phone,
-          uid,
-          name: rec.name,
-          createdAt: Date.now(),
-          expiresAt: Date.now() + 5 * 60 * 1000, // 5 daqiqa
-          used: false,
-        });
-
-        const appUrl = `https://xodimlar-7c13c.web.app/?tg=${loginId}`;
+        const appUrl = `https://xodimlar-7c13c.web.app/`;
+        const roleLabel = rec.title || (rec.role === "admin" ? "Kadrlar bo'limi" : rec.role === "boss" ? "Rahbar" : rec.role === "observer" ? "Kuzatuvchi" : "Xodim");
 
         const successMsg = t.success
           .replace("{name}", rec.name)
-          .replace("{title}", rec.title || (rec.role === "admin" ? "Kadrlar" : rec.role === "boss" ? "Rahbar" : "Xodim"));
+          .replace("{title}", roleLabel)
+          .replace("{phone}", phone)
+          .replace(/\{password\}/g, tempPassword)
+          .replace(/\{url\}/g, appUrl);
 
         await tgApi("sendMessage", {
           chat_id: chatId,
           text: successMsg,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [[{ text: t.open_app, url: appUrl }]],
+            remove_keyboard: true,
           },
-        });
-        await tgApi("sendMessage", {
-          chat_id: chatId,
-          text: "🔒 " + (lang === "ru" ? "Ссылка действительна 5 минут" : lang === "en" ? "Link is valid for 5 minutes" : "Havola 5 daqiqa amal qiladi"),
-          reply_markup: { remove_keyboard: true },
         });
         return res.status(200).send("OK");
       }
