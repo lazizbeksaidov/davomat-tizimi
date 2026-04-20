@@ -1200,6 +1200,18 @@ async function ensureUser(rec) {
     try {
       user = await admin.auth().getUserByEmail(phoneEmail);
       emailUsed = phoneEmail;
+
+      // Migration: if preferredEmail is set but user was found at phoneEmail,
+      // rename the user to preferredEmail (so phone login via getEmailForPhone works)
+      if (preferredEmail && preferredEmail !== phoneEmail) {
+        try {
+          await admin.auth().updateUser(user.uid, { email: preferredEmail, emailVerified: true });
+          emailUsed = preferredEmail;
+          console.log("[migrate] " + phoneEmail + " → " + preferredEmail);
+        } catch (err) {
+          console.warn("Email migration failed:", err.message);
+        }
+      }
     } catch (_) {}
   }
 
@@ -1221,9 +1233,11 @@ async function ensureUser(rec) {
       await db.ref(`user_roles/${user.uid}`).set(rec.role || "employee");
     }
   } else {
-    // Create new user
+    // Create new user AT linkEmail if specified (so phone login with getEmailForPhone works)
+    const createEmail = preferredEmail || phoneEmail;
+    emailUsed = createEmail;
     user = await admin.auth().createUser({
-      email: phoneEmail,
+      email: createEmail,
       password: tempPassword,
       emailVerified: true,
       displayName: rec.name,
