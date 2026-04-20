@@ -318,29 +318,65 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
     let reply = "";
 
     if (!isGroup) {
-      // Shaxsiy chat — faqat salomlashish va ma'lumot
+      // ═══ CONTACT SHARE = LOGIN ═══
+      if (message.contact) {
+        if (message.contact.user_id && message.contact.user_id !== message.from.id) {
+          await sendMessage(chatId, "⚠️ Faqat o'z raqamingizni ulashing!");
+          return res.status(200).send("OK");
+        }
+        const phone = normalizePhone(message.contact.phone_number);
+        const rec = await lookupWhitelist(phone);
+        if (!rec) {
+          await sendMessage(chatId, "❌ Raqamingiz ro'yxatda topilmadi.\n\nIltimos, kadrlar bo'limiga murojaat qiling.");
+          return res.status(200).send("OK");
+        }
+        if (rec.active === false) {
+          await sendMessage(chatId, "🚫 Akkauntingiz bloklangan.\n\nAdmin bilan bog'laning.");
+          return res.status(200).send("OK");
+        }
+        const { tempPassword } = await ensureUser({ ...rec, phone });
+        const appUrl = "https://xodimlar-7c13c.web.app/";
+        const roleLabel = rec.title || (rec.role === "admin" ? "Kadrlar bo'limi" : rec.role === "boss" ? "Rahbar" : rec.role === "observer" ? "Kuzatuvchi" : "Xodim");
+        const loginPhone = phone;
+        const msg = `✅ Salom, <b>${rec.name}</b>!\n${roleLabel}\n\n🔓 <b>Kirish ma'lumotlaringiz:</b>\n\n📱 Login: <code>${loginPhone}</code>\n🔑 Parol: <code>${tempPassword}</code>\n\n👇 Saytga kiring va parolni kiritib login qiling.\n\n<i>⚠️ Parolni saqlab qo'ying yoki sayt ichida Sozlamalarda o'zgartiring.</i>`;
+        await tgApi("sendMessage", {
+          chat_id: chatId,
+          text: msg,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: { inline_keyboard: [[{ text: "🌐 Saytga kirish", url: appUrl }]], remove_keyboard: true },
+        });
+        return res.status(200).send("OK");
+      }
+
+      // Shaxsiy chat — salomlashish + login taklifi
       switch (cmd) {
         case "/start":
-          reply = "👋 <b>Assalomu alaykum!</b>\n\n"
-            + "🏢 Bu bot — Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi "
-            + "xodimlarining davomatini kuzatish uchun yaratilgan.\n\n"
-            + "📊 Davomat ma'lumotlarini ko'rish uchun botni <b>guruhga</b> qo'shing "
-            + "va u yerda quyidagi buyruqlarni ishlating:\n\n"
-            + "📊 /davomat — Bugungi davomat\n"
-            + "⏰ /kechikkanlar — Kechikkan xodimlar\n"
-            + "📈 /statistika — Oylik statistika\n\n"
-            + "🌐 <b>Veb tizim:</b>\n"
-            + "https://lazizbeksaidov.github.io/davomat-tizimi/";
-          break;
+        case "/login":
+        case "/kirish":
+          await tgApi("sendMessage", {
+            chat_id: chatId,
+            text: "👋 <b>Assalomu alaykum!</b>\n\n"
+              + "🏢 Bu bot — Navoiy viloyati Investitsiyalar, sanoat va savdo boshqarmasi "
+              + "xodimlarining davomatini kuzatish uchun.\n\n"
+              + "🔐 <b>Tizimga kirish uchun</b> quyidagi tugma orqali telefon raqamingizni ulashing:",
+            parse_mode: "HTML",
+            reply_markup: {
+              keyboard: [[{ text: "📱 Telefon raqamni ulashish", request_contact: true }]],
+              resize_keyboard: true,
+              one_time_keyboard: true,
+            },
+          });
+          return res.status(200).send("OK");
         case "/yordam": case "/help":
           reply = "🤖 <b>Xodimlar Monitoring Bot</b>\n\n"
-            + "📊 Davomat buyruqlari faqat <b>guruh chatida</b> ishlaydi.\n\n"
-            + "🌐 <b>Veb tizim:</b>\n"
-            + "https://lazizbeksaidov.github.io/davomat-tizimi/";
+            + "📱 /start — Tizimga kirish (telefon raqamni ulashing)\n"
+            + "❓ /help — Yordam\n\n"
+            + "📊 Davomat buyruqlari faqat guruh chatida ishlaydi.\n\n"
+            + "🌐 <b>Veb tizim:</b>\nhttps://xodimlar-7c13c.web.app";
           break;
         default:
-          reply = "ℹ️ Bu bot faqat guruh chatida davomat ma'lumotlarini ko'rsatadi.\n"
-            + "Batafsil: /start";
+          reply = "ℹ️ Tizimga kirish uchun /start ni bosing.";
           break;
       }
     } else {
