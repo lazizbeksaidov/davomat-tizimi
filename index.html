@@ -12708,23 +12708,24 @@ function App(){
         return;
       }
       const cleanPhone = digits.length === 12 && digits.startsWith("998") ? digits : "998"+digits;
-      // Ask server for the email linked to this phone (whitelist lookup)
-      try {
-        const res = await fetch('https://us-central1-xodimlar-7c13c.cloudfunctions.net/getEmailForPhone', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ phone: '+' + cleanPhone })
-        });
-        const data = await res.json();
-        if(data.error || !data.email){
-          setAuthLoading(false);
-          setLoginErr("Bu raqam ro'yxatda yo'q. Admin bilan bog'laning.");
-          return;
+      // Embedded phone → email mapping (no fetch needed — works offline + blocked extensions)
+      const PHONE_EMAIL_MAP = {
+        "998000000001": "kadr@boshqarma.uz",
+        "998997501711": "elbek.gafforov@boshqarma.uz",
+        "998997559998": "ravshan.azimov@boshqarma.uz",
+        "998913333563": "lazizbek.saidov@boshqarma.uz"
+      };
+      if (PHONE_EMAIL_MAP[cleanPhone]) {
+        fullEmail = PHONE_EMAIL_MAP[cleanPhone];
+      } else {
+        // Try Firebase Realtime DB (no extension-fetch needed)
+        try {
+          const snap = await db.ref('whitelist/'+cleanPhone+'/linkEmail').once('value');
+          const linkEmail = snap.val();
+          fullEmail = linkEmail || (cleanPhone + "@intizom.uz");
+        } catch(e) {
+          fullEmail = cleanPhone + "@intizom.uz";
         }
-        fullEmail = data.email;
-      } catch(e) {
-        // Fallback: try phone-based email directly
-        fullEmail = cleanPhone + "@intizom.uz";
       }
     } else {
       fullEmail = loginU.trim().toLowerCase().includes("@") ? loginU.trim().toLowerCase() : loginU.trim().toLowerCase() + "@boshqarma.uz";
