@@ -102,7 +102,7 @@
     }
     .glass-card:hover { box-shadow: var(--s3); }
 
-    html { scroll-behavior: smooth; height: 100%; }
+    html { scroll-behavior: smooth; height: 100%; overscroll-behavior-y: none; }
     /* Boot loader — shown before React mounts (2-3 seconds on first load while Babel parses) */
     .boot-loader {
       position: fixed; inset: 0; z-index: 99999;
@@ -137,6 +137,7 @@
       min-height: 100vh;
       min-height: 100dvh;
       overflow-x: hidden;
+      overscroll-behavior-y: none;
       -webkit-font-smoothing: antialiased;
       -webkit-text-size-adjust: 100%;
     }
@@ -3734,26 +3735,8 @@ function generatePDF(title, headers, rows, filename) {
   doc.save(filename||'hisobot.pdf');
 }
 
-// ═══ Pull-to-refresh ═══
-let ptrStart=0, ptrActive=false, ptrInitialized=false;
-function initPullToRefresh(){
-  if(ptrInitialized) return; // Prevent duplicate init (memory leak fix)
-  const main = document.querySelector('.main');
-  if(!main) return;
-  ptrInitialized = true;
-  const indicator = document.createElement('div');
-  indicator.className='ptr-indicator';
-  const spinner = document.createElement('div');
-  spinner.className='ptr-spinner';
-  indicator.appendChild(spinner);
-  document.body.appendChild(indicator);
-  const onStart = (e)=>{if(main.scrollTop<=0){ptrStart=e.touches[0].clientY;ptrActive=true;}};
-  const onMove = (e)=>{if(!ptrActive)return;const dy=e.touches[0].clientY-ptrStart;if(dy>40&&dy<120){indicator.classList.add('pulling');indicator.classList.remove('refreshing');}};
-  const onEnd = ()=>{if(indicator.classList.contains('pulling')){indicator.classList.remove('pulling');indicator.classList.add('refreshing');haptic.medium();setTimeout(()=>{window.location.reload();},800);}ptrActive=false;};
-  main.addEventListener('touchstart',onStart,{passive:true});
-  main.addEventListener('touchmove',onMove,{passive:true});
-  main.addEventListener('touchend',onEnd,{passive:true});
-}
+// ═══ Pull-to-refresh — DISABLED (user request: too sensitive) ═══
+function initPullToRefresh(){ /* disabled intentionally */ }
 
 // ═══ Multi-language i18n ═══
 const TRANSLATIONS = {
