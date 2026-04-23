@@ -1,133 +1,62 @@
-var CACHE_NAME="xodimlar-monitoring-pwa-v6";
-var APP_SHELL=["./","./index.html","./sw.js"];
-var LAST_PAGE_KEY="last-successful-page";
+const CACHE_NAME = 'intizom-v8-fast';
+// Precache critical shell assets — available instantly on subsequent loads
+const ASSETS = [
+  '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+];
 
-function isCacheableResponse(response){
-  return !!response&&(response.ok||response.type==="opaque");
-}
-
-function isStaticAsset(request){
-  var url=new URL(request.url);
-  var destination=request.destination||"";
-  if(url.origin===self.location.origin){
-    return ["document","script","style","font","image","manifest"].indexOf(destination)!==-1;
-  }
-  return /(?:gstatic|googleapis|unpkg|sheetjs)/i.test(url.hostname)&&["script","style","font","image"].indexOf(destination)!==-1;
-}
-
-self.addEventListener("install",function(event){
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(function(cache){
-        return cache.addAll(APP_SHELL.map(function(path){
-          return new Request(path,{cache:"reload"});
-        }));
-      })
-      .catch(function(){})
-      .then(function(){
-        return self.skipWaiting();
-      })
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS).catch(() => {})).then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener("activate",function(event){
-  event.waitUntil(
-    caches.keys()
-      .then(function(keys){
-        return Promise.all(
-          keys.map(function(key){
-            if(key!==CACHE_NAME) return caches.delete(key);
-          })
-        );
-      })
-      .then(function(){
-        return self.clients.claim();
-      })
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+    )).then(() => self.clients.claim()).then(() => {
+      // Notify all open clients to reload so they pick up the fresh HTML immediately
+      return self.clients.matchAll({ type: 'window' }).then(clients => {
+        clients.forEach(c => { try { c.postMessage({ type: 'SW_UPDATED' }); } catch(e){} });
+      });
+    })
   );
 });
 
-self.addEventListener("fetch",function(event){
-  var request=event.request;
-  if(request.method!=="GET") return;
+self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+  const url = e.request.url;
 
-  var url=new URL(request.url);
-  if(/(?:firebaseio|open-meteo)\.com/i.test(url.hostname)) return;
-
-  if(request.mode==="navigate"){
-    event.respondWith(
-      fetch(request)
-        .then(function(response){
-          if(isCacheableResponse(response)){
-            var copy=response.clone();
-            caches.open(CACHE_NAME).then(function(cache){
-              cache.put(request,copy);
-              cache.put(LAST_PAGE_KEY,response.clone());
-            });
-          }
-          return response;
-        })
-        .catch(function(){
-          return caches.open(CACHE_NAME).then(function(cache){
-            return cache.match(request)
-              .then(function(match){
-                return match||cache.match(LAST_PAGE_KEY)||cache.match("./index.html");
-              });
-          });
-        })
-    );
+  // Firebase APIs: network-only (never cache live data)
+  if (url.includes('firebaseio.com') || url.includes('googleapis.com') || url.includes('cloudfunctions.net') || url.includes('firebaseapp.com/__/')) {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }
 
-  if(!isStaticAsset(request)) return;
-
-  event.respondWith(
-    caches.match(request).then(function(cached){
-      var networkFetch=fetch(request)
-        .then(function(response){
-          if(isCacheableResponse(response)){
-            caches.open(CACHE_NAME).then(function(cache){
-              cache.put(request,response.clone());
-            });
-          }
-          return response;
-        })
-        .catch(function(){
-          return cached||new Response("",{status:504,statusText:"Offline"});
-        });
-
-      return cached||networkFetch;
-    })
-  );
-});
-
-/* ═══ PUSH NOTIFICATION HANDLER ═══ */
-self.addEventListener("notificationclick",function(event){
-  event.notification.close();
-  var url=event.notification.data&&event.notification.data.url?event.notification.data.url:"/";
-  event.waitUntil(
-    clients.matchAll({type:"window",includeUncontrolled:true}).then(function(clientList){
-      for(var i=0;i<clientList.length;i++){
-        if(clientList[i].url.indexOf("davomat-tizimi")!==-1&&"focus" in clientList[i]){
-          return clientList[i].focus();
+  // HTML & static assets: STALE-WHILE-REVALIDATE
+  // Serve cached version INSTANTLY (fast open on slow devices),
+  // then fetch fresh version in background and cache it for next load.
+  // Users on slow connections see app immediately; updates arrive on next open.
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      const fetchPromise = fetch(e.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone)).catch(() => {});
         }
-      }
-      return clients.openWindow(url);
+        return response;
+      }).catch(() => cached);
+      // Return cached if available (instant), otherwise wait for network
+      return cached || fetchPromise;
     })
   );
 });
 
-/* Show notification from message event (triggered by app) */
-self.addEventListener("message",function(event){
-  if(event.data&&event.data.type==="SHOW_NOTIFICATION"){
-    var d=event.data;
-    self.registration.showNotification(d.title,{
-      body:d.body,
-      icon:d.icon||"/favicon.ico",
-      badge:d.badge||"/favicon.ico",
-      tag:d.tag||"xodimlar-notif",
-      data:{url:d.url||"/"},
-      vibrate:[200,100,200],
-      requireInteraction:d.requireInteraction||false
-    });
+// Listen for skip waiting message from app
+self.addEventListener('message', (e) => {
+  if (e.data === 'skipWaiting' || (e.data && e.data.type === 'SKIP_WAITING')) {
+    self.skipWaiting();
   }
 });
