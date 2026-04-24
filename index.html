@@ -10401,6 +10401,9 @@ function IjroView({
     }
     setLoading(true);
     console.log("[IJRO] " + selDateStr + " yuklanmoqda...");
+    var _ijroSafetyT = setTimeout(function () {
+      if (!cancelled) setLoading(false);
+    }, 10000);
     db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix + "\uf8ff").once("value").then(function (snap) {
       if (cancelled) return;
       var validCount = 0,
@@ -10436,6 +10439,7 @@ function IjroView({
     });
     return function () {
       cancelled = true;
+      clearTimeout(_ijroSafetyT);
       if (_liveRef && _liveHandler) _liveRef.off("value", _liveHandler);
     };
   }, [selDateStr]);
@@ -13441,11 +13445,21 @@ function DashboardView({
   }
   useEffect(function () {
     var done = 0,
-      need = 3;
+      need = 3,
+      finished = false;
     function check() {
       done++;
-      if (done >= need) setLoading(false);
+      if (done >= need && !finished) {
+        finished = true;
+        setLoading(false);
+      }
     }
+    var safetyT = setTimeout(function () {
+      if (!finished) {
+        finished = true;
+        setLoading(false);
+      }
+    }, 7000);
     var curPrefix = "ijro_" + todayStr + "_";
     db.ref("employee_notes").orderByKey().startAt(curPrefix).endAt(curPrefix + "\uf8ff").once("value", function (snap) {
       var d = {};
@@ -13469,6 +13483,9 @@ function DashboardView({
     }, function () {
       check();
     });
+    return function () {
+      clearTimeout(safetyT);
+    };
   }, []);
   var davRows = useMemo(function () {
     var present = 0,
