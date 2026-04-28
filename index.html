@@ -3626,6 +3626,43 @@
 </div>
 <!-- Bootstrap: global error handler + service worker cleanup (runs before Babel) -->
 <script>
+// ═══ AUTO VERSION CHECKER ═══
+// Polls /version.txt every 60s. If version changes, reloads with cache bust.
+// This eliminates the "must clear cache to see new version" problem.
+(function(){
+  var VERSION_KEY = '__app_version__';
+  var currentVersion = null;
+  function checkVersion(){
+    fetch('/version.txt?t='+Date.now(), {cache:'no-store'})
+      .then(function(r){ return r.text(); })
+      .then(function(v){
+        v = (v||'').trim();
+        if(!v) return;
+        var stored = '';
+        try { stored = localStorage.getItem(VERSION_KEY) || ''; } catch(_){}
+        if(currentVersion === null){
+          // First check — store current version
+          currentVersion = v;
+          try { localStorage.setItem(VERSION_KEY, v); } catch(_){}
+        } else if(currentVersion !== v){
+          // Version changed — new deploy detected, force reload with cache bust
+          console.log('[version-check] New version:', v, '(was '+currentVersion+'), reloading');
+          try { localStorage.setItem(VERSION_KEY, v); } catch(_){}
+          // Hard reload — bypasses cache
+          var u = new URL(location.href);
+          u.searchParams.set('_v', v);
+          location.replace(u.toString());
+        }
+      }).catch(function(){});
+  }
+  // Check immediately + every 60s
+  checkVersion();
+  setInterval(checkVersion, 60000);
+  // Also check when tab becomes visible (user returns to app)
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible') checkVersion();
+  });
+})();
 (function(){
   // Auto-recovery: on first error after a fresh deploy, silently clear cache + reload
   // sessionStorage flag prevents infinite loops if problem is NOT cache-related
