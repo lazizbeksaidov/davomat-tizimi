@@ -290,120 +290,6 @@ async function buildStatistikaReport() {
   return text;
 }
 
-// ═══ AKTIV TA'TIL/SAFAR/BEMORLAR HISOBOTI ═══
-// /tatil yoki /tatillar buyrug'i — bugungi sanada faol bo'lgan ta'til/safar/bemorlik kunlaridagi
-// barcha xodimlarni va ularning intervallarini ko'rsatadi.
-async function buildActiveLeavesReport(todayKey) {
-  const STATUS_LABELS = {
-    vacation: { icon: "🌴", label: "Ta'til" },
-    trip: { icon: "✈️", label: "Xizmat safari" },
-    sick: { icon: "🏥", label: "Bemor" },
-    training: { icon: "📚", label: "Malaka oshirish" },
-    excused: { icon: "📋", label: "Sababli" },
-  };
-  const TRACK = Object.keys(STATUS_LABELS);
-  const todaySnap = await db.ref(`attendance/${todayKey}`).once("value");
-  const today = todaySnap.val() || {};
-  // Find all employees who have a tracked status today
-  const activeEmps = Object.entries(today)
-    .filter(([_, rec]) => rec && TRACK.includes(rec.status))
-    .map(([empKey, rec]) => ({ empKey, status: rec.status }));
-  if (activeEmps.length === 0) {
-    return `🌴 <b>Hozirgi ta'til/safar/bemorlar</b>\n\n📅 ${todayKey}\n\n✅ Bugun barchasi ish joyida — ta'til/safar/bemorlikdagi xodim yo'q.`;
-  }
-  // For each active employee, find the consecutive range (start → end) of the same status
-  const ranges = [];
-  for (const { empKey, status } of activeEmps) {
-    // Walk backwards
-    let start = todayKey;
-    for (let i = 1; i < 200; i++) {
-      const d = new Date(todayKey + "T12:00:00"); d.setDate(d.getDate() - i);
-      const dk = fmtDate(d);
-      const snap = await db.ref(`attendance/${dk}/${empKey}/status`).once("value");
-      if (snap.val() !== status) break;
-      start = dk;
-    }
-    // Walk forwards
-    let end = todayKey;
-    for (let i = 1; i < 200; i++) {
-      const d = new Date(todayKey + "T12:00:00"); d.setDate(d.getDate() + i);
-      const dk = fmtDate(d);
-      const snap = await db.ref(`attendance/${dk}/${empKey}/status`).once("value");
-      if (snap.val() !== status) break;
-      end = dk;
-    }
-    const days = Math.round((new Date(end + "T12:00:00") - new Date(start + "T12:00:00")) / 86400000) + 1;
-    const passed = Math.round((new Date(todayKey + "T12:00:00") - new Date(start + "T12:00:00")) / 86400000) + 1;
-    const remaining = days - passed;
-    const emp = EMPLOYEES.find(e => safeKey(e) === empKey) || empKey.replace(/_/g, " ");
-    ranges.push({ emp, status, start, end, days, passed, remaining });
-  }
-  // Group by status
-  ranges.sort((a, b) => a.status.localeCompare(b.status) || (b.remaining - a.remaining));
-  let text = `🌴 <b>Hozirgi ta'til / safar / bemorlar</b>\n\n📅 ${todayKey}\n👥 Jami: <b>${ranges.length}</b> nafar\n━━━━━━━━━━━━━━━━━━\n`;
-  let curStatus = "";
-  for (const r of ranges) {
-    if (r.status !== curStatus) {
-      const meta = STATUS_LABELS[r.status];
-      text += `\n${meta.icon} <b>${meta.label}</b>\n`;
-      curStatus = r.status;
-    }
-    const fmtDk = (s) => { const d = s.split("-"); return `${d[2]}.${d[1]}`; };
-    text += `  • <b>${r.emp}</b>\n`;
-    text += `    ${fmtDk(r.start)} → ${fmtDk(r.end)} (${r.days} kun)`;
-    if (r.remaining > 0) text += ` · <b>${r.remaining}</b> kun qoldi`;
-    else if (r.remaining === 0) text += ` · <b>oxirgi kun</b>`;
-    text += `\n`;
-  }
-  return text;
-}
-
-// ═══ BULK LEAVE NOTIFY (HTTPS callable) ═══
-// Sayt admin bulk leave (vacation/trip/sick/etc.) belgilaganda yoki bekor qilganda
-// shu funksiya chaqiriladi va Telegram guruhga xabar yuboriladi.
-exports.notifyBulkLeave = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Login required");
-  }
-  // Verify admin role
-  const email = (context.auth.token.email || "").toLowerCase();
-  const usersSnap = await db.ref("users").once("value");
-  const users = usersSnap.val() || {};
-  const isAdmin = Object.values(users).some(u =>
-    (u && (u.email || "").toLowerCase() === email && (u.role === "admin" || u.role === "boss"))
-  );
-  if (!isAdmin) {
-    throw new functions.https.HttpsError("permission-denied", "Admin only");
-  }
-  const chatId = await getChatId();
-  if (!chatId) return { ok: false, reason: "no chat configured" };
-
-  const { emp, status, fromDate, toDate, days, action } = data || {};
-  if (!emp || !status || !fromDate) return { ok: false, reason: "missing data" };
-
-  const STATUS_LABELS = {
-    vacation: { icon: "🌴", label: "Ta'til" },
-    trip: { icon: "✈️", label: "Xizmat safari" },
-    sick: { icon: "🏥", label: "Bemorlik" },
-    training: { icon: "📚", label: "Malaka oshirish" },
-    excused: { icon: "📋", label: "Sababli yo'qlik" },
-    absent: { icon: "❌", label: "Sababsiz yo'qlik" },
-  };
-  const meta = STATUS_LABELS[status] || { icon: "📅", label: status };
-  const fmtDk = (s) => { const d = (s || "").split("-"); return d.length === 3 ? `${d[2]}.${d[1]}.${d[0]}` : s; };
-
-  let text;
-  if (action === "cancel") {
-    text = `🔁 <b>${meta.label} bekor qilindi</b>\n\n👤 ${emp}\n📅 ${fmtDk(fromDate)} → ${fmtDk(toDate)} (${days} kun)\n\n👨‍💼 Admin: ${email}`;
-  } else if (action === "edit") {
-    text = `🔁 <b>${meta.label} yangilandi</b>\n\n👤 ${emp}\n${meta.icon} ${fmtDk(fromDate)} → ${fmtDk(toDate)} (${days} kun)\n\n👨‍💼 Admin: ${email}`;
-  } else {
-    text = `${meta.icon} <b>${meta.label}ga chiqdi</b>\n\n👤 ${emp}\n📅 ${fmtDk(fromDate)} → ${fmtDk(toDate)} (${days} kun)\n\n👨‍💼 Admin: ${email}`;
-  }
-  await sendMessage(chatId, text);
-  return { ok: true };
-});
-
 // ═══ BOT i18n ═══
 const BOT_T = {
   uz: {
@@ -413,9 +299,67 @@ const BOT_T = {
     menu_reset: "🔄 Parolni tiklash",
     menu_info: "👤 Mening ma'lumotim",
     menu_site: "🌐 Saytni ochish",
-    menu_open: "Tizimni ochish",
     menu_help: "❓ Yordam",
     menu_lang: "🌐 Tilni o'zgartirish",
+    menu_today: "📸 Bugun",
+    menu_monthly: "📊 Oylik tahlilim",
+    menu_note: "💬 Izoh yozish",
+    menu_vacation: "🏖 Ta'til so'rash",
+    menu_birthdays: "🎂 Tug'ilgan kunlar",
+    menu_champions: "🏆 Oy chempionlari",
+    menu_announcements: "📢 E'lonlar",
+    menu_absent_now: "🚨 Hozir kim yo'q",
+    menu_today_report: "📋 Bugungi hisobot",
+    menu_send_ann: "📢 E'lon yuborish",
+    menu_vac_requests: "✅ Ta'til so'rovlar",
+    menu_find_emp: "👥 Xodim qidirish",
+    login_required: "🔐 Bu funksiya uchun avval tizimga kirishingiz kerak.\n\n/start bosing va telefon raqamingizni ulashing.",
+    today_title: "📸 <b>Bugungi holat</b>\n",
+    today_no_checkin: "⏳ Hali selfie olmagansiz",
+    today_morning_ok: "🌅 Ertalab: <b>{time}</b> {late}",
+    today_morning_none: "🌅 Ertalab: —",
+    today_afternoon_ok: "🏙 Tushlik: <b>{time}</b> {late}",
+    today_afternoon_none: "🏙 Tushlik: —",
+    today_worked: "⏱ Ishlagan vaqt: <b>{time}</b>",
+    today_status: "📊 Holat: {status}",
+    monthly_title: "📊 <b>Bu oyki tahlilingiz — {month}</b>\n",
+    monthly_lines: "✅ Kelgan: <b>{present}</b>\n⏰ Kechikkan: <b>{late}</b> ({lateMin} daq)\n❌ Kelmagan: <b>{absent}</b>\n🏖 Ta'tilda: <b>{vac}</b>\n\n🎯 Intizom ball: <b>{score}/100</b>",
+    birthdays_title: "🎂 <b>Yaqin 30 kundagi tug'ilgan kunlar</b>\n",
+    birthdays_empty: "📅 Yaqin 30 kunda tug'ilgan kun yo'q.",
+    birthdays_line: "• <b>{name}</b> — {date} ({days})",
+    champions_title: "🏆 <b>Oy chempionlari — {month}</b>\n",
+    champions_empty: "ℹ️ Hali ma'lumot yetarli emas.",
+    ann_title: "📢 <b>So'nggi e'lonlar</b>\n",
+    ann_empty: "📭 Hozircha e'lon yo'q.",
+    ann_line: "<b>{title}</b>\n{text}\n<i>{date}</i>\n",
+    absent_title: "🚨 <b>Hozir kim yo'q — {time}</b>\n",
+    absent_none: "✅ Hammasi selfie olgan!",
+    absent_line: "• {name}",
+    today_report_title: "📋 <b>Bugungi hisobot — {date}</b>\n",
+    today_report_lines: "✅ Kelgan: <b>{present}</b>/{total}\n⏰ Kechikkan: <b>{late}</b>\n❌ Selfie olmagan: <b>{absent}</b>\n🏖 Ta'tilda: <b>{vac}</b>",
+    note_type_prompt: "💬 <b>Izoh turini tanlang:</b>",
+    note_type_late: "⏰ Kechikish sababi",
+    note_type_absent: "🚫 Kelmadim",
+    note_type_leave: "🏖 Ruxsat so'rov",
+    note_type_sick: "🏥 Kasallik",
+    note_type_general: "📝 Umumiy izoh",
+    note_text_prompt: "✍️ <b>Izoh matnini yozib yuboring</b> (500 belgigacha):",
+    note_saved: "✅ Izohingiz saqlandi!\n\n📝 Turi: <b>{type}</b>\n📅 Sana: {date}",
+    vac_start_prompt: "🏖 <b>Ta'til boshlanish sanasini yozing</b>\n\nFormat: YYYY-MM-DD\nMasalan: 2026-05-10",
+    vac_end_prompt: "📅 <b>Ta'til tugash sanasini yozing</b>\n\nFormat: YYYY-MM-DD",
+    vac_reason_prompt: "✍️ <b>Sababni qisqa yozing</b> (majburiy emas, o'tkazish uchun <code>-</code> yuboring):",
+    vac_date_invalid: "⚠️ Sana formati noto'g'ri. YYYY-MM-DD ko'rinishida yuboring (masalan: 2026-05-10)",
+    vac_saved: "✅ <b>Ta'til so'rovi yuborildi!</b>\n\n📅 {start} — {end}\n✍️ Sabab: {reason}\n\n⏳ Admin tasdiqlashini kuting.",
+    send_ann_title: "📢 <b>E'lon yuborish</b>\n\nAvval sarlavhani yozing:",
+    send_ann_text: "📝 Endi e'lon matnini yozing:",
+    send_ann_done: "✅ E'lon yuborildi!\n\n<b>{title}</b>\n{text}",
+    vac_requests_title: "✅ <b>Kutilayotgan ta'til so'rovlari</b>\n",
+    vac_requests_empty: "📭 Kutilayotgan so'rov yo'q.",
+    vac_req_line: "<b>{name}</b>\n📅 {start} — {end}\n✍️ {reason}",
+    vac_approved: "✅ <b>{name}</b> uchun ta'til tasdiqlandi!",
+    vac_rejected: "❌ <b>{name}</b> so'rovi rad etildi.",
+    find_emp_prompt: "👥 <b>Xodim familiyasini yozing</b>\n\nMasalan: Axadov",
+    find_emp_not_found: "❌ Xodim topilmadi.",
     share_prompt: "📱 <b>Telefon raqamingizni ulashing</b>\n\nTizimga kirish uchun quyidagi tugmani bosing:",
     share_reset: "🔄 <b>Parolni tiklash</b>\n\nYangi parol olish uchun raqamingizni ulashing:",
     share_btn: "📱 Telefon raqamni ulashish",
@@ -438,7 +382,6 @@ const BOT_T = {
     menu_reset: "🔄 Сбросить пароль",
     menu_info: "👤 Моя информация",
     menu_site: "🌐 Открыть сайт",
-    menu_open: "Открыть систему",
     menu_help: "❓ Помощь",
     menu_lang: "🌐 Сменить язык",
     share_prompt: "📱 <b>Поделитесь номером телефона</b>\n\nНажмите кнопку ниже:",
@@ -463,7 +406,6 @@ const BOT_T = {
     menu_reset: "🔄 Reset password",
     menu_info: "👤 My info",
     menu_site: "🌐 Open website",
-    menu_open: "Open system",
     menu_help: "❓ Help",
     menu_lang: "🌐 Change language",
     share_prompt: "📱 <b>Share your phone number</b>\n\nTap the button below:",
@@ -505,70 +447,271 @@ function langKeyboard() {
     [{ text: "🇬🇧 English", callback_data: "lang:en" }],
   ]};
 }
-function mainMenu(t) {
-  // Vercel hosting — primary frontend (replaces Firebase Hosting + GitHub Pages).
-  // Fast, public, no Service Worker, works well in Telegram Mini App.
-  return { inline_keyboard: [
-    [{ text: "🚀 " + (t.menu_open || "Tizimni ochish"), web_app: { url: "https://intizominvest.vercel.app/" } }],
-    [{ text: t.menu_login, callback_data: "act:login" }],
-    [{ text: t.menu_reset, callback_data: "act:reset" }],
-    [{ text: t.menu_info, callback_data: "act:info" }],
-    [{ text: t.menu_help, callback_data: "act:help" }, { text: t.menu_lang, callback_data: "act:lang" }],
-  ]};
+function mainMenu(t, role, isLoggedIn) {
+  const kb = [];
+  if (!isLoggedIn) {
+    kb.push([{ text: t.menu_login, callback_data: "act:login" }]);
+    kb.push([{ text: t.menu_site, url: "https://xodimlar-7c13c.web.app/" }]);
+    kb.push([{ text: t.menu_help, callback_data: "act:help" }, { text: t.menu_lang, callback_data: "act:lang" }]);
+    return { inline_keyboard: kb };
+  }
+  const isAdmin = role === "admin" || role === "boss";
+  // Employee rows (everyone sees)
+  kb.push([{ text: "📸 Selfie olish", web_app: { url: "https://xodimlar-7c13c.web.app/?miniapp=selfie" } }]);
+  kb.push([{ text: t.menu_today || "📸 Bugungi holat", callback_data: "act:today" }, { text: t.menu_monthly || "📊 Oylik", callback_data: "act:monthly" }]);
+  kb.push([{ text: t.menu_note || "💬 Izoh yozish", callback_data: "act:note" }]);
+  kb.push([{ text: t.menu_birthdays || "🎂 Tug'ilgan kunlar", callback_data: "act:birthdays" }, { text: t.menu_champions || "🏆 Chempionlar", callback_data: "act:champions" }]);
+  kb.push([{ text: t.menu_announcements || "📢 E'lonlar", callback_data: "act:announcements" }]);
+  // Admin-only rows
+  if (isAdmin) {
+    kb.push([{ text: t.menu_absent_now || "🚨 Hozir kim yo'q", callback_data: "act:absent_now" }]);
+    kb.push([{ text: t.menu_today_report || "📋 Bugungi hisobot", callback_data: "act:today_report" }]);
+    kb.push([{ text: t.menu_send_ann || "📢 E'lon yuborish", callback_data: "act:send_ann" }]);
+    kb.push([{ text: t.menu_find_emp || "👥 Xodim qidirish", callback_data: "act:find_emp" }]);
+  }
+  // Footer
+  kb.push([{ text: t.menu_site, url: "https://xodimlar-7c13c.web.app/" }]);
+  kb.push([{ text: t.menu_reset, callback_data: "act:reset" }, { text: t.menu_info, callback_data: "act:info" }]);
+  kb.push([{ text: t.menu_help, callback_data: "act:help" }, { text: t.menu_lang, callback_data: "act:lang" }]);
+  return { inline_keyboard: kb };
 }
 
-// Generate a one-time auto-login URL for the user behind chatId.
-// Uses Firebase Custom Token — does NOT reset user's password (prevents kicking out other sessions).
-// Returns null if user isn't linked yet (no whitelist entry for their phone).
-async function buildMiniAppUrl(chatId) {
-  try {
-    const phoneSnap = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
-    const phone = phoneSnap.val();
-    if (!phone) return null;
-    const rec = await lookupWhitelist(phone);
-    if (!rec || rec.active === false) return null;
-    // Look up existing user — DON'T create new one or reset password
-    const preferredEmail = (rec.linkEmail || "").toLowerCase().trim();
-    const phoneEmail = phone.replace("+", "").replace(/\D/g, "") + "@intizom.uz";
-    let user = null;
-    if (preferredEmail) {
-      try { user = await admin.auth().getUserByEmail(preferredEmail); } catch (_) {}
-    }
-    if (!user) {
-      try { user = await admin.auth().getUserByEmail(phoneEmail); } catch (_) {}
-    }
-    if (!user) {
-      // First-time user — create via ensureUser (which sets password)
-      const created = await ensureUser({ ...rec, phone });
-      user = await admin.auth().getUser(created.uid);
-    }
-    // Generate Firebase Custom Token — bypasses password, doesn't kick out other sessions
-    const customToken = await admin.auth().createCustomToken(user.uid);
-    const loginId = require("crypto").randomBytes(18).toString("hex");
-    // Firebase rejects undefined values — default every field to safe value
-    await db.ref(`tg_logins/${loginId}`).set({
-      token: customToken,
-      name: rec.name || user.displayName || phone || "",
-      phone: phone || "",
-      email: user.email || "",
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 min
-      used: false,
-    });
-    return `https://intizominvest.vercel.app/?tg=${loginId}`;
-  } catch (e) {
-    console.error("buildMiniAppUrl:", e.message);
-    return null;
-  }
+// Get user's role + empKey from chatId. Returns null if not logged in.
+async function getUserCtx(chatId) {
+  const phoneSnap = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
+  const phone = phoneSnap.val();
+  if (!phone) return null;
+  const rec = await lookupWhitelist(phone);
+  if (!rec) return null;
+  const empKey = String(rec.name || "").replace(/[\u2018\u2019'`]/g, "").replace(/\s+/g, "_");
+  return { phone, role: rec.role || "employee", name: rec.name, title: rec.title, empKey, active: rec.active !== false };
 }
 function shareKeyboard(t) {
   return { keyboard: [[{ text: t.share_btn, request_contact: true }]], resize_keyboard: true, one_time_keyboard: true };
 }
 async function sendMenu(chatId, lang) {
   const t = BOT_T[lang] || BOT_T.uz;
+  const ctx = await getUserCtx(chatId);
   await tgApi("sendMessage", {
-    chat_id: chatId, text: t.welcome, parse_mode: "HTML", reply_markup: mainMenu(t),
+    chat_id: chatId, text: t.welcome, parse_mode: "HTML",
+    reply_markup: mainMenu(t, ctx?.role, !!ctx),
   });
+}
+
+// ═══ FEATURE HELPERS ═══
+
+// Bugun — today's status for employee
+async function buildTodayStatus(ctx, t) {
+  const dk = fmtDate(new Date());
+  const [cSnap, aSnap] = await Promise.all([
+    db.ref(`checkins/${dk}/${ctx.empKey}`).once("value"),
+    db.ref(`attendance/${dk}/${ctx.empKey}`).once("value"),
+  ]);
+  const c = cSnap.val() || {};
+  const a = aSnap.val() || { status: "present", morning: 0, afternoon: 0 };
+  let out = t.today_title + "\n";
+  out += (c.morning ? t.today_morning_ok.replace("{time}", c.morning.time || "—").replace("{late}", c.morning.lateMinutes > 0 ? `⏰ +${c.morning.lateMinutes} daq` : "✓") : t.today_morning_none) + "\n";
+  out += (c.afternoon ? t.today_afternoon_ok.replace("{time}", c.afternoon.time || "—").replace("{late}", c.afternoon.lateMinutes > 0 ? `⏰ +${c.afternoon.lateMinutes} daq` : "✓") : t.today_afternoon_none) + "\n";
+  const delay = (a.morning || 0) + (a.afternoon || 0);
+  const worked = Math.max(0, 480 - delay);
+  const h = Math.floor(worked / 60), m = worked % 60;
+  out += "\n" + t.today_worked.replace("{time}", `${h}s ${m}daq`) + "\n";
+  const stMap = { present: "✅ Vaqtida", late: "⏰ Kechikkan", absent: "❌ Kelmagan", sick: "🏥 Kasal", vacation: "🏖 Ta'tilda", trip: "✈️ Xizmat safarida", training: "📚 Malaka oshirish", excused: "📝 Ruxsat", holiday: "🎉 Bayram" };
+  out += t.today_status.replace("{status}", stMap[a.status] || a.status);
+  return out;
+}
+
+// Oylik tahlil
+async function buildMonthlyStats(ctx, t) {
+  const now = new Date();
+  const yr = now.getFullYear(), mon = now.getMonth();
+  const startKey = `${yr}-${String(mon + 1).padStart(2, "0")}-01`;
+  const endKey = `${yr}-${String(mon + 1).padStart(2, "0")}-31`;
+  const snap = await db.ref("attendance").orderByKey().startAt(startKey).endAt(endKey).once("value");
+  const data = snap.val() || {};
+  let present = 0, late = 0, lateMin = 0, absent = 0, vac = 0;
+  for (const dk in data) {
+    const rec = data[dk]?.[ctx.empKey];
+    if (!rec) continue;
+    const delay = (rec.morning || 0) + (rec.afternoon || 0);
+    if (rec.status === "present" && delay === 0) present++;
+    else if (rec.status === "late" || delay > 0) { late++; lateMin += delay; }
+    else if (rec.status === "absent") absent++;
+    else if (rec.status === "vacation" || rec.status === "sick" || rec.status === "trip" || rec.status === "training") vac++;
+  }
+  const total = present + late + absent + vac;
+  const score = total > 0 ? Math.round((present * 100 + late * 70 + vac * 90) / total) : 100;
+  const MONTHS_UZ = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+  return t.monthly_title.replace("{month}", MONTHS_UZ[mon] + " " + yr) + "\n" +
+    t.monthly_lines.replace("{present}", present).replace("{late}", late).replace("{lateMin}", lateMin).replace("{absent}", absent).replace("{vac}", vac).replace("{score}", score);
+}
+
+// Tug'ilgan kunlar — next 30 days
+async function buildBirthdays(t) {
+  const empSnap = await db.ref("employees").once("value");
+  const emps = empSnap.val() || {};
+  const today = new Date();
+  const upcoming = [];
+  for (const key in emps) {
+    const e = emps[key];
+    if (!e?.birthDate) continue;
+    const match = String(e.birthDate).match(/^(\d{4})-(\d{2})-(\d{2})/) || String(e.birthDate).match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+    if (!match) continue;
+    let m, d;
+    if (match[0].includes(".")) { m = +match[2] - 1; d = +match[1]; } else { m = +match[2] - 1; d = +match[3]; }
+    const thisYear = new Date(today.getFullYear(), m, d);
+    let target = thisYear;
+    if (target < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+      target = new Date(today.getFullYear() + 1, m, d);
+    }
+    const days = Math.round((target - today) / 86400000);
+    if (days >= 0 && days <= 30) {
+      upcoming.push({ name: e.fullName || `${e.lastName || ""} ${e.firstName || ""}`.trim(), date: `${String(d).padStart(2, "0")}.${String(m + 1).padStart(2, "0")}`, days });
+    }
+  }
+  upcoming.sort((a, b) => a.days - b.days);
+  if (upcoming.length === 0) return t.birthdays_empty;
+  let out = t.birthdays_title + "\n";
+  out += upcoming.slice(0, 15).map(u => t.birthdays_line.replace("{name}", u.name).replace("{date}", u.date).replace("{days}", u.days === 0 ? "BUGUN 🎉" : u.days === 1 ? "ertaga" : u.days + " kundan so'ng")).join("\n");
+  return out;
+}
+
+// Oy chempionlari — top 5 by monthly score
+async function buildChampions(t) {
+  const now = new Date();
+  const yr = now.getFullYear(), mon = now.getMonth();
+  const startKey = `${yr}-${String(mon + 1).padStart(2, "0")}-01`;
+  const endKey = `${yr}-${String(mon + 1).padStart(2, "0")}-31`;
+  const [attSnap, empSnap] = await Promise.all([
+    db.ref("attendance").orderByKey().startAt(startKey).endAt(endKey).once("value"),
+    db.ref("employees").once("value"),
+  ]);
+  const attData = attSnap.val() || {};
+  const emps = empSnap.val() || {};
+  const scores = {};
+  for (const key in emps) {
+    scores[key] = { name: emps[key].fullName || `${emps[key].lastName || ""} ${emps[key].firstName || ""}`.trim(), present: 0, late: 0, lateMin: 0, absent: 0, total: 0 };
+  }
+  for (const dk in attData) {
+    for (const key in attData[dk]) {
+      if (!scores[key]) continue;
+      const r = attData[dk][key];
+      const delay = (r.morning || 0) + (r.afternoon || 0);
+      scores[key].total++;
+      if (r.status === "present" && delay === 0) scores[key].present++;
+      else if (r.status === "late" || delay > 0) { scores[key].late++; scores[key].lateMin += delay; }
+      else if (r.status === "absent") scores[key].absent++;
+    }
+  }
+  const ranked = Object.values(scores).filter(s => s.total >= 3).map(s => {
+    const pct = s.total > 0 ? Math.round((s.present * 100 + s.late * 70) / s.total) : 0;
+    return { ...s, score: pct };
+  }).sort((a, b) => b.score - a.score || a.lateMin - b.lateMin).slice(0, 5);
+  if (ranked.length === 0) return t.champions_empty;
+  const MONTHS_UZ = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+  let out = t.champions_title.replace("{month}", MONTHS_UZ[mon] + " " + yr) + "\n";
+  const medals = ["🥇", "🥈", "🥉", "🏅", "🏅"];
+  ranked.forEach((r, i) => { out += `${medals[i] || "▫️"} <b>${r.name}</b> — ${r.score}% (kech: ${r.lateMin} daq)\n`; });
+  return out;
+}
+
+// E'lonlar — last 5
+async function buildAnnouncements(t) {
+  const snap = await db.ref("announcements").orderByChild("timestamp").limitToLast(5).once("value");
+  const d = snap.val() || {};
+  const arr = Object.values(d).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  if (arr.length === 0) return t.ann_empty;
+  let out = t.ann_title + "\n";
+  arr.forEach(a => {
+    const dt = a.timestamp ? new Date(a.timestamp).toLocaleDateString("uz-UZ") : "";
+    out += t.ann_line.replace("{title}", a.title || "-").replace("{text}", (a.text || "").slice(0, 300)).replace("{date}", dt) + "\n";
+  });
+  return out;
+}
+
+// Hozir kim yo'q (admin)
+async function buildAbsentNow(t) {
+  const dk = fmtDate(new Date());
+  const now = new Date();
+  const curMin = now.getHours() * 60 + now.getMinutes();
+  const sessionCheck = curMin < 13 * 60 ? "morning" : "afternoon";
+  const [cSnap, empSnap] = await Promise.all([
+    db.ref(`checkins/${dk}`).once("value"),
+    db.ref("employees").once("value"),
+  ]);
+  const checkins = cSnap.val() || {};
+  const emps = empSnap.val() || {};
+  const missing = [];
+  for (const key in emps) {
+    const rec = checkins[key] || {};
+    if (!rec[sessionCheck]) missing.push(emps[key].fullName || `${emps[key].lastName || ""} ${emps[key].firstName || ""}`.trim());
+  }
+  const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  if (missing.length === 0) return t.absent_title.replace("{time}", timeStr) + "\n" + t.absent_none;
+  let out = t.absent_title.replace("{time}", timeStr) + "\n";
+  out += `<i>(${sessionCheck === "morning" ? "ertalabki" : "tushlikdan keyingi"} selfie olmaganlar: ${missing.length} nafar)</i>\n\n`;
+  out += missing.map(n => t.absent_line.replace("{name}", n)).join("\n");
+  return out;
+}
+
+// Bugungi hisobot (admin)
+async function buildTodayReportAdmin(t) {
+  const dk = fmtDate(new Date());
+  const [aSnap, empSnap, cSnap] = await Promise.all([
+    db.ref(`attendance/${dk}`).once("value"),
+    db.ref("employees").once("value"),
+    db.ref(`checkins/${dk}`).once("value"),
+  ]);
+  const att = aSnap.val() || {};
+  const emps = empSnap.val() || {};
+  const checkins = cSnap.val() || {};
+  const total = Object.keys(emps).length;
+  let present = 0, late = 0, absent = 0, vac = 0;
+  for (const key in emps) {
+    const r = att[key] || { status: "present", morning: 0, afternoon: 0 };
+    const delay = (r.morning || 0) + (r.afternoon || 0);
+    const hasCheckin = !!(checkins[key]?.morning || checkins[key]?.afternoon);
+    if (r.status === "vacation" || r.status === "sick" || r.status === "trip" || r.status === "training" || r.status === "excused") vac++;
+    else if (r.status === "absent" || (!hasCheckin && r.status === "present")) absent++;
+    else if (r.status === "late" || delay > 0) late++;
+    else present++;
+  }
+  return t.today_report_title.replace("{date}", dk) + "\n" +
+    t.today_report_lines.replace("{present}", present).replace("{total}", total).replace("{late}", late).replace("{absent}", absent).replace("{vac}", vac);
+}
+
+// Ta'til so'rovlar ro'yxati (admin)
+async function buildVacRequests(t) {
+  const snap = await db.ref("vacation_requests").orderByChild("status").equalTo("pending").once("value");
+  const d = snap.val() || {};
+  const arr = Object.entries(d).map(([id, v]) => ({ id, ...v }));
+  if (arr.length === 0) return { text: t.vac_requests_title + "\n" + t.vac_requests_empty, items: [] };
+  let out = t.vac_requests_title + "\n";
+  arr.forEach(r => {
+    out += t.vac_req_line.replace("{name}", r.name || "-").replace("{start}", r.start || "").replace("{end}", r.end || "").replace("{reason}", r.reason || "-") + "\n\n";
+  });
+  return { text: out, items: arr };
+}
+
+// Xodim qidirish — by name
+async function buildFindEmployee(query, t) {
+  const empSnap = await db.ref("employees").once("value");
+  const emps = empSnap.val() || {};
+  const q = query.toLowerCase();
+  const matches = [];
+  for (const key in emps) {
+    const e = emps[key];
+    const fullName = (e.fullName || `${e.lastName || ""} ${e.firstName || ""}`.trim()).toLowerCase();
+    if (fullName.includes(q)) matches.push({ key, ...e });
+    if (matches.length >= 5) break;
+  }
+  if (matches.length === 0) return t.find_emp_not_found;
+  let out = "";
+  for (const e of matches) {
+    const name = e.fullName || `${e.lastName || ""} ${e.firstName || ""}`.trim();
+    out += `👤 <b>${name}</b>\n💼 ${e.position || "-"}\n🏢 ${e.department || "-"}\n📱 ${e.phone || "-"}\n\n`;
+  }
+  return out;
 }
 
 // ═══ TELEGRAM WEBHOOK ═══
@@ -640,8 +783,97 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
       if (data === "act:help") {
         const lang = await getUserLang(chatId);
         const t = BOT_T[lang] || BOT_T.uz;
-        await tgApi("sendMessage", { chat_id: chatId, text: t.help, parse_mode: "HTML", reply_markup: mainMenu(t) });
+        const ctx = await getUserCtx(chatId);
+        await tgApi("sendMessage", { chat_id: chatId, text: t.help, parse_mode: "HTML", reply_markup: mainMenu(t, ctx?.role, !!ctx) });
         return res.status(200).send("OK");
+      }
+
+      // ═══ NEW FEATURE HANDLERS (require login) ═══
+      const needLoginActs = ["act:today","act:monthly","act:note","act:birthdays","act:champions","act:announcements","act:absent_now","act:today_report","act:send_ann","act:find_emp"];
+      const isAdminAct = ["act:absent_now","act:today_report","act:send_ann","act:find_emp"].includes(data);
+      if (needLoginActs.includes(data) || data.startsWith("note:") || isAdminAct) {
+        const lang = await getUserLang(chatId);
+        const t = BOT_T[lang] || BOT_T.uz;
+        const ctx = await getUserCtx(chatId);
+        if (!ctx) {
+          await tgApi("sendMessage", { chat_id: chatId, text: t.login_required || "🔐 Avval tizimga kiring: /start", parse_mode: "HTML" });
+          return res.status(200).send("OK");
+        }
+        if (isAdminAct && ctx.role !== "admin" && ctx.role !== "boss") {
+          await tgApi("sendMessage", { chat_id: chatId, text: "⛔ Bu funksiya faqat admin/boshliq uchun." });
+          return res.status(200).send("OK");
+        }
+
+        try {
+          if (data === "act:today") {
+            const out = await buildTodayStatus(ctx, t);
+            await tgApi("sendMessage", { chat_id: chatId, text: out, parse_mode: "HTML", reply_markup: mainMenu(t, ctx.role, true) });
+            return res.status(200).send("OK");
+          }
+          if (data === "act:monthly") {
+            const out = await buildMonthlyStats(ctx, t);
+            await tgApi("sendMessage", { chat_id: chatId, text: out, parse_mode: "HTML", reply_markup: mainMenu(t, ctx.role, true) });
+            return res.status(200).send("OK");
+          }
+          if (data === "act:birthdays") {
+            const out = await buildBirthdays(t);
+            await tgApi("sendMessage", { chat_id: chatId, text: out, parse_mode: "HTML", reply_markup: mainMenu(t, ctx.role, true) });
+            return res.status(200).send("OK");
+          }
+          if (data === "act:champions") {
+            const out = await buildChampions(t);
+            await tgApi("sendMessage", { chat_id: chatId, text: out, parse_mode: "HTML", reply_markup: mainMenu(t, ctx.role, true) });
+            return res.status(200).send("OK");
+          }
+          if (data === "act:announcements") {
+            const out = await buildAnnouncements(t);
+            await tgApi("sendMessage", { chat_id: chatId, text: out, parse_mode: "HTML", reply_markup: mainMenu(t, ctx.role, true) });
+            return res.status(200).send("OK");
+          }
+          if (data === "act:absent_now") {
+            const out = await buildAbsentNow(t);
+            await tgApi("sendMessage", { chat_id: chatId, text: out, parse_mode: "HTML", reply_markup: mainMenu(t, ctx.role, true) });
+            return res.status(200).send("OK");
+          }
+          if (data === "act:today_report") {
+            const out = await buildTodayReportAdmin(t);
+            await tgApi("sendMessage", { chat_id: chatId, text: out, parse_mode: "HTML", reply_markup: mainMenu(t, ctx.role, true) });
+            return res.status(200).send("OK");
+          }
+          if (data === "act:note") {
+            await setUserMode(chatId, "note:type");
+            await tgApi("sendMessage", { chat_id: chatId, text: t.note_type_prompt, parse_mode: "HTML", reply_markup: {
+              inline_keyboard: [
+                [{ text: t.note_type_late, callback_data: "note:late" }],
+                [{ text: t.note_type_absent, callback_data: "note:absent" }],
+                [{ text: t.note_type_leave, callback_data: "note:leave" }],
+                [{ text: t.note_type_sick, callback_data: "note:sick" }],
+                [{ text: t.note_type_general, callback_data: "note:general" }],
+              ]
+            }});
+            return res.status(200).send("OK");
+          }
+          if (data.startsWith("note:")) {
+            const type = data.split(":")[1];
+            await db.ref(`tg_sessions/${chatId}`).update({ mode: "note:text", note_type: type });
+            await tgApi("sendMessage", { chat_id: chatId, text: t.note_text_prompt, parse_mode: "HTML" });
+            return res.status(200).send("OK");
+          }
+          if (data === "act:send_ann") {
+            await setUserMode(chatId, "ann:title");
+            await tgApi("sendMessage", { chat_id: chatId, text: t.send_ann_title, parse_mode: "HTML" });
+            return res.status(200).send("OK");
+          }
+          if (data === "act:find_emp") {
+            await setUserMode(chatId, "find:query");
+            await tgApi("sendMessage", { chat_id: chatId, text: t.find_emp_prompt, parse_mode: "HTML" });
+            return res.status(200).send("OK");
+          }
+        } catch (err) {
+          console.error("[feature handler]", data, err);
+          await tgApi("sendMessage", { chat_id: chatId, text: t.err || "⚠️ Xatolik" }).catch(() => {});
+          return res.status(200).send("OK");
+        }
       }
       return res.status(200).send("OK");
     } catch (e) {
@@ -683,7 +915,7 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
           return res.status(200).send("OK");
         }
         const { tempPassword } = await ensureUser({ ...rec, phone });
-        const appUrl = "https://intizominvest.vercel.app/";
+        const appUrl = "https://xodimlar-7c13c.web.app/";
         const roleLabel = rec.title || (rec.role === "admin" ? "Kadrlar bo'limi" : rec.role === "boss" ? "Rahbar" : rec.role === "observer" ? "Kuzatuvchi" : "Xodim");
         const mode = await getUserMode(chatId);
         await db.ref(`tg_sessions/${chatId}/linkedPhone`).set(phone);
@@ -699,11 +931,80 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
           chat_id: chatId, text: msg, parse_mode: "HTML", disable_web_page_preview: true,
           reply_markup: { inline_keyboard: [[{ text: t.open_site, url: appUrl }]], remove_keyboard: true },
         });
+        // After successful login, rec is now in whitelist — pass role + true for isLoggedIn
         await tgApi("sendMessage", {
           chat_id: chatId, text: t.welcome, parse_mode: "HTML",
-          reply_markup: mainMenu(t),
+          reply_markup: mainMenu(t, rec.role || "employee", true),
         });
         return res.status(200).send("OK");
+      }
+
+      // ═══ MULTI-STEP FLOW TEXT HANDLERS ═══
+      const currentMode = await getUserMode(chatId);
+      const textIn = (message.text || "").trim();
+      if (currentMode && textIn && !textIn.startsWith("/")) {
+        const ctx = await getUserCtx(chatId);
+        try {
+          // Izoh yozish — step 2: save note text
+          if (currentMode === "note:text" && ctx) {
+            const sessSnap = await db.ref(`tg_sessions/${chatId}/note_type`).once("value");
+            const noteType = sessSnap.val() || "general";
+            const noteText = textIn.slice(0, 500);
+            const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            await db.ref(`employee_notes/${id}`).set({
+              empName: ctx.name, empKey: ctx.empKey, date: todayKey, type: noteType,
+              text: noteText, timestamp: Date.now(), dateDisplay: todayKey.split("-").reverse().join(".")
+            });
+            await setUserMode(chatId, null);
+            await db.ref(`tg_sessions/${chatId}/note_type`).remove().catch(() => {});
+            const typeLabels = { late: "⏰ Kechikish", absent: "🚫 Kelmadim", leave: "🏖 Ruxsat", sick: "🏥 Kasallik", general: "📝 Umumiy" };
+            await tgApi("sendMessage", { chat_id: chatId, parse_mode: "HTML",
+              text: t.note_saved.replace("{type}", typeLabels[noteType] || noteType).replace("{date}", todayKey),
+              reply_markup: mainMenu(t, ctx.role, true) });
+            return res.status(200).send("OK");
+          }
+          // E'lon yuborish — admin only
+          if (currentMode === "ann:title" && ctx && (ctx.role === "admin" || ctx.role === "boss")) {
+            await db.ref(`tg_sessions/${chatId}`).update({ mode: "ann:text", ann_title: textIn.slice(0, 200) });
+            await tgApi("sendMessage", { chat_id: chatId, text: t.send_ann_text, parse_mode: "HTML" });
+            return res.status(200).send("OK");
+          }
+          if (currentMode === "ann:text" && ctx && (ctx.role === "admin" || ctx.role === "boss")) {
+            const sessSnap = await db.ref(`tg_sessions/${chatId}`).once("value");
+            const sess = sessSnap.val() || {};
+            const title = sess.ann_title || "E'lon";
+            const text = textIn.slice(0, 2000);
+            const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            await db.ref(`announcements/${id}`).set({
+              title, text, priority: "normal", timestamp: Date.now(),
+              author: ctx.name, authorRole: ctx.role
+            });
+            await db.ref(`tg_sessions/${chatId}`).update({ mode: null, ann_title: null });
+            await tgApi("sendMessage", { chat_id: chatId, parse_mode: "HTML",
+              text: t.send_ann_done.replace("{title}", title).replace("{text}", text),
+              reply_markup: mainMenu(t, ctx.role, true) });
+            // Broadcast to all logged-in xodims via their Telegram
+            const sessAll = await db.ref("tg_sessions").once("value");
+            const allSess = sessAll.val() || {};
+            const broadcastMsg = `📢 <b>${title}</b>\n\n${text}\n\n<i>— ${ctx.name}</i>`;
+            for (const cid in allSess) {
+              if (cid === String(chatId)) continue;
+              if (allSess[cid].linkedPhone) {
+                await tgApi("sendMessage", { chat_id: cid, text: broadcastMsg, parse_mode: "HTML" }).catch(() => {});
+              }
+            }
+            return res.status(200).send("OK");
+          }
+          // Xodim qidirish — admin only
+          if (currentMode === "find:query" && ctx && (ctx.role === "admin" || ctx.role === "boss")) {
+            const out = await buildFindEmployee(textIn, t);
+            await setUserMode(chatId, null);
+            await tgApi("sendMessage", { chat_id: chatId, text: out, parse_mode: "HTML", reply_markup: mainMenu(t, ctx.role, true) });
+            return res.status(200).send("OK");
+          }
+        } catch (err) {
+          console.error("[multi-step]", currentMode, err);
+        }
       }
 
       // Shaxsiy chat — buyruqlar
@@ -725,11 +1026,11 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
           await setUserMode(chatId, "reset");
           await tgApi("sendMessage", { chat_id: chatId, text: t.share_reset, parse_mode: "HTML", reply_markup: shareKeyboard(t) });
           return res.status(200).send("OK");
-        case "/info": case "/menda":
+        case "/info": case "/menda": {
           const userSnap = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
           const phone = userSnap.val();
           if (!phone) {
-            await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML", reply_markup: mainMenu(t) });
+            await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML", reply_markup: mainMenu(t, null, false) });
           } else {
             const rec = await lookupWhitelist(phone);
             if (rec) {
@@ -737,18 +1038,21 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
               const msg = t.info_line
                 .replace("{name}", rec.name || "-").replace("{title}", rec.title || "-")
                 .replace("{role}", rec.role || "employee").replace("{phone}", phone).replace("{status}", status);
-              await tgApi("sendMessage", { chat_id: chatId, text: msg, parse_mode: "HTML", reply_markup: mainMenu(t) });
+              await tgApi("sendMessage", { chat_id: chatId, text: msg, parse_mode: "HTML", reply_markup: mainMenu(t, rec.role, true) });
             } else {
               await tgApi("sendMessage", { chat_id: chatId, text: t.info_not_logged, parse_mode: "HTML" });
             }
           }
           return res.status(200).send("OK");
+        }
         case "/lang": case "/til":
           await tgApi("sendMessage", { chat_id: chatId, text: BOT_T.uz.lang_picker, reply_markup: langKeyboard() });
           return res.status(200).send("OK");
-        case "/yordam": case "/help":
-          await tgApi("sendMessage", { chat_id: chatId, text: t.help, parse_mode: "HTML", reply_markup: mainMenu(t) });
+        case "/yordam": case "/help": {
+          const ctxHelp = await getUserCtx(chatId);
+          await tgApi("sendMessage", { chat_id: chatId, text: t.help, parse_mode: "HTML", reply_markup: mainMenu(t, ctxHelp?.role, !!ctxHelp) });
           return res.status(200).send("OK");
+        }
         default:
           await sendMenu(chatId, userLang);
           return res.status(200).send("OK");
@@ -762,13 +1066,10 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
           reply = await buildKechikkanlarReport(todayKey); break;
         case "/statistika":
           reply = await buildStatistikaReport(); break;
-        case "/tatil": case "/tatillar": case "/leaves":
-          reply = await buildActiveLeavesReport(todayKey); break;
         case "/yordam": case "/help":
           reply = "🤖 <b>Xodimlar Monitoring Bot</b>\n\n"
             + "📊 /davomat — Bugungi davomat\n"
             + "⏰ /kechikkanlar — Kechikkan xodimlar\n"
-            + "🌴 /tatil — Hozirgi ta'til/safar/bemorlar\n"
             + "📈 /statistika — Oylik statistika\n"
             + "❓ /yordam — Yordam\n\n"
             + "📍 Navoiy viloyati Investitsiyalar,\nsanoat va savdo boshqarmasi";
@@ -855,9 +1156,9 @@ exports.onCheckinWrite = functions.database
 
     // ═══ SERVER-SIDE LATE-MINUTES CALCULATION ═══
     let lateMinutes = 0;
-    const timeStr = checkin.time || "";
     try {
-      const [hh, mm] = timeStr.split(":").map(Number);
+      const timeStr2 = checkin.time || "";
+      const [hh, mm] = timeStr2.split(":").map(Number);
       if (!isNaN(hh) && !isNaN(mm)) {
         const totalMin = hh * 60 + mm;
         const deadlineMin = session === "morning" ? (9 * 60 + 10) : (14 * 60 + 10);
@@ -874,7 +1175,6 @@ exports.onCheckinWrite = functions.database
     const existing = attSnap.val() || { status: "present", morning: 0, afternoon: 0, note: "" };
 
     const updates = {};
-    const notePrefix = checkin.empNote ? " — " + checkin.empNote : "";
 
     if (session === "morning") {
       updates.morning = lateMinutes;
@@ -896,8 +1196,27 @@ exports.onCheckinWrite = functions.database
     return null;
   });
 
-// ═══ birthdayNotify (08:00 har kun) — DELETED 2026-04-27 per user request ═══
-// User asked to remove daily-recurring scheduled messages.
+// ═══ TUG'ILGAN KUN — 08:00 ═══
+exports.birthdayNotify = functions.pubsub
+  .schedule("0 8 * * *").timeZone("Asia/Tashkent")
+  .onRun(async () => {
+    const chatId = await getChatId();
+    if (!chatId) return null;
+    const now = new Date();
+    const day = now.getDate(), month = now.getMonth() + 1;
+    const list = [];
+    Object.entries(BIRTHDAYS).forEach(([name, ds]) => {
+      const p = ds.split(".");
+      if (parseInt(p[0]) === day && parseInt(p[1]) === month)
+        list.push({ name, age: now.getFullYear() - parseInt(p[2]) });
+    });
+    if (list.length === 0) return null;
+    let text = "🎂🎉 <b>Bugun tug'ilgan kun!</b>\n\n";
+    list.forEach(b => { text += `🎈 <b>${b.name}</b> — ${b.age} yoshga to'ldi!\n`; });
+    text += "\n🥳 Tabriklaymiz! Sog'lik, baxt va omad tilaymiz!";
+    await sendMessage(chatId, text);
+    return null;
+  });
 
 // ═══ ERTALABKI SELFIE — 09:20 Dush-Juma ═══
 exports.morningSelfieCheck = functions.pubsub
@@ -1765,7 +2084,7 @@ exports.telegramLoginBot = functions
         // Create/get user + generate fresh password
         const { uid, email, tempPassword } = await ensureUser({ ...rec, phone });
 
-        const appUrl = `https://intizominvest.vercel.app/`;
+        const appUrl = `https://xodimlar-7c13c.web.app/`;
         const roleLabel = rec.title || (rec.role === "admin" ? "Kadrlar bo'limi" : rec.role === "boss" ? "Rahbar" : rec.role === "observer" ? "Kuzatuvchi" : "Xodim");
 
         const successMsg = t.success
@@ -1824,9 +2143,6 @@ exports.claimTelegramLogin = functions.https.onRequest(async (req, res) => {
     await db.ref(`tg_logins/${loginId}`).update({ used: true, usedAt: Date.now() });
 
     return res.json({
-      // Custom token (preferred — doesn't reset password, doesn't kick out other sessions)
-      token: rec.token,
-      // Legacy email+password fallback (still supported for old records)
       email: rec.email,
       tempPassword: rec.tempPassword,
       name: rec.name,
@@ -2165,254 +2481,110 @@ exports.fixSaidov = functions.https.onRequest(async (req, res) => {
   }
 });
 
-// Kadr admin — reset password to known value
-exports.fixKadr = functions.https.onRequest(async (req, res) => {
-  try {
-    const user = await admin.auth().getUserByEmail("kadr@boshqarma.uz");
-    const password = "kadr2026";
-    await admin.auth().updateUser(user.uid, { password });
-    res.json({ email: "kadr@boshqarma.uz", password, uid: user.uid });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ═══ TELEGRAM MINI APP AUTO-LOGIN ═══
-// Validates Telegram WebApp initData signature, finds linked user, returns Firebase custom token.
-// Called by the web app when opened inside Telegram Mini App context.
+/**
+ * Telegram Mini App auth — takes Web App initData, returns Firebase custom token.
+ * Verifies HMAC signature with bot token, resolves Telegram user to linked phone,
+ * then mints a custom token for the corresponding Firebase user.
+ */
 exports.telegramMiniAppAuth = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  const origin = req.headers.origin || "";
+  if (ALLOWED_ORIGINS.some(o => origin === o)) {
+    res.set("Access-Control-Allow-Origin", origin);
+  }
+  res.set("Access-Control-Allow-Methods", "POST,OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type");
+  res.set("Vary", "Origin");
   if (req.method === "OPTIONS") return res.status(204).send("");
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
+
   try {
     const { initData } = req.body || {};
-    if (!initData || typeof initData !== "string") {
+    if (!initData || typeof initData !== "string" || initData.length > 10000) {
       return res.status(400).json({ error: "initData required" });
     }
-    // Verify Telegram HMAC signature
+
+    // Parse & verify HMAC
     const crypto = require("crypto");
     const botToken = await getBotToken();
-    if (!botToken) return res.status(500).json({ error: "Bot token not configured" });
+    if (!botToken) return res.status(500).json({ error: "Bot not configured" });
 
     const urlParams = new URLSearchParams(initData);
-    const receivedHash = urlParams.get("hash");
-    if (!receivedHash) return res.status(401).json({ error: "hash missing" });
+    const providedHash = urlParams.get("hash");
     urlParams.delete("hash");
-    // Sort params alphabetically, join as key=value\n
-    const dataCheckString = Array.from(urlParams.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
+    const dataCheckString = [...urlParams.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}=${v}`)
       .join("\n");
-    // Telegram spec: secret_key = HMAC_SHA256(bot_token, key="WebAppData")
+
     const secretKey = crypto.createHmac("sha256", "WebAppData").update(botToken).digest();
-    const expectedHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
-    if (expectedHash !== receivedHash) {
-      console.warn("[tgAuth] HMAC mismatch");
+    const computedHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+
+    if (computedHash !== providedHash) {
       return res.status(401).json({ error: "Invalid signature" });
     }
-    // Check auth_date not too old (1 hour max)
+
     const authDate = parseInt(urlParams.get("auth_date") || "0", 10);
     if (Date.now() / 1000 - authDate > 3600) {
       return res.status(401).json({ error: "initData expired" });
     }
-    // Extract Telegram user
-    const tgUserJson = urlParams.get("user");
-    if (!tgUserJson) return res.status(400).json({ error: "user missing" });
-    const tgUser = JSON.parse(tgUserJson);
-    const chatId = String(tgUser.id);
-    // Look up linked phone
-    const phoneSnap = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
+
+    const userJson = urlParams.get("user");
+    if (!userJson) return res.status(400).json({ error: "No user data" });
+    const tgUser = JSON.parse(userJson);
+    const tgChatId = tgUser.id;
+
+    // Look up linked phone from tg_sessions
+    const phoneSnap = await db.ref(`tg_sessions/${tgChatId}/linkedPhone`).once("value");
     const phone = phoneSnap.val();
-    if (!phone) return res.status(403).json({ error: "Not linked — use /login in bot" });
-    // Look up whitelist entry
-    const rec = await lookupWhitelist(phone);
-    if (!rec || rec.active === false) return res.status(403).json({ error: "Not authorized" });
-    // Find Firebase user (via preferredEmail or phoneEmail)
-    const preferredEmail = (rec.linkEmail || "").toLowerCase().trim();
-    const phoneEmail = phone.replace("+", "").replace(/\D/g, "") + "@intizom.uz";
-    let user = null;
-    if (preferredEmail) { try { user = await admin.auth().getUserByEmail(preferredEmail); } catch (_) {} }
-    if (!user) { try { user = await admin.auth().getUserByEmail(phoneEmail); } catch (_) {} }
-    if (!user) return res.status(404).json({ error: "User not created — use /login first" });
-    // Generate custom token
-    const customToken = await admin.auth().createCustomToken(user.uid);
-    return res.json({ token: customToken, uid: user.uid, name: rec.name, phone });
+    if (!phone) {
+      return res.status(403).json({ error: "Not linked. Login via bot first." });
+    }
+
+    // Find whitelist record
+    const wlRec = await lookupWhitelist(phone);
+    if (!wlRec) return res.status(403).json({ error: "Not in whitelist" });
+    if (wlRec.active === false) return res.status(403).json({ error: "Account blocked" });
+
+    // Find Firebase user by phoneEmail or linkEmail
+    const phoneEmail = `${phone.replace(/[^0-9]/g, "")}@phone.boshqarma.uz`;
+    const preferredEmail = (wlRec.linkEmail || "").toLowerCase().trim();
+
+    let user;
+    try {
+      if (preferredEmail) user = await admin.auth().getUserByEmail(preferredEmail).catch(() => null);
+      if (!user) user = await admin.auth().getUserByEmail(phoneEmail).catch(() => null);
+    } catch (_) {}
+
+    if (!user) {
+      // Create via ensureUser flow
+      const ensured = await ensureUser({ ...wlRec, phone });
+      user = await admin.auth().getUser(ensured.uid);
+    }
+
+    // Ensure users/{uid}/empKey is set (for DB rules)
+    const empKey = String(wlRec.name || "").replace(/[\u2018\u2019'`]/g, "").replace(/\s+/g, "_");
+    await db.ref(`users/${user.uid}`).update({
+      name: wlRec.name,
+      empKey,
+      phone,
+      title: wlRec.title || "",
+      lastLogin: Date.now(),
+    }).catch(() => {});
+
+    // Mint custom token with 5-min window
+    const customToken = await admin.auth().createCustomToken(user.uid, {
+      source: "telegram_miniapp",
+      tgChatId: String(tgChatId),
+    });
+
+    return res.json({
+      token: customToken,
+      email: user.email,
+      name: wlRec.name,
+      role: wlRec.role || "employee",
+    });
   } catch (e) {
-    console.error("telegramMiniAppAuth error:", e);
-    return res.status(500).json({ error: e.message });
+    console.error("telegramMiniAppAuth error:", e.message);
+    return res.status(500).json({ error: "Server error" });
   }
 });
-
-// ═══ BACKFILL: Process existing checkins into attendance for a given date ═══
-// One-shot recovery — call GET /backfillAttendance?date=YYYY-MM-DD
-exports.backfillAttendance = functions.https.onRequest(async (req, res) => {
-  try {
-    const dateKey = req.query.date || new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tashkent" });
-    const checkinsSnap = await db.ref(`checkins/${dateKey}`).once("value");
-    const checkins = checkinsSnap.val() || {};
-    let processed = 0;
-    const errors = [];
-    // Build COMPLETE fresh attendance object from checkins (replace, don't append)
-    for (const empKey of Object.keys(checkins)) {
-      const sessions = checkins[empKey];
-      if (!sessions) continue;
-      try {
-        const noteParts = [];
-        let morningLate = 0, afternoonLate = 0;
-        let hasAnyWorkStatus = false;
-        for (const session of ["morning", "afternoon"]) {
-          const checkin = sessions[session];
-          if (!checkin) continue;
-          const timeStr = checkin.time || "";
-          let lateMinutes = 0;
-          const [hh, mm] = timeStr.split(":").map(Number);
-          if (!isNaN(hh) && !isNaN(mm)) {
-            const totalMin = hh * 60 + mm;
-            const deadlineMin = session === "morning" ? 9 * 60 + 10 : 14 * 60 + 10;
-            if (totalMin > deadlineMin) lateMinutes = totalMin - deadlineMin;
-          }
-          if (session === "morning") morningLate = lateMinutes;
-          else afternoonLate = lateMinutes;
-          hasAnyWorkStatus = true;
-          const notePrefix = checkin.empNote ? " — " + checkin.empNote : "";
-          const label = session === "morning"
-            ? (lateMinutes === 0 ? "Ertalab selfie (09:10 gacha): " : "Selfie 09:10 dan keyin: ")
-            : (lateMinutes === 0 ? "Tushlikdan keyingi selfie (14:10 gacha): " : "Selfie 14:10 dan keyin: ");
-          noteParts.push(label + timeStr + notePrefix);
-        }
-        if (!hasAnyWorkStatus) continue;
-        // Preserve existing non-selfie note (manually-written admin notes before/after selfie lines)
-        const existingSnap = await db.ref(`attendance/${dateKey}/${empKey}`).once("value");
-        const existing = existingSnap.val() || {};
-        // Filter existing note — keep only non-auto-generated parts (admin's manual notes)
-        const existingNote = existing.note || "";
-        const manualParts = existingNote.split(" | ").filter(p =>
-          p && !p.match(/^(Ertalab selfie|Selfie 09:10|Tushlikdan keyingi selfie|Selfie 14:10)/)
-        );
-        const combinedNote = [...manualParts, ...noteParts].filter(Boolean).join(" | ");
-        const totalLate = morningLate + afternoonLate;
-        await db.ref(`attendance/${dateKey}/${empKey}`).update({
-          status: totalLate > 0 ? "late" : "present",
-          morning: morningLate,
-          afternoon: afternoonLate,
-          note: combinedNote
-        });
-        processed++;
-      } catch (e) {
-        errors.push({ empKey, error: e.message });
-      }
-    }
-    res.json({ ok: true, dateKey, processed, errors });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════════
-//  PUSH NOTIFICATIONS — FCM (Firebase Cloud Messaging)
-// ═══════════════════════════════════════════════════════════════════════
-
-/**
- * Send an FCM push notification to ALL devices of ALL users (or a specific UID).
- * Tokens are stored in /fcm_tokens/{uid}/{tokenId} by the client on login.
- *
- * @param {object} payload - { title, body, data? }
- * @param {string|string[]} [uids] - specific user UID(s); if omitted, broadcasts to all.
- */
-async function sendPushToUsers(payload, uids) {
-  const tokens = [];
-  if (uids) {
-    const arr = Array.isArray(uids) ? uids : [uids];
-    for (const uid of arr) {
-      const snap = await db.ref("fcm_tokens/" + uid).once("value");
-      const byTok = snap.val() || {};
-      Object.values(byTok).forEach(t => { if (t && t.token) tokens.push(t.token); });
-    }
-  } else {
-    const snap = await db.ref("fcm_tokens").once("value");
-    const all = snap.val() || {};
-    Object.values(all).forEach(userTokens => {
-      Object.values(userTokens || {}).forEach(t => { if (t && t.token) tokens.push(t.token); });
-    });
-  }
-  if (!tokens.length) return { sent: 0, reason: "no tokens" };
-  // Dedupe
-  const unique = Array.from(new Set(tokens));
-  const msg = {
-    notification: { title: payload.title, body: payload.body },
-    data: Object.fromEntries(Object.entries(payload.data || {}).map(([k, v]) => [k, String(v)])),
-    tokens: unique,
-  };
-  const resp = await admin.messaging().sendEachForMulticast(msg);
-  // Clean up invalid tokens
-  if (resp && resp.responses) {
-    const staleTokens = [];
-    resp.responses.forEach((r, i) => {
-      if (!r.success && r.error) {
-        const code = r.error.code || "";
-        if (code.includes("registration-token-not-registered") || code.includes("invalid-argument")) {
-          staleTokens.push(unique[i]);
-        }
-      }
-    });
-    if (staleTokens.length) {
-      // Remove from DB — iterate all users, remove matching tokens
-      const allSnap = await db.ref("fcm_tokens").once("value");
-      const all = allSnap.val() || {};
-      for (const uid of Object.keys(all)) {
-        for (const tokId of Object.keys(all[uid] || {})) {
-          if (staleTokens.includes(all[uid][tokId].token)) {
-            await db.ref(`fcm_tokens/${uid}/${tokId}`).remove().catch(() => {});
-          }
-        }
-      }
-    }
-  }
-  return { sent: resp.successCount || 0, failed: resp.failureCount || 0, total: unique.length };
-}
-
-/**
- * HTTP endpoint to send a push — admin-triggered from web UI.
- * POST {title, body, uids?, data?}
- */
-exports.sendPush = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") return res.status(204).send("");
-  if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
-  try {
-    const { title, body, uids, data } = req.body || {};
-    if (!title || !body) return res.status(400).json({ error: "title and body required" });
-    const result = await sendPushToUsers({ title, body, data }, uids);
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ═══ PUSH NOTIFICATIONS ═══
-// User-facing reminders sent to FCM tokens (mobile devices via APK).
-// Different from Telegram group reports — these go to individual user phones.
-//
-// Re-enabled per user request (2026-04-26):
-// • pushMorningReminder — 08:45 weekdays (selfie reminder)
-// • pushOnAnnouncement — fires when admin creates announcement
-// • pushBirthday — 09:00 daily (only fires if today is someone's birthday)
-
-exports.pushOnAnnouncement = functions.database
-  .ref("/announcements/{annId}")
-  .onCreate(async (snapshot) => {
-    const ann = snapshot.val() || {};
-    await sendPushToUsers({
-      title: "📢 Yangi e'lon",
-      body: (ann.title || "") + (ann.body ? " — " + ann.body.substring(0, 100) : ""),
-      data: { view: "announcements", annId: snapshot.key },
-    });
-    return null;
-  });
-
-// pushMorningReminder + pushBirthday DELETED 2026-04-27 per user request
-// (every-day spam scheduled functions removed; only pushOnAnnouncement kept).
