@@ -28,7 +28,6 @@
   <link rel="preload" as="script" href="vendor/firebase-app-compat.js">
   <link rel="preload" as="script" href="vendor/firebase-auth-compat.js">
   <link rel="preload" as="script" href="vendor/firebase-database-compat.js">
-  <link rel="preload" as="script" href="vendor/firebase-functions-compat.js">
   <link rel="preload" as="script" href="vendor/react.min.js">
   <link rel="preload" as="script" href="vendor/react-dom.min.js">
   <link rel="preload" as="script" href="vendor/babel.min.js">
@@ -39,7 +38,6 @@
   <script src="vendor/firebase-app-compat.js"></script>
   <script src="vendor/firebase-auth-compat.js"></script>
   <script src="vendor/firebase-database-compat.js"></script>
-  <script src="vendor/firebase-functions-compat.js"></script>
 
   <script src="vendor/react.min.js"></script>
   <script src="vendor/react-dom.min.js"></script>
@@ -13694,20 +13692,6 @@ function App(){
       setAttendanceLoaded(true);
       try{ sessionStorage.setItem('att_cache_v1', JSON.stringify({ts:Date.now(), data:v})); }catch(_){}
     },(err)=>{ console.error(err); setAttendanceLoaded(true); });
-    // PRIORITY FETCH: today's attendance — small payload, runs in parallel with full-range listener.
-    // This guarantees today's data appears within ~200ms even if the full listener takes 2-3s.
-    var todayKey = (function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})();
-    db.ref("attendance/"+todayKey).once("value").then(function(snap){
-      var todayData = snap.val();
-      if(todayData){
-        setData(function(prev){
-          var merged = Object.assign({}, prev||{});
-          merged[todayKey] = Object.assign({}, merged[todayKey]||{}, todayData);
-          return merged;
-        });
-        setAttendanceLoaded(true);
-      }
-    }).catch(function(){});
     return()=>ref.off();
   },[user?.uid]);  // ← uid only, so listener doesn't tear down on every user object update (e.g. fast-path → enriched)
 
@@ -13737,21 +13721,6 @@ function App(){
       setCheckinsLoaded(true);
       try{ sessionStorage.setItem('chk_cache_v1', JSON.stringify({ts:Date.now(), data:v})); }catch(_){}
     },(err)=>{ console.error(err); setCheckinsLoaded(true); });
-    // PRIORITY FETCH: today's checkins — small, fast (~200ms). Merges into checkinsData ASAP
-    // so employees opening the site SEE their selfie status correctly even before
-    // the full-range listener finishes (which can take 2-3s on slow connections).
-    var todayKey2 = (function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})();
-    db.ref("checkins/"+todayKey2).once("value").then(function(snap){
-      var todayData = snap.val();
-      if(todayData){
-        setCheckinsData(function(prev){
-          var merged = Object.assign({}, prev||{});
-          merged[todayKey2] = Object.assign({}, merged[todayKey2]||{}, todayData);
-          return merged;
-        });
-        setCheckinsLoaded(true);
-      }
-    }).catch(function(){});
     // Force-refresh on selfie submit (in case listener is slow/disconnected)
     function onSelfieSubmitted(){
       ref.once("value").then(snap=>setCheckinsData(snap.val()||{})).catch(function(){});
@@ -14008,10 +13977,16 @@ function App(){
       showToast(`✓ ${emp} — ${days} kun ${stLabel} ${oldRange ? "yangilandi" : "belgilandi"}`);
       haptic.light();
       logAudit('bulk-leave', `${emp}: ${stLabel} ${fromDate}→${toDate} (${days} kun)${oldRange?' [edit]':''}`, user?.name);
-      // Telegram bot notification — fire-and-forget, doesn't block UI
+      // Telegram bot notification via direct HTTPS call (no Functions SDK needed)
       try {
-        const callable = firebase.functions().httpsCallable('notifyBulkLeave');
-        callable({ emp, status, fromDate, toDate, days, action: oldRange ? 'edit' : 'create' }).catch(()=>{});
+        if (firebase.auth().currentUser) {
+          firebase.auth().currentUser.getIdToken().then(token=>{
+            fetch('https://us-central1-xodimlar-7c13c.cloudfunctions.net/notifyBulkLeave', {
+              method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+              body: JSON.stringify({data:{emp, status, fromDate, toDate, days, action: oldRange ? 'edit' : 'create'}})
+            }).catch(()=>{});
+          }).catch(()=>{});
+        }
       } catch(_) {}
       setBulkLeave(null);
     }catch(e){
@@ -14048,10 +14023,16 @@ function App(){
       showToast(`✓ ${emp} — ${stLabel} bekor qilindi (${range.days} kun)`);
       haptic.light();
       logAudit('bulk-cancel', `${emp}: ${stLabel} ${range.start}→${range.end} bekor`, user?.name);
-      // Telegram bot notification
+      // Telegram bot notification via direct HTTPS call
       try {
-        const callable = firebase.functions().httpsCallable('notifyBulkLeave');
-        callable({ emp, status, fromDate: range.start, toDate: range.end, days: range.days, action: 'cancel' }).catch(()=>{});
+        if (firebase.auth().currentUser) {
+          firebase.auth().currentUser.getIdToken().then(token=>{
+            fetch('https://us-central1-xodimlar-7c13c.cloudfunctions.net/notifyBulkLeave', {
+              method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+              body: JSON.stringify({data:{emp, status, fromDate: range.start, toDate: range.end, days: range.days, action: 'cancel'}})
+            }).catch(()=>{});
+          }).catch(()=>{});
+        }
       } catch(_) {}
       setBulkLeave(null);
     }catch(e){
