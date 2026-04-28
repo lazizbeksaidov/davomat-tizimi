@@ -10606,6 +10606,30 @@ function selfieCalcDist(lat1,lon1,lat2,lon2){
 }
 function SelfieCheckin({user,attendanceData,checkinsData,checkinsLoaded,showToast}){
   var{useState,useEffect,useRef,useCallback,useMemo}=React;
+  // FRESH today checkins — bypass stale React state. Without this, admin opens
+  // "Selfie Davomat" page and sees employees who DID take selfie listed as "kelmagan"
+  // because the checkinsData listener hasn't synced yet.
+  var [freshTodayCheckins, setFreshTodayCheckins] = useState(null);
+  useEffect(()=>{
+    let cancelled = false;
+    function refresh(){
+      var tk = (function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})();
+      db.ref('checkins/'+tk).once('value').then(function(snap){
+        if(!cancelled) setFreshTodayCheckins(snap.val()||{});
+      }).catch(function(){});
+    }
+    refresh();
+    var iv = setInterval(refresh, 30000); // refresh every 30s
+    function onSubmit(){ refresh(); }
+    window.addEventListener('selfie:submitted', onSubmit);
+    function onVis(){ if(document.visibilityState==='visible') refresh(); }
+    document.addEventListener('visibilitychange', onVis);
+    return function(){
+      cancelled=true; clearInterval(iv);
+      window.removeEventListener('selfie:submitted', onSubmit);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  },[]);
   var[gpsStatus,setGpsStatus]=useState("checking");
   var[todayMapKey,setTodayMapKey]=useState(null);
   var[gpsData,setGpsData]=useState(null);
@@ -10993,9 +11017,10 @@ function SelfieCheckin({user,attendanceData,checkinsData,checkinsLoaded,showToas
     });
   },[capturedPhoto,submitting,user,todayKey,empKey,gpsData,gpsStatus,attendanceData,uiSession]);
 
-  // Admin list
+  // Admin list — prefer fresh DB fetch over potentially stale React state
   var todayList=useMemo(function(){
-    var tc=(checkinsData[todayKey])||{};var list=[];
+    var tc = freshTodayCheckins || (checkinsData[todayKey])||{};
+    var list=[];
     Object.keys(tc).forEach(function(k){
       var v=tc[k];
       if(v&&v.morning)list.push(Object.assign({key:k+"_m"},v.morning));
@@ -11003,14 +11028,14 @@ function SelfieCheckin({user,attendanceData,checkinsData,checkinsLoaded,showToas
     });
     list.sort(function(a,b){return(a.timestamp||"").localeCompare(b.timestamp||"");});
     return list;
-  },[checkinsData,todayKey]);
+  },[checkinsData,todayKey,freshTodayCheckins]);
   var missingToday=useMemo(function(){
-    var tc=(checkinsData[todayKey])||{};
+    var tc = freshTodayCheckins || (checkinsData[todayKey])||{};
     return EMPLOYEES.filter(function(emp){
       var rec=tc[safeKey(emp)]||{};
       return !(rec.morning||rec.afternoon);
     });
-  },[checkinsData,todayKey]);
+  },[checkinsData,todayKey,freshTodayCheckins]);
 
   var canView=user.role==="admin"||user.role==="boss"||user.role==="observer";
 
@@ -11244,7 +11269,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,checkinsLoaded,showToas
     ):null,
 
     // Admin list — loading skeleton while checkins data is being fetched
-    canView&&!checkinsLoaded&&React.createElement("div",{className:"selfie-history-card"},
+    canView&&!checkinsLoaded&&freshTodayCheckins===null&&React.createElement("div",{className:"selfie-history-card"},
       React.createElement("div",{className:"table-header"},React.createElement("div",null,
         React.createElement("div",{className:"table-title"},"Bugungi Selfie"),
         React.createElement("div",{className:"table-meta"},"Yuklanmoqda...")
@@ -11263,7 +11288,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,checkinsLoaded,showToas
     ),
 
     // Admin list — actual data
-    canView&&checkinsLoaded&&todayList.length>0&&React.createElement("div",{className:"selfie-history-card"},
+    canView&&(checkinsLoaded||freshTodayCheckins!==null)&&todayList.length>0&&React.createElement("div",{className:"selfie-history-card"},
       React.createElement("div",{className:"table-header"},React.createElement("div",null,
         React.createElement("div",{className:"table-title"},"Bugungi Selfie"),
         React.createElement("div",{className:"table-meta"},todayList.length+" ta yozuv")
@@ -11293,7 +11318,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,checkinsLoaded,showToas
         );
       })
     ),
-    canView&&checkinsLoaded&&React.createElement("div",{className:"table-card",style:{marginTop:16}},
+    canView&&(checkinsLoaded||freshTodayCheckins!==null)&&React.createElement("div",{className:"table-card",style:{marginTop:16}},
       React.createElement("div",{className:"table-header"},
         React.createElement("div",null,
           React.createElement("div",{className:"table-title"},"Bugun kelmagan"),
@@ -11314,7 +11339,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,checkinsLoaded,showToas
           )
         : React.createElement("div",{style:{textAlign:"center",color:"var(--emerald)",padding:"24px 16px",fontSize:13,fontWeight:600}},"Barcha xodimlar bugun selfie qaydini kiritgan ✓")
     ),
-    canView&&checkinsLoaded&&todayList.length===0&&React.createElement("div",{style:{textAlign:"center",color:"var(--t4)",padding:30,fontSize:13}},"Hali selfie qayd etilmagan")
+    canView&&(checkinsLoaded||freshTodayCheckins!==null)&&todayList.length===0&&React.createElement("div",{style:{textAlign:"center",color:"var(--t4)",padding:30,fontSize:13}},"Hali selfie qayd etilmagan")
   );
 }
 
