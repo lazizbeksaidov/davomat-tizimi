@@ -771,6 +771,8 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
             + "🌴 /tatil — Hozirgi ta'til/safar/bemorlar\n"
             + "📈 /statistika — Oylik statistika\n"
             + "❓ /yordam — Yordam\n\n"
+            + "🌐 Sayt: <a href=\"https://intizominvest.vercel.app\">intizominvest.vercel.app</a>\n"
+            + "📦 Manba kodi: <a href=\"https://github.com/lazizbeksaidov/davomat-tizimi\">GitHub</a>\n\n"
             + "📍 Navoiy viloyati Investitsiyalar,\nsanoat va savdo boshqarmasi";
           break;
         default: res.status(200).send("OK"); return;

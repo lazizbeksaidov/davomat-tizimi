@@ -5510,7 +5510,12 @@ function DailyView({user,selectedDate,setSelectedDate,attendanceData,attendanceL
               {filtered.map((emp)=>{
                 const idx=EMPLOYEES.indexOf(emp);
                 const rawRec=attendanceData[dateKey]?.[safeKey(emp)]||{status:"present",morning:0,afternoon:0,note:""};
-                const rec=todayIsHoliday&&!rawRec.status?Object.assign({},rawRec,{status:"holiday"}):rawRec;
+                // Auto-promote "present" → "late" if morning or afternoon lateMinutes > 0.
+                // This ensures the status badge automatically shows "Kechikdi" when a selfie
+                // came in late (e.g., 14:11 = 1 min late after 14:10 deadline).
+                const isLateBySelfie = (rawRec.morning > 0) || (rawRec.afternoon > 0);
+                const autoStatus = (rawRec.status === "present" && isLateBySelfie) ? "late" : rawRec.status;
+                const rec=todayIsHoliday&&!autoStatus?Object.assign({},rawRec,{status:"holiday"}):Object.assign({},rawRec,{status:autoStatus});
                 const effectiveStatus=todayIsHoliday&&rec.status==="present"?"holiday":rec.status;
                 const active=["present","late"].includes(effectiveStatus);
                 const stDef=STATUSES[effectiveStatus]||STATUSES.present;
