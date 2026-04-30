@@ -59,7 +59,14 @@ function safeKey(name) {
 }
 
 function fmtDate(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  // Always format in Asia/Tashkent (UTC+5) regardless of server timezone.
+  // Cloud Functions run in UTC by default — without this conversion, /davomat
+  // at midnight UZB (19:00 UTC prev day) returns yesterday's data.
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tashkent',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  });
+  return fmt.format(d); // e.g. "2026-04-30"
 }
 
 function fmtMins(m) {
