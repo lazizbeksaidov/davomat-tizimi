@@ -4841,7 +4841,16 @@ const EMPLOYEE_PROFILES = {
 
 
 /* ═══ HELPERS ═══ */
-function fmtDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function fmtDate(d){
+  // Always Asia/Tashkent date — independent of device timezone.
+  // Without this, employees on devices set to wrong timezone see "selfie tushmagan"
+  // because today's date in their TZ != today's date in UZ DB.
+  try {
+    return new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Tashkent', year:'numeric', month:'2-digit', day:'2-digit'}).format(d);
+  } catch(_) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+}
 function isWorkday(d){const w=d.getDay();return w>=1&&w<=5}
 function safeKey(s){return s.replace(/[\u2018\u2019\u02BC\u0060'`]/g,"").replace(/\s+/g,"_").replace(/[.#$/[\]]/g,"_")}
 function stepToWorkday(date,dir){const d=new Date(date);do{d.setDate(d.getDate()+dir)}while(!isWorkday(d));return d}
@@ -9630,7 +9639,7 @@ function AccountsManager({showToast}){
 /* ═══ MOBILE PREMIUM HOME (for employees on phone) ═══ */
 function MobileEmpHome({user, checkinsData, attendanceData, announcements, holidays, onNavigate, onSelfie}){
   const today = new Date();
-  const todayKey = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+  const todayKey = fmtDate(today);  // Asia/Tashkent — always matches DB key
   const hour = today.getHours();
   const greeting = hour < 11 ? "Xayrli tong" : hour < 16 ? "Xayrli kun" : hour < 20 ? "Xayrli kech" : "Xayrli tun";
   const firstName = (user.name||"").split(" ")[1] || (user.name||"").split(" ")[0] || "Xodim";
@@ -9644,7 +9653,7 @@ function MobileEmpHome({user, checkinsData, attendanceData, announcements, holid
     if(!user||!user.name) return;
     let cancelled = false;
     function fetchFresh(){
-      const tk = new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0")+"-"+String(new Date().getDate()).padStart(2,"0");
+      const tk = fmtDate(new Date());
       // Fetch BOTH the specific empKey AND the full date snapshot to diagnose key mismatch
       Promise.all([
         db.ref('checkins/'+tk+'/'+ek).once('value'),
@@ -12604,7 +12613,7 @@ function useNotificationScheduler(user,checkinsData){
       var now=new Date();
       var h=now.getHours(),m=now.getMinutes(),dow=now.getDay();
       if(dow===0||dow===6) return;
-      var todayKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),String(now.getDate()).padStart(2,"0")].join("-");
+      var todayKey=fmtDate(now);
       var empKey=safeKey(user.name);
       var myCheckins=checkinsData?.[todayKey]?.[empKey];
 
