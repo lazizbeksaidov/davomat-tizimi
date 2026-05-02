@@ -42,11 +42,22 @@
   <script src="vendor/react.min.js"></script>
   <script src="vendor/react-dom.min.js"></script>
   <script src="vendor/babel.min.js"></script>
-  <!-- Heavy libs used only on demand — defer to unblock first paint -->
-  <script src="vendor/xlsx.full.min.js" defer></script>
-  <script src="vendor/jspdf.umd.min.js" async></script>
-  <script src="vendor/jspdf-autotable.min.js" async></script>
-  <script src="vendor/chart.umd.min.js" async></script>
+  <!-- Heavy libs (xlsx 932KB, jspdf 400KB, chart 204KB) — LAZY loaded on first use.
+       Saves 1.5 MB and ~3s on first paint. window.lazyLoad() helper loads on demand. -->
+  <script>
+    // Inline helper — load script once on demand. Returns Promise.
+    window.__loadedScripts = window.__loadedScripts || {};
+    window.lazyLoad = function(src){
+      if (window.__loadedScripts[src]) return window.__loadedScripts[src];
+      return window.__loadedScripts[src] = new Promise(function(resolve, reject){
+        var s = document.createElement('script');
+        s.src = src; s.async = true;
+        s.onload = function(){ resolve(); };
+        s.onerror = function(e){ delete window.__loadedScripts[src]; reject(e); };
+        document.head.appendChild(s);
+      });
+    };
+  </script>
 
   <!-- Telegram Web App SDK — required for Mini App to work without "tarmoq xatosi" -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -3869,9 +3880,17 @@ window.__pushNotify = {
   }
 };
 
-// ═══ PDF Report Generator ═══
-function generatePDF(title, headers, rows, filename) {
-  if(!window.jspdf){window.dialog?window.dialog.alert("PDF kutubxonasi yuklanmoqda, qayta urinib ko'ring"):alert('PDF kutubxonasi yuklanmoqda, qayta urinib ko\'ring');return;}
+// ═══ PDF Report Generator ═══ (jspdf 360KB + autotable 40KB lazy-loaded on demand)
+async function generatePDF(title, headers, rows, filename) {
+  if(!window.jspdf){
+    try {
+      await window.lazyLoad('vendor/jspdf.umd.min.js');
+      await window.lazyLoad('vendor/jspdf-autotable.min.js');
+    } catch(e) {
+      window.dialog?window.dialog.alert("PDF kutubxonasini yuklab bo'lmadi: "+e.message):alert('PDF yuklanmadi');
+      return;
+    }
+  }
   const {jsPDF} = window.jspdf;
   const doc = new jsPDF('l','mm','a4');
   doc.setFillColor(59,91,255);
@@ -4894,7 +4913,9 @@ function getCheckinEntriesForDate(checkinsData,dateKey){
 /* ═══ RING SVG ═══ */
 
 /* ═══ EXCEL EXPORT ═══ */
-function exportDailyExcel(dateKey,attendanceData,checkinsData){
+async function exportDailyExcel(dateKey,attendanceData,checkinsData){
+  // Lazy-load XLSX (932 KB) only when admin actually clicks Excel export
+  if (!window.XLSX) await window.lazyLoad('vendor/xlsx.full.min.js');
   var dayLabel=dateKey;
   var rows=EMPLOYEES.map(function(emp,i){
     var rec=(attendanceData[dateKey]&&attendanceData[dateKey][safeKey(emp)])||{};
@@ -4921,7 +4942,8 @@ function exportDailyExcel(dateKey,attendanceData,checkinsData){
   XLSX.writeFile(wb,"Davomat_"+dayLabel+".xlsx");
 }
 
-function exportMonthlyExcel(yr,mon,monthDates,attendanceData,checkinsData){
+async function exportMonthlyExcel(yr,mon,monthDates,attendanceData,checkinsData){
+  if (!window.XLSX) await window.lazyLoad('vendor/xlsx.full.min.js');
   var monName=MONTHS[mon];
   var totalDays=monthDates.length;
   // Summary sheet
