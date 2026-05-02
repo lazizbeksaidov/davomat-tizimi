@@ -62,7 +62,8 @@ async function getEmployees() {
 // FALLBACK list only. Async getEmployees() call returns the LIVE DB list.
 const EMPLOYEES = EMPLOYEES_FALLBACK;
 
-const BIRTHDAYS = {
+// Fallback birthdays \u2014 used only if /employees DB lookup fails
+const BIRTHDAYS_FALLBACK = {
   "Umrzoqov Bunyod":"23.07.1988","Ermamatov Xurshid":"29.03.1986",
   "Akbarova Moxlaroyim":"11.04.1998","Faxriddinov Oxunjon":"29.04.1992",
   "Hamdamov Shuxrat":"05.03.1989","Nazarov Muzaffar":"22.02.1984",
@@ -75,6 +76,48 @@ const BIRTHDAYS = {
   "Husainova Klara":"30.11.1987","Ne\u2018matov Shahzodbek":"22.07.1999",
   "Muhammadov Jaloliddin":"22.01.1994"
 };
+
+// Live birthdays + employee profile data \u2014 fetched from /employees on first call.
+// Returns map { "Ism Familiya": { birthDate, position, phone, fullName } }
+let _profilesCache = null;
+let _profilesCacheTs = 0;
+async function getEmployeeProfiles() {
+  const now = Date.now();
+  if (_profilesCache && (now - _profilesCacheTs) < 30000) return _profilesCache;
+  try {
+    const snap = await db.ref("/employees").once("value");
+    const v = snap.val();
+    if (v && Object.keys(v).length > 0) {
+      const map = {};
+      Object.values(v).forEach(emp => {
+        if (!emp) return;
+        const name = emp.fullName ? emp.fullName.split(" ").slice(0, 2).join(" ")
+                   : (emp.lastName && emp.firstName ? `${emp.lastName} ${emp.firstName}` : null);
+        if (name) {
+          map[name] = {
+            birthDate: emp.birthDate || BIRTHDAYS_FALLBACK[name] || null,
+            position: emp.position || "",
+            phone: emp.phone || "",
+            fullName: emp.fullName || name,
+            department: emp.department || ""
+          };
+        }
+      });
+      _profilesCache = map;
+      _profilesCacheTs = now;
+      return map;
+    }
+  } catch (e) { console.warn("getEmployeeProfiles error:", e.message); }
+  // Fallback \u2014 convert hardcoded BIRTHDAYS to profile shape
+  const fallback = {};
+  Object.entries(BIRTHDAYS_FALLBACK).forEach(([name, bd]) => { fallback[name] = { birthDate: bd, position: "", phone: "", fullName: name, department: "" }; });
+  _profilesCache = fallback;
+  _profilesCacheTs = now;
+  return fallback;
+}
+
+// Backward-compatible \u2014 kept for legacy code paths that haven't migrated yet
+const BIRTHDAYS = BIRTHDAYS_FALLBACK;
 
 const DAYS_UZ = ["Yakshanba","Dushanba","Seshanba","Chorshanba","Payshanba","Juma","Shanba"];
 const STATUS_LABELS = {
@@ -331,6 +374,210 @@ async function buildStatistikaReport() {
       text += `  ${e.name} — <b>${e.score}</b>\n`;
     });
   }
+  return text;
+}
+
+// ═══ BOT HELP TEXT ═══
+function botHelpText() {
+  return "🤖 <b>Xodimlar Monitoring Bot</b>\n\n"
+    + "<b>Davomat:</b>\n"
+    + "📊 /davomat — Bugungi davomat\n"
+    + "⏰ /kechikkanlar — Kechikkan xodimlar\n"
+    + "🌴 /tatil — Hozirgi ta'til/safar/bemorlar\n"
+    + "📈 /statistika — Oylik statistika\n\n"
+    + "<b>Xodimlar:</b>\n"
+    + "👥 /xodimlar — Barcha xodimlar ro'yxati\n"
+    + "🔍 /qidir <i>ism</i> — Xodim bo'yicha qidirish\n"
+    + "🎂 /tugilgan — Tug'ilgan kunlar (yaqin 30 kun)\n\n"
+    + "<b>Shaxsiy (DM'da):</b>\n"
+    + "👤 /menpda — Mening bugungi davomatim\n"
+    + "📊 /menstat — Mening oylik statistikam\n"
+    + "ℹ️ /menda — Mening profilim\n\n"
+    + "<b>Boshqa:</b>\n"
+    + "❓ /yordam — Bu yordam xabari\n"
+    + "🌐 Sayt: <a href=\"https://intizominvest.vercel.app\">intizominvest.vercel.app</a>\n"
+    + "📦 GitHub: <a href=\"https://github.com/lazizbeksaidov/davomat-tizimi\">davomat-tizimi</a>\n\n"
+    + "📍 Navoiy viloyati Investitsiyalar,\nsanoat va savdo boshqarmasi";
+}
+
+// ═══ XODIMLAR RO'YXATI ═══
+async function buildEmployeeListReport() {
+  const profiles = await getEmployeeProfiles();
+  const list = Object.entries(profiles).sort(([a],[b]) => a.localeCompare(b));
+  if (list.length === 0) return "👥 Xodimlar ro'yxati bo'sh.";
+  let text = `👥 <b>Xodimlar ro'yxati (${list.length} nafar)</b>\n━━━━━━━━━━━━━━━━━━\n\n`;
+  list.forEach(([name, p], i) => {
+    text += `${i+1}. <b>${name}</b>\n`;
+    if (p.position) text += `   💼 ${p.position}\n`;
+    if (p.phone) text += `   📞 ${p.phone}\n`;
+    if (i < list.length - 1) text += "\n";
+  });
+  return text;
+}
+
+// ═══ XODIM QIDIRISH ═══
+// /qidir Saidov → faqat Saidov(lar)ning bugungi davomati
+async function buildEmployeeSearchReport(query, todayKey) {
+  const profiles = await getEmployeeProfiles();
+  const q = query.toLowerCase().trim();
+  const matches = Object.keys(profiles).filter(name => name.toLowerCase().includes(q));
+  if (matches.length === 0) return `🔍 "${query}" bo'yicha xodim topilmadi.`;
+  const [attSnap, checkSnap] = await Promise.all([
+    db.ref(`attendance/${todayKey}`).once("value"),
+    db.ref(`checkins/${todayKey}`).once("value")
+  ]);
+  const att = attSnap.val() || {};
+  const ck = checkSnap.val() || {};
+  const d = todayKey.split("-");
+  let text = `🔍 <b>"${query}" — ${matches.length} ta natija</b>\n📅 ${d[2]}.${d[1]}.${d[0]}\n━━━━━━━━━━━━━━━━━━\n\n`;
+  matches.forEach((name, i) => {
+    const key = safeKey(name);
+    const a = att[key] || {};
+    const c = ck[key];
+    const p = profiles[name];
+    text += `${i+1}. <b>${name}</b>\n`;
+    if (p.position) text += `   💼 ${p.position}\n`;
+    // Status
+    let statusIcon = "❓", statusText = "Ma'lumot yo'q";
+    if (a.status && NON_WORKING.includes(a.status)) {
+      statusIcon = STATUS_ICONS[a.status] || "📋";
+      statusText = STATUS_LABELS[a.status] || a.status;
+    } else if (c && c.morning) {
+      const lateMin = (a.morning || 0) + (a.afternoon || 0);
+      statusIcon = lateMin > 0 ? "⏰" : "✅";
+      statusText = lateMin > 0 ? `Kechikdi (${lateMin} d)` : "Ish joyida";
+      if (c.morning && c.morning.time) text += `   🌅 Ertalab: ${c.morning.time}\n`;
+      if (c.afternoon && c.afternoon.time) text += `   🌆 Tushlik: ${c.afternoon.time}\n`;
+    } else {
+      statusIcon = "❌";
+      statusText = "Selfie yo'q";
+    }
+    text += `   ${statusIcon} ${statusText}\n`;
+    if (i < matches.length - 1) text += "\n";
+  });
+  return text;
+}
+
+// ═══ TUG'ILGAN KUNLAR (yaqin 30 kun) ═══
+async function buildBirthdaysReport() {
+  const profiles = await getEmployeeProfiles();
+  const today = new Date(fmtDate(new Date()) + "T12:00:00");
+  const items = [];
+  Object.entries(profiles).forEach(([name, p]) => {
+    if (!p.birthDate) return;
+    const parts = p.birthDate.split(".");
+    if (parts.length !== 3) return;
+    const day = parseInt(parts[0]), mon = parseInt(parts[1]) - 1, yr = parseInt(parts[2]);
+    if (isNaN(day) || isNaN(mon)) return;
+    // Next birthday
+    let next = new Date(today.getFullYear(), mon, day);
+    if (next < today) next = new Date(today.getFullYear() + 1, mon, day);
+    const daysLeft = Math.round((next - today) / 86400000);
+    if (daysLeft > 30) return;
+    const age = today.getFullYear() - yr - (next.getFullYear() > today.getFullYear() ? 0 : 0);
+    items.push({ name, daysLeft, date: `${String(day).padStart(2,"0")}.${String(mon+1).padStart(2,"0")}`, age });
+  });
+  items.sort((a, b) => a.daysLeft - b.daysLeft);
+  if (items.length === 0) return "🎂 Yaqin 30 kunda tug'ilgan kun yo'q.";
+  let text = `🎂 <b>Yaqin tug'ilgan kunlar</b>\n━━━━━━━━━━━━━━━━━━\n\n`;
+  items.forEach((it, i) => {
+    const tag = it.daysLeft === 0 ? " 🎉 BUGUN!" : it.daysLeft === 1 ? " ⏰ Ertaga!" : ` (${it.daysLeft} kun)`;
+    text += `${i+1}. <b>${it.name}</b> — ${it.date} · ${it.age} yosh${tag}\n`;
+  });
+  return text;
+}
+
+// ═══ SHAXSIY DAVOMAT (DM'da xodim o'zining bugungi ma'lumotini) ═══
+async function buildPersonalAttendanceReport(chatId, todayKey) {
+  // chatId → linked phone → match employee by name in profiles
+  const phoneSnap = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
+  const phone = phoneSnap.val();
+  if (!phone) return "❌ Tizimga kirmagansiz. /login bosing.";
+  const rec = await lookupWhitelist(phone);
+  if (!rec || !rec.name) return "❌ Profil topilmadi.";
+  const empName = rec.name;
+  const key = safeKey(empName);
+  const [attSnap, checkSnap] = await Promise.all([
+    db.ref(`attendance/${todayKey}/${key}`).once("value"),
+    db.ref(`checkins/${todayKey}/${key}`).once("value")
+  ]);
+  const a = attSnap.val() || {};
+  const c = checkSnap.val();
+  const d = todayKey.split("-");
+  let text = `👤 <b>${empName}</b>\n📅 Bugun: ${d[2]}.${d[1]}.${d[0]}\n━━━━━━━━━━━━━━━━━━\n\n`;
+  if (a.status && NON_WORKING.includes(a.status)) {
+    text += `${STATUS_ICONS[a.status]} <b>Holat:</b> ${STATUS_LABELS[a.status]}\n`;
+    if (a.note) text += `📝 Izoh: ${a.note}\n`;
+    return text;
+  }
+  if (c && c.morning) {
+    text += `🌅 <b>Ertalabki selfie:</b> ${c.morning.time}\n`;
+    if (c.morning.lateMinutes > 0) text += `   ⏰ Kechikish: ${c.morning.lateMinutes} daqiqa\n`;
+    if (c.morning.gpsDistance != null) text += `   📍 GPS: ${c.morning.gpsDistance}m ${c.morning.gpsOk ? "✓" : "⚠"}\n`;
+  } else {
+    text += `🌅 Ertalabki selfie: ❌ qilinmagan\n`;
+  }
+  if (c && c.afternoon) {
+    text += `🌆 <b>Tushlikdan keyin:</b> ${c.afternoon.time}\n`;
+    if (c.afternoon.lateMinutes > 0) text += `   ⏰ Kechikish: ${c.afternoon.lateMinutes} daqiqa\n`;
+  } else {
+    text += `🌆 Tushlik selfie: ❌ qilinmagan\n`;
+  }
+  if (a.note) text += `\n📝 ${a.note}\n`;
+  return text;
+}
+
+// ═══ SHAXSIY OYLIK STATISTIKA ═══
+async function buildPersonalStatsReport(chatId) {
+  const phoneSnap = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
+  const phone = phoneSnap.val();
+  if (!phone) return "❌ Tizimga kirmagansiz. /login bosing.";
+  const rec = await lookupWhitelist(phone);
+  if (!rec || !rec.name) return "❌ Profil topilmadi.";
+  const empName = rec.name;
+  const key = safeKey(empName);
+  const now = new Date();
+  const yr = parseInt(fmtDate(now).split("-")[0]);
+  const mon = parseInt(fmtDate(now).split("-")[1]) - 1;
+  const today = fmtDate(now);
+  const dates = [];
+  const d0 = new Date(yr, mon, 1);
+  while (d0.getMonth() === mon && fmtDate(d0) <= today) {
+    if (d0.getDay() >= 1 && d0.getDay() <= 5) dates.push(fmtDate(new Date(d0)));
+    d0.setDate(d0.getDate() + 1);
+  }
+  let present = 0, late = 0, absent = 0, lateMins = 0, sababli = 0;
+  for (const dk of dates) {
+    const [aSnap, cSnap] = await Promise.all([
+      db.ref(`attendance/${dk}/${key}`).once("value"),
+      db.ref(`checkins/${dk}/${key}`).once("value")
+    ]);
+    const a = aSnap.val() || {};
+    const c = cSnap.val();
+    if (a.status && NON_WORKING.includes(a.status)) { sababli++; continue; }
+    const hasSelfie = c && (c.morning || c.afternoon);
+    if (hasSelfie || a.status === "present" || a.status === "late") {
+      present++;
+      const lm = (a.morning || 0) + (a.afternoon || 0);
+      if (lm > 0) { late++; lateMins += lm; }
+    } else {
+      absent++;
+    }
+  }
+  const workDays = dates.length - sababli;
+  const score = Math.max(0, 100 - Math.round(lateMins / Math.max(1, workDays * 480) * 100 * 8) - absent * 5 - late * 2);
+  const months = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+  let text = `📊 <b>${empName}</b>\n📈 ${months[mon]} ${yr} oyi\n━━━━━━━━━━━━━━━━━━\n\n`;
+  text += `📅 Ish kunlari: <b>${dates.length}</b>\n`;
+  text += `✅ Kelgan: <b>${present}</b>\n`;
+  text += `⏰ Kechikkan: <b>${late}</b> kun (${lateMins} daqiqa)\n`;
+  text += `❌ Kelmagan: <b>${absent}</b>\n`;
+  if (sababli > 0) text += `📋 Sababli: <b>${sababli}</b>\n`;
+  text += `\n🎯 <b>Intizom bali: ${score}/100</b>\n`;
+  if (score >= 95) text += "🏆 A'lo!";
+  else if (score >= 85) text += "👍 Yaxshi";
+  else if (score >= 70) text += "📈 O'rtacha";
+  else text += "⚠️ Yaxshilash kerak";
   return text;
 }
 
@@ -793,12 +1040,34 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
         case "/yordam": case "/help":
           await tgApi("sendMessage", { chat_id: chatId, text: t.help, parse_mode: "HTML", reply_markup: mainMenu(t) });
           return res.status(200).send("OK");
+        // ═══ Shaxsiy buyruqlar (DM'da xodim o'zining ma'lumotlarini olishi uchun) ═══
+        case "/mendavomat": case "/menpda":
+          await tgApi("sendMessage", { chat_id: chatId, text: await buildPersonalAttendanceReport(chatId, todayKey), parse_mode: "HTML" });
+          return res.status(200).send("OK");
+        case "/menstat":
+          await tgApi("sendMessage", { chat_id: chatId, text: await buildPersonalStatsReport(chatId), parse_mode: "HTML" });
+          return res.status(200).send("OK");
+        case "/davomat":
+          // Adminlar DM'da ham guruh hisobotini olishi mumkin
+          await tgApi("sendMessage", { chat_id: chatId, text: await buildDavomatReport(todayKey), parse_mode: "HTML" });
+          return res.status(200).send("OK");
+        case "/tatil": case "/tatillar":
+          await tgApi("sendMessage", { chat_id: chatId, text: await buildActiveLeavesReport(todayKey), parse_mode: "HTML" });
+          return res.status(200).send("OK");
+        case "/kechikkanlar":
+          await tgApi("sendMessage", { chat_id: chatId, text: await buildKechikkanlarReport(todayKey), parse_mode: "HTML" });
+          return res.status(200).send("OK");
+        case "/statistika":
+          await tgApi("sendMessage", { chat_id: chatId, text: await buildStatistikaReport(), parse_mode: "HTML" });
+          return res.status(200).send("OK");
         default:
           await sendMenu(chatId, userLang);
           return res.status(200).send("OK");
       }
     } else {
       // Guruh chat — davomat buyruqlari ishlaydi
+      const cmdParts = (message.text || "").trim().split(/\s+/);
+      const arg = cmdParts.slice(1).join(" ").trim();
       switch (cmd) {
         case "/davomat": case "/start":
           reply = await buildDavomatReport(todayKey); break;
@@ -808,17 +1077,16 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
           reply = await buildStatistikaReport(); break;
         case "/tatil": case "/tatillar": case "/leaves":
           reply = await buildActiveLeavesReport(todayKey); break;
-        case "/yordam": case "/help":
-          reply = "🤖 <b>Xodimlar Monitoring Bot</b>\n\n"
-            + "📊 /davomat — Bugungi davomat\n"
-            + "⏰ /kechikkanlar — Kechikkan xodimlar\n"
-            + "🌴 /tatil — Hozirgi ta'til/safar/bemorlar\n"
-            + "📈 /statistika — Oylik statistika\n"
-            + "❓ /yordam — Yordam\n\n"
-            + "🌐 Sayt: <a href=\"https://intizominvest.vercel.app\">intizominvest.vercel.app</a>\n"
-            + "📦 Manba kodi: <a href=\"https://github.com/lazizbeksaidov/davomat-tizimi\">GitHub</a>\n\n"
-            + "📍 Navoiy viloyati Investitsiyalar,\nsanoat va savdo boshqarmasi";
+        case "/xodimlar": case "/employees":
+          reply = await buildEmployeeListReport(); break;
+        case "/qidir": case "/search":
+          reply = arg ? await buildEmployeeSearchReport(arg, todayKey)
+                      : "🔍 <b>Qidiruv</b>\n\nFoydalanish: <code>/qidir Saidov</code>";
           break;
+        case "/tugilgan": case "/birthdays":
+          reply = await buildBirthdaysReport(); break;
+        case "/yordam": case "/help":
+          reply = botHelpText(); break;
         default: res.status(200).send("OK"); return;
       }
     }
