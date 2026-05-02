@@ -19,7 +19,8 @@ async function getBotToken() {
   return _botToken;
 }
 
-const EMPLOYEES = [
+// Fallback hardcoded list \u2014 used only if /employees DB lookup fails or is empty.
+const EMPLOYEES_FALLBACK = [
   "Umrzoqov Bunyod","Ermamatov Xurshid",
   "Akbarova Moxlaroyim","Faxriddinov Oxunjon",
   "Hamdamov Shuxrat","Nazarov Muzaffar","Nurmamatov Oxunjon",
@@ -29,6 +30,37 @@ const EMPLOYEES = [
   "Saidov Lazizbek","Pirbayev Berdiyor","Husainova Klara",
   "Ne\u2018matov Shahzodbek","Muhammadov Jaloliddin"
 ];
+
+// Live employee list \u2014 fetched from /employees on first call, cached for 30s.
+// New employees added via the site appear in bot reports within 30s without redeploy.
+let _empCache = null;
+let _empCacheTs = 0;
+async function getEmployees() {
+  const now = Date.now();
+  if (_empCache && (now - _empCacheTs) < 30000) return _empCache;
+  try {
+    const snap = await db.ref("/employees").once("value");
+    const v = snap.val();
+    if (v && Object.keys(v).length > 0) {
+      const list = Object.values(v)
+        .map(emp => emp && (emp.fullName || (emp.lastName && emp.firstName ? `${emp.lastName} ${emp.firstName}` : null)))
+        .filter(Boolean)
+        .map(name => name.split(" ").slice(0, 2).join(" "));
+      if (list.length > 0) {
+        _empCache = list;
+        _empCacheTs = now;
+        return list;
+      }
+    }
+  } catch (e) { console.warn("getEmployees DB error:", e.message); }
+  _empCache = EMPLOYEES_FALLBACK;
+  _empCacheTs = now;
+  return _empCache;
+}
+
+// Backward-compatible alias \u2014 used by reports that haven't been migrated to async getEmployees yet.
+// FALLBACK list only. Async getEmployees() call returns the LIVE DB list.
+const EMPLOYEES = EMPLOYEES_FALLBACK;
 
 const BIRTHDAYS = {
   "Umrzoqov Bunyod":"23.07.1988","Ermamatov Xurshid":"29.03.1986",
@@ -94,9 +126,10 @@ async function sendMessage(chatId, text) {
 // ─── DAVOMAT HISOBOT ─────────────────────
 // Selfie (checkins) + attendance (status) dan ma'lumot oladi
 async function buildDavomatReport(dateKey) {
-  const [attSnap, checkSnap] = await Promise.all([
+  const [attSnap, checkSnap, employees] = await Promise.all([
     db.ref(`attendance/${dateKey}`).once("value"),
-    db.ref(`checkins/${dateKey}`).once("value")
+    db.ref(`checkins/${dateKey}`).once("value"),
+    getEmployees()  // LIVE list — picks up new employees within 30s
   ]);
   const attData = attSnap.val() || {};
   const checkins = checkSnap.val() || {};
@@ -110,7 +143,7 @@ async function buildDavomatReport(dateKey) {
   const sababli = [];     // sick/trip/vacation/excused/training
   const kelmagan = [];    // selfie qilmagan va statusi yo'q
 
-  EMPLOYEES.forEach(emp => {
+  employees.forEach(emp => {
     const key = safeKey(emp);
     const att = attData[key];
     const check = checkins[key];
@@ -146,7 +179,7 @@ async function buildDavomatReport(dateKey) {
     kelmagan.push(emp);
   });
 
-  const workingTotal = EMPLOYEES.length - sababli.length;
+  const workingTotal = employees.length - sababli.length;
   const pct = workingTotal > 0 ? Math.round(kelganlar.length / workingTotal * 100) : 0;
 
   let text = `📋 <b>DAVOMAT HISOBOTI</b>\n`;
@@ -185,11 +218,14 @@ async function buildDavomatReport(dateKey) {
 
 // ─── KECHIKKANLAR HISOBOT ─────────────────────
 async function buildKechikkanlarReport(dateKey) {
-  const snap = await db.ref(`attendance/${dateKey}`).once("value");
+  const [snap, employees] = await Promise.all([
+    db.ref(`attendance/${dateKey}`).once("value"),
+    getEmployees()
+  ]);
   const dayData = snap.val() || {};
 
   const lateList = [];
-  EMPLOYEES.forEach(emp => {
+  employees.forEach(emp => {
     const rec = dayData[safeKey(emp)];
     if (!rec) return;
     const morning = rec.morning || 0;
@@ -230,9 +266,10 @@ async function buildStatistikaReport() {
   }
   if (dates.length === 0) return "📈 Bu oyda hali ish kuni yo'q.";
 
-  const [attSnap, checkSnap] = await Promise.all([
+  const [attSnap, checkSnap, employees] = await Promise.all([
     db.ref("attendance").once("value"),
-    db.ref("checkins").once("value")
+    db.ref("checkins").once("value"),
+    getEmployees()
   ]);
   const allAtt = attSnap.val() || {};
   const allCheckins = checkSnap.val() || {};
@@ -240,7 +277,7 @@ async function buildStatistikaReport() {
   let totalPresent = 0, totalLate = 0, totalAbsent = 0, totalLateMins = 0;
   const empScores = [];
 
-  EMPLOYEES.forEach(emp => {
+  employees.forEach(emp => {
     let present = 0, late = 0, absent = 0, lateMins = 0, workDays = 0;
     dates.forEach(dk => {
       const key = safeKey(emp);
@@ -269,13 +306,13 @@ async function buildStatistikaReport() {
   });
 
   empScores.sort((a, b) => b.score - a.score);
-  const avgScore = Math.round(empScores.reduce((s, e) => s + e.score, 0) / Math.max(1, EMPLOYEES.length));
+  const avgScore = Math.round(empScores.reduce((s, e) => s + e.score, 0) / Math.max(1, employees.length));
   const months = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
 
   let text = `📈 <b>Oylik statistika — ${months[mon]} ${yr}</b>\n`;
   text += `━━━━━━━━━━━━━━━━━━\n`;
   text += `📅 O'tgan ish kunlari: <b>${dates.length}</b>\n`;
-  text += `👥 Xodimlar: <b>${EMPLOYEES.length}</b>\n`;
+  text += `👥 Xodimlar: <b>${employees.length}</b>\n`;
   text += `✅ Jami kelgan: <b>${totalPresent}</b>\n`;
   text += `⏰ Kechikishlar: <b>${totalLate}</b>\n`;
   text += `❌ Kelmagan: <b>${totalAbsent}</b>\n`;
