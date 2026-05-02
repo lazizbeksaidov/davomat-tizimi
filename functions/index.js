@@ -1317,6 +1317,116 @@ exports.weeklyReport = functions.pubsub
     return null;
   });
 
+// ═══ HAFTALIK SELFIE PHOTO TOZALASH — Shanba 23:00 UZB ═══
+// Har shanba kechqurun o'tgan haftaning selfie rasmlarini o'chiradi.
+// MA'LUMOT SAQLANADI: time, lateMinutes, gpsDistance, name, session, etc.
+// FAQAT base64 photo string o'chiriladi — DB hajmi 95% kamayadi.
+exports.weeklyPhotoCleanup = functions.runWith({timeoutSeconds: 540, memory: "512MB"})
+  .pubsub.schedule("0 23 * * 6").timeZone("Asia/Tashkent")
+  .onRun(async () => {
+    const now = new Date();
+    const todayKey = fmtDate(now);
+    // Last 7 days (today + 6 days back)
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      dates.push(fmtDate(d));
+    }
+    let photosCleaned = 0;
+    let bytesFreed = 0;
+    const updates = {};
+    for (const dk of dates) {
+      const snap = await db.ref(`checkins/${dk}`).once("value");
+      const v = snap.val();
+      if (!v) continue;
+      for (const [empKey, sessions] of Object.entries(v)) {
+        if (!sessions) continue;
+        for (const sess of ["morning", "afternoon"]) {
+          const rec = sessions[sess];
+          if (rec && rec.photo) {
+            updates[`checkins/${dk}/${empKey}/${sess}/photo`] = null;
+            photosCleaned++;
+            bytesFreed += rec.photo.length || 0;
+          }
+        }
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      await db.ref().update(updates);
+    }
+    const mb = (bytesFreed / 1024 / 1024).toFixed(2);
+    console.log(`[weeklyPhotoCleanup] Cleaned ${photosCleaned} photos, freed ${mb} MB`);
+    // Send notification to group
+    const chatId = await getChatId();
+    if (chatId && photosCleaned > 0) {
+      const d = todayKey.split("-");
+      await sendMessage(chatId,
+        `🧹 <b>Haftalik xotira tozalash</b>\n\n` +
+        `📅 ${d[2]}.${d[1]}.${d[0]}\n` +
+        `🗑 Tozalangan rasm: <b>${photosCleaned}</b>\n` +
+        `💾 Bo'shatilgan joy: <b>${mb} MB</b>\n\n` +
+        `ℹ️ Vaqt, GPS, kechikish ma'lumotlari saqlanib qoldi.`
+      );
+    }
+    return null;
+  });
+
+// ═══ MANUAL CLEANUP TRIGGER — admin once-off ═══
+// HTTPS endpoint admin saytdan chaqirib eski rasmlarni tozalashi mumkin.
+// Misol: ?days=14 — 14 kundan eski selfie rasmlarini tozalaydi.
+exports.cleanupOldPhotos = functions.runWith({timeoutSeconds: 540, memory: "512MB"})
+  .https.onRequest(async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    if (req.method === "OPTIONS") return res.status(204).send("");
+    // Auth check — admin only
+    const authHeader = req.headers.authorization || "";
+    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!idToken) return res.status(401).json({error: "Unauthorized"});
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const roleSnap = await db.ref(`user_roles/${decoded.uid}`).once("value");
+      if (roleSnap.val() !== "admin") return res.status(403).json({error: "Admin only"});
+    } catch (e) {
+      return res.status(401).json({error: "Invalid token"});
+    }
+    // Get cutoff date
+    const days = parseInt(req.query.days || "7", 10);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffKey = fmtDate(cutoff);
+    // Get all checkin dates older than cutoff
+    const allSnap = await db.ref("checkins").orderByKey().endAt(cutoffKey).once("value");
+    const all = allSnap.val() || {};
+    let photosCleaned = 0;
+    let bytesFreed = 0;
+    const updates = {};
+    for (const [dk, byEmp] of Object.entries(all)) {
+      if (dk > cutoffKey) continue; // safety
+      for (const [empKey, sessions] of Object.entries(byEmp || {})) {
+        if (!sessions) continue;
+        for (const sess of ["morning", "afternoon"]) {
+          const rec = sessions[sess];
+          if (rec && rec.photo) {
+            updates[`checkins/${dk}/${empKey}/${sess}/photo`] = null;
+            photosCleaned++;
+            bytesFreed += rec.photo.length || 0;
+          }
+        }
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      await db.ref().update(updates);
+    }
+    return res.json({
+      ok: true,
+      photosCleaned,
+      bytesFreed,
+      mbFreed: (bytesFreed / 1024 / 1024).toFixed(2),
+      cutoffDate: cutoffKey
+    });
+  });
+
 // ═══ AI TAHLIL (GEMINI) ═══
 // API kalit Firebase DB'dan olinadi — kodda saqlanmaydi
 const ALLOWED_ORIGINS = [
