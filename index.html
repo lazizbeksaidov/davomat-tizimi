@@ -5831,52 +5831,85 @@ function AnalyticsView({attendanceData,checkinsData,onEmpClick}){
   const [tooltip,setTooltip]=useState(null);
   const chartRef=useRef(null);
 
-  /* Generate date range for chart */
+  /* Generate date range for chart — exclude holidays */
   const chartDates=useMemo(()=>{
     var arr=[];
     var d=new Date(today);
     d.setDate(d.getDate()-range+1);
     while(d<=today){
-      if(isWorkday(d))arr.push(new Date(d));
+      if(isWorkday(d) && !window.__isHoliday?.(fmtDate(d))) arr.push(new Date(d));
       d.setDate(d.getDate()+1);
     }
     return arr;
   },[range]);
 
-  /* Daily aggregated data */
+  /* Daily aggregated data —
+     PROPER LOGIC:
+     - Selfie bor + status="late" → kechikkan
+     - Selfie bor (status yoq yoki "present") → kelgan o'z vaqtida
+     - Status="absent" → sababsiz kelmagan
+     - Status sick/trip/vacation/training/excused → sababli
+     - Hech qanday ma'lumot yoq → kelmagan (avval default "present" edi — XATO!) */
   const dailyData=useMemo(()=>{
+    const NON_WORK = ["sick","trip","training","vacation","excused"];
     return chartDates.map(function(d){
       var dk=fmtDate(d);
-      var present=0,late=0,absent=0,sick=0,other=0;
+      var present=0,late=0,absent=0,sababli=0,nodata=0;
       EMPLOYEES.forEach(function(emp){
-        var st=attendanceData[dk]?.[safeKey(emp)]?.status||"present";
-        if(st==="present")present++;
-        else if(st==="late"){late++;present++}
-        else if(st==="absent")absent++;
-        else if(st==="sick")sick++;
-        else other++;
+        var key=safeKey(emp);
+        var rec=attendanceData[dk]?.[key];
+        var check=checkinsData[dk]?.[key];
+        var status=rec?.status;
+        var hasSelfie = check && (check.morning || check.afternoon);
+        var lateMin = (rec?.morning||0) + (rec?.afternoon||0);
+        // Sababli (vacation/trip/sick/etc.) — alohida hisoblanadi
+        if (status && NON_WORK.includes(status)) { sababli++; return; }
+        // Selfie qilgan — kelgan
+        if (hasSelfie) {
+          present++;
+          if (lateMin > 0 || status === "late") late++;
+          return;
+        }
+        // Status bor lekin selfie yo'q
+        if (status === "late") { present++; late++; return; }
+        if (status === "present") { present++; return; }
+        if (status === "absent") { absent++; return; }
+        // Hech qanday ma'lumot — bilmaydi (oldin noto'g'ri "present" edi)
+        nodata++;
       });
-      return{date:d,dk:dk,present:present,late:late,absent:absent,sick:sick,other:other};
+      return{date:d,dk:dk,present:present,late:late,absent:absent,sick:sababli,sababli:sababli,nodata:nodata,other:nodata};
     });
-  },[chartDates,attendanceData]);
+  },[chartDates,attendanceData,checkinsData]);
 
-  /* Employee rankings */
+  /* Employee rankings — same fix */
   const empRankings=useMemo(()=>{
+    const NON_WORK = ["sick","trip","training","vacation","excused"];
     var map={};
     EMPLOYEES.forEach(function(emp){map[emp]={present:0,late:0,absent:0,lateMins:0,ontime:0}});
     chartDates.forEach(function(d){
       var dk=fmtDate(d);
       EMPLOYEES.forEach(function(emp){
-        var rec=attendanceData[dk]?.[safeKey(emp)];
-        var st=rec?.status||"present";
+        var key=safeKey(emp);
+        var rec=attendanceData[dk]?.[key];
+        var check=checkinsData[dk]?.[key];
+        var status=rec?.status;
+        var hasSelfie = check && (check.morning || check.afternoon);
         var mins=(rec?.morning||0)+(rec?.afternoon||0);
-        if(st==="present"){map[emp].present++;map[emp].ontime++}
-        else if(st==="late"){map[emp].late++;map[emp].present++;map[emp].lateMins+=mins}
-        else if(st==="absent")map[emp].absent++;
+        if (status && NON_WORK.includes(status)) return; // sababli — hisoblanmaydi
+        if (hasSelfie) {
+          map[emp].present++;
+          if (mins > 0 || status === "late") { map[emp].late++; map[emp].lateMins += mins; }
+          else map[emp].ontime++;
+          return;
+        }
+        if (status === "late") { map[emp].present++; map[emp].late++; map[emp].lateMins += mins; return; }
+        if (status === "present") { map[emp].present++; map[emp].ontime++; return; }
+        if (status === "absent") { map[emp].absent++; return; }
+        // Hech qanday ma'lumot bo'lsa — hisoblanmaydi (noto'g'ri ma'lumot bermaslik uchun)
       });
     });
     return map;
-  },[chartDates,attendanceData]);
+  },[chartDates,attendanceData,checkinsData]);
 
   var lateRanking=Object.entries(empRankings).map(function(e){return{emp:e[0],count:e[1].late,mins:e[1].lateMins}}).filter(function(r){return r.count>0}).sort(function(a,b){return b.count-a.count}).slice(0,8);
   var absentRanking=Object.entries(empRankings).map(function(e){return{emp:e[0],count:e[1].absent}}).filter(function(r){return r.count>0}).sort(function(a,b){return b.count-a.count}).slice(0,8);
@@ -13833,6 +13866,9 @@ function App(){
       return h.date===dateStr;
     });
   }
+  // Expose globally so AnalyticsView and other components can check holidays
+  // without passing isHolidayDate as a prop through 5 levels of components.
+  React.useEffect(()=>{ window.__isHoliday = isHolidayDate; },[holidaysData]);
 
   function getHolidayInfo(dateStr){
     return holidaysData.find(function(h){
