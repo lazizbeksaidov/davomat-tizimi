@@ -9676,7 +9676,7 @@ function MobileEmpHome({user, checkinsData, attendanceData, announcements, holid
       });
     }
     fetchFresh();
-    const interval = setInterval(fetchFresh, 8000);
+    const interval = setInterval(fetchFresh, 60000);  // was 8000 — too frequent, caused freezing
     const onVis = ()=>{ if(document.visibilityState==='visible') fetchFresh(); };
     document.addEventListener('visibilitychange', onVis);
     const onSel = ()=>fetchFresh();
@@ -10668,7 +10668,7 @@ function SelfieCheckin({user,attendanceData,checkinsData,checkinsLoaded,showToas
       }).catch(function(){});
     }
     refresh();
-    var iv = setInterval(refresh, 30000); // refresh every 30s
+    var iv = setInterval(refresh, 60000); // refresh every 60s (was 30s — too frequent for admin view)
     function onSubmit(){ refresh(); }
     window.addEventListener('selfie:submitted', onSubmit);
     function onVis(){ if(document.visibilityState==='visible') refresh(); }
@@ -11454,7 +11454,7 @@ function SelfieReminder({user,checkinsData,onGoSelfie}){
     }
     fetchFresh();
     // Refetch every 10 seconds so stale cache can never linger
-    const interval = setInterval(fetchFresh, 10000);
+    const interval = setInterval(fetchFresh, 60000);  // was 10000 — too aggressive, slowed page
     // Refetch when window/tab becomes visible (Telegram Mini App returns from background)
     const onVis = () => { if(document.visibilityState === 'visible') fetchFresh(); };
     document.addEventListener('visibilitychange', onVis);
@@ -13724,8 +13724,9 @@ function App(){
     if(!user)return;
     var now=new Date();
     // Load 5 months back + 12 months ahead — covers past stats AND future bulk-leave (vacations up to 1 year)
-    var startD=new Date(now.getFullYear(),now.getMonth()-5,1);
-    var endD=new Date(now.getFullYear(),now.getMonth()+12,31);
+    // Reduced range: 3 months back + 3 months ahead — was 5/12 (17 months total) which loaded too much data and slowed the site.
+    var startD=new Date(now.getFullYear(),now.getMonth()-3,1);
+    var endD=new Date(now.getFullYear(),now.getMonth()+3,31);
     var startKey=startD.getFullYear()+"-"+String(startD.getMonth()+1).padStart(2,"0")+"-01";
     var endKey=endD.getFullYear()+"-"+String(endD.getMonth()+1).padStart(2,"0")+"-31";
     // INSTANT FIRST PAINT: hydrate from sessionStorage cache (< 1h old) so tables render before Firebase responds
@@ -13750,8 +13751,9 @@ function App(){
     if(!user)return;
     var now=new Date();
     // Same range as attendance — load full year ahead so future bulk leaves work
-    var startD=new Date(now.getFullYear(),now.getMonth()-5,1);
-    var endD=new Date(now.getFullYear(),now.getMonth()+12,31);
+    // Reduced range: 3 months back + 3 months ahead — was 5/12 (17 months total) which loaded too much data and slowed the site.
+    var startD=new Date(now.getFullYear(),now.getMonth()-3,1);
+    var endD=new Date(now.getFullYear(),now.getMonth()+3,31);
     var startKey=startD.getFullYear()+"-"+String(startD.getMonth()+1).padStart(2,"0")+"-01";
     var endKey=endD.getFullYear()+"-"+String(endD.getMonth()+1).padStart(2,"0")+"-31";
     // INSTANT FIRST PAINT: hydrate checkins from cache too
