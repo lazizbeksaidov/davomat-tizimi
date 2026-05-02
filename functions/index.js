@@ -830,6 +830,22 @@ async function buildMiniAppUrl(chatId) {
       expiresAt: Date.now() + 10 * 60 * 1000, // 10 min
       used: false,
     });
+    // Opportunistic cleanup — delete expired tokens (older than 1 hour) on each new login.
+    // Cheap (one DB read), prevents tg_logins from growing forever.
+    try {
+      const allSnap = await db.ref("tg_logins").once("value");
+      const all = allSnap.val() || {};
+      const cutoff = Date.now() - 3600000; // 1 hour
+      const stale = {};
+      for (const [id, t] of Object.entries(all)) {
+        if (t && (t.expiresAt < cutoff || (t.used && t.createdAt < cutoff))) {
+          stale[id] = null;
+        }
+      }
+      if (Object.keys(stale).length > 0) {
+        await db.ref("tg_logins").update(stale);
+      }
+    } catch (_) {}
     return `https://intizominvest.vercel.app/?tg=${loginId}`;
   } catch (e) {
     console.error("buildMiniAppUrl:", e.message);
