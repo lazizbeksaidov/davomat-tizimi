@@ -31,31 +31,11 @@ const EMPLOYEES_FALLBACK = [
   "Ne\u2018matov Shahzodbek","Muhammadov Jaloliddin"
 ];
 
-// Live employee list \u2014 fetched from /employees on first call, cached for 30s.
-// New employees added via the site appear in bot reports within 30s without redeploy.
-let _empCache = null;
-let _empCacheTs = 0;
+// Live employee list \u2014 wrapper over getEmployeeProfiles cache (no extra DB call)
 async function getEmployees() {
-  const now = Date.now();
-  if (_empCache && (now - _empCacheTs) < 30000) return _empCache;
-  try {
-    const snap = await db.ref("/employees").once("value");
-    const v = snap.val();
-    if (v && Object.keys(v).length > 0) {
-      const list = Object.values(v)
-        .map(emp => emp && (emp.fullName || (emp.lastName && emp.firstName ? `${emp.lastName} ${emp.firstName}` : null)))
-        .filter(Boolean)
-        .map(name => name.split(" ").slice(0, 2).join(" "));
-      if (list.length > 0) {
-        _empCache = list;
-        _empCacheTs = now;
-        return list;
-      }
-    }
-  } catch (e) { console.warn("getEmployees DB error:", e.message); }
-  _empCache = EMPLOYEES_FALLBACK;
-  _empCacheTs = now;
-  return _empCache;
+  const profiles = await getEmployeeProfiles();
+  const list = Object.keys(profiles);
+  return list.length > 0 ? list : EMPLOYEES_FALLBACK;
 }
 
 // Backward-compatible alias \u2014 used by reports that haven't been migrated to async getEmployees yet.
@@ -130,7 +110,7 @@ const STATUS_ICONS = {
 const NON_WORKING = ["sick", "trip", "training", "vacation", "excused"];
 
 function safeKey(name) {
-  return name.replace(/[\u2018\u2019\u02BC\u0060\u2018\u2019'`]/g, "").replace(/\s+/g, "_").replace(/[.#$/[\]]/g, "_");
+  return (name || "").replace(/[‘’ʼ`'`]/g, "").replace(/\s+/g, "_").replace(/[.#$/[\]]/g, "_");
 }
 
 function fmtDate(d) {
@@ -474,8 +454,9 @@ async function buildBirthdaysReport() {
     if (next < today) next = new Date(today.getFullYear() + 1, mon, day);
     const daysLeft = Math.round((next - today) / 86400000);
     if (daysLeft > 30) return;
-    const age = today.getFullYear() - yr - (next.getFullYear() > today.getFullYear() ? 0 : 0);
-    items.push({ name, daysLeft, date: `${String(day).padStart(2,"0")}.${String(mon+1).padStart(2,"0")}`, age });
+    // Age person will TURN at next birthday (not their current age) — this is what we display
+    const ageAtNext = next.getFullYear() - yr;
+    items.push({ name, daysLeft, date: `${String(day).padStart(2,"0")}.${String(mon+1).padStart(2,"0")}`, age: ageAtNext });
   });
   items.sort((a, b) => a.daysLeft - b.daysLeft);
   if (items.length === 0) return "🎂 Yaqin 30 kunda tug'ilgan kun yo'q.";
@@ -546,14 +527,17 @@ async function buildPersonalStatsReport(chatId) {
     if (d0.getDay() >= 1 && d0.getDay() <= 5) dates.push(fmtDate(new Date(d0)));
     d0.setDate(d0.getDate() + 1);
   }
+  // Single bulk fetch instead of N+1 — was 44 queries (22 days × 2), now just 2.
+  const [allAttSnap, allCheckSnap] = await Promise.all([
+    db.ref("attendance").orderByKey().startAt(dates[0] || today).endAt(today).once("value"),
+    db.ref("checkins").orderByKey().startAt(dates[0] || today).endAt(today).once("value")
+  ]);
+  const allAtt = allAttSnap.val() || {};
+  const allCheck = allCheckSnap.val() || {};
   let present = 0, late = 0, absent = 0, lateMins = 0, sababli = 0;
   for (const dk of dates) {
-    const [aSnap, cSnap] = await Promise.all([
-      db.ref(`attendance/${dk}/${key}`).once("value"),
-      db.ref(`checkins/${dk}/${key}`).once("value")
-    ]);
-    const a = aSnap.val() || {};
-    const c = cSnap.val();
+    const a = (allAtt[dk] && allAtt[dk][key]) || {};
+    const c = allCheck[dk] && allCheck[dk][key];
     if (a.status && NON_WORKING.includes(a.status)) { sababli++; continue; }
     const hasSelfie = c && (c.morning || c.afternoon);
     if (hasSelfie || a.status === "present" || a.status === "late") {
@@ -1048,18 +1032,36 @@ exports.telegramWebhook = functions.https.onRequest(async (req, res) => {
           await tgApi("sendMessage", { chat_id: chatId, text: await buildPersonalStatsReport(chatId), parse_mode: "HTML" });
           return res.status(200).send("OK");
         case "/davomat":
-          // Adminlar DM'da ham guruh hisobotini olishi mumkin
-          await tgApi("sendMessage", { chat_id: chatId, text: await buildDavomatReport(todayKey), parse_mode: "HTML" });
-          return res.status(200).send("OK");
         case "/tatil": case "/tatillar":
-          await tgApi("sendMessage", { chat_id: chatId, text: await buildActiveLeavesReport(todayKey), parse_mode: "HTML" });
-          return res.status(200).send("OK");
         case "/kechikkanlar":
-          await tgApi("sendMessage", { chat_id: chatId, text: await buildKechikkanlarReport(todayKey), parse_mode: "HTML" });
-          return res.status(200).send("OK");
         case "/statistika":
-          await tgApi("sendMessage", { chat_id: chatId, text: await buildStatistikaReport(), parse_mode: "HTML" });
+        case "/xodimlar":
+        case "/qidir":
+        case "/tugilgan": {
+          // Faqat admin/boss/observer DM'da bu hisobotlarni ko'ra oladi.
+          // Oddiy xodim — /menpda yoki /menstat ishlatadi.
+          const phoneSnap2 = await db.ref(`tg_sessions/${chatId}/linkedPhone`).once("value");
+          const phone2 = phoneSnap2.val();
+          const rec2 = phone2 ? await lookupWhitelist(phone2) : null;
+          const role = rec2 && rec2.role;
+          if (!role || !["admin","boss","observer"].includes(role)) {
+            await tgApi("sendMessage", { chat_id: chatId, text: "🚫 Bu buyruq faqat admin/rahbar uchun.\n\nShaxsiy buyruqlar: /menpda, /menstat, /menda" });
+            return res.status(200).send("OK");
+          }
+          // Authorized — process command
+          let txt = "";
+          const cmdParts2 = (message.text || "").trim().split(/\s+/);
+          const arg2 = cmdParts2.slice(1).join(" ").trim();
+          if (cmd === "/davomat") txt = await buildDavomatReport(todayKey);
+          else if (cmd === "/tatil" || cmd === "/tatillar") txt = await buildActiveLeavesReport(todayKey);
+          else if (cmd === "/kechikkanlar") txt = await buildKechikkanlarReport(todayKey);
+          else if (cmd === "/statistika") txt = await buildStatistikaReport();
+          else if (cmd === "/xodimlar") txt = await buildEmployeeListReport();
+          else if (cmd === "/tugilgan") txt = await buildBirthdaysReport();
+          else if (cmd === "/qidir") txt = arg2 ? await buildEmployeeSearchReport(arg2, todayKey) : "🔍 Foydalanish: <code>/qidir Saidov</code>";
+          await tgApi("sendMessage", { chat_id: chatId, text: txt, parse_mode: "HTML" });
           return res.status(200).send("OK");
+        }
         default:
           await sendMenu(chatId, userLang);
           return res.status(200).send("OK");
