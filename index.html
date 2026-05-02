@@ -13991,6 +13991,20 @@ function App(){
       showToast("⚠ Tugash sanasi boshlanish sanasidan oldin bo'lishi mumkin emas");
       return;
     }
+    // Maksimal 365 kun — uzunroq oraliq xato bo'lishi mumkin (yil noto'g'ri kiritilgan)
+    const dayDiff = Math.round((endD - startD) / 86400000) + 1;
+    if (dayDiff > 365) {
+      showToast(`⚠ Maksimal 365 kun. Siz ${dayDiff} kun tanladingiz — sanalarni tekshiring.`);
+      return;
+    }
+    // Ogohlantirish: 90 kundan ko'p bo'lsa, tasdiqlash kerak (xato bo'lmasligi uchun)
+    if (dayDiff > 90) {
+      const ok = window.dialog ? await window.dialog.confirm(
+        `${emp} uchun ${dayDiff} kun (${fromDate} → ${toDate}) belgilanmoqchi.\n\nDavom etishni xohlaysizmi?`,
+        {title: 'Uzun davom — tasdiqlang', okLabel: '✓ Davom etish', cancelLabel: 'Bekor'}
+      ) : confirm(`${dayDiff} kun belgilanadi. Davom etish?`);
+      if (!ok) return;
+    }
     // Build set of dates in NEW range
     const newRangeSet = new Set();
     for(let d=new Date(startD); d<=endD; d.setDate(d.getDate()+1)){
