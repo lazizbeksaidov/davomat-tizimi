@@ -1321,14 +1321,19 @@ exports.weeklyReport = functions.pubsub
 // Har shanba kechqurun o'tgan haftaning selfie rasmlarini o'chiradi.
 // MA'LUMOT SAQLANADI: time, lateMinutes, gpsDistance, name, session, etc.
 // FAQAT base64 photo string o'chiriladi — DB hajmi 95% kamayadi.
+// Renamed weekly → daily to drastically reduce RTDB bandwidth costs.
+// Photos accumulate fast (60KB each, ~30/day). Listener loads them all on every page open.
+// 30 employees × 100 page views/day = ~30 GB/month bandwidth = $30/month at $1/GB.
+// Daily cleanup keeps DB photo storage near-zero.
 exports.weeklyPhotoCleanup = functions.runWith({timeoutSeconds: 540, memory: "512MB"})
-  .pubsub.schedule("0 23 * * 6").timeZone("Asia/Tashkent")
+  .pubsub.schedule("30 22 * * *").timeZone("Asia/Tashkent")  // EVERY DAY 22:30 UZB
   .onRun(async () => {
     const now = new Date();
     const todayKey = fmtDate(now);
-    // Last 7 days (today + 6 days back)
+    // Cleanup ALL photos older than 24 hours (yesterday and earlier).
+    // Today's photos stay until tomorrow 22:30 — admin still has time to verify.
     const dates = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 1; i < 60; i++) {  // last 60 days back to catch any stragglers
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       dates.push(fmtDate(d));
@@ -1357,18 +1362,8 @@ exports.weeklyPhotoCleanup = functions.runWith({timeoutSeconds: 540, memory: "51
     }
     const mb = (bytesFreed / 1024 / 1024).toFixed(2);
     console.log(`[weeklyPhotoCleanup] Cleaned ${photosCleaned} photos, freed ${mb} MB`);
-    // Send notification to group
-    const chatId = await getChatId();
-    if (chatId && photosCleaned > 0) {
-      const d = todayKey.split("-");
-      await sendMessage(chatId,
-        `🧹 <b>Haftalik xotira tozalash</b>\n\n` +
-        `📅 ${d[2]}.${d[1]}.${d[0]}\n` +
-        `🗑 Tozalangan rasm: <b>${photosCleaned}</b>\n` +
-        `💾 Bo'shatilgan joy: <b>${mb} MB</b>\n\n` +
-        `ℹ️ Vaqt, GPS, kechikish ma'lumotlari saqlanib qoldi.`
-      );
-    }
+    // Notification disabled to save bot bandwidth (was sending daily messages with photo stats).
+    // Logs still capture results for debugging.
     return null;
   });
 
