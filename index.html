@@ -3614,6 +3614,60 @@
     /* ═══════════════════════════════════════════════════════════ */
     /* END OF GLASS LAYER                                           */
     /* ═══════════════════════════════════════════════════════════ */
+
+    /* ═══════════════════════════════════════════════════════════
+       3D DEPTH + COLOR-QUALITY ENHANCEMENT LAYER (2026-06)
+       Additive only — overrides via cascade. No layout/opacity
+       changes (shadows, hover-transforms, gradients only) so it is
+       safe across all views, incl. data-dense logged-in screens.
+       ═══════════════════════════════════════════════════════════ */
+    :root {
+      --s1: 0 1px 2px rgba(16,24,40,.05), 0 1px 1px rgba(59,91,255,.04);
+      --s2: 0 2px 5px -1px rgba(16,24,40,.07), 0 6px 16px -4px rgba(59,91,255,.12);
+      --s3: 0 8px 18px -6px rgba(16,24,40,.10), 0 16px 34px -8px rgba(59,91,255,.18);
+      --s4: 0 14px 28px -8px rgba(16,24,40,.12), 0 28px 56px -14px rgba(59,91,255,.24);
+      --s5: 0 28px 64px -14px rgba(59,91,255,.34), 0 10px 24px -8px rgba(122,90,248,.22);
+      --gold-glow: rgba(59,91,255,.16);
+      --grad-primary: linear-gradient(135deg, #3b5bff 0%, #5566ff 45%, #7a5af8 100%);
+    }
+    /* Richer multi-stop gradient-mesh page background */
+    body {
+      background-image:
+        radial-gradient(900px circle at 6% -8%, rgba(59,91,255,.10), transparent 46%),
+        radial-gradient(820px circle at 100% 0%, rgba(122,90,248,.09), transparent 46%),
+        radial-gradient(760px circle at 100% 100%, rgba(11,165,236,.05), transparent 46%);
+    }
+    /* Cards — deeper shadow + tactile 3D lift on hover */
+    .glass-card { box-shadow: var(--s2); transition: transform .22s cubic-bezier(.34,1.4,.5,1), box-shadow .22s; }
+    .glass-card:hover { transform: translateY(-3px); box-shadow: var(--s4); }
+    .podium-item, .msg-item, .schedule-day, .login-feat {
+      transition: transform .22s cubic-bezier(.34,1.4,.5,1), box-shadow .22s, background .2s, border-color .2s;
+    }
+    .podium-item:hover, .msg-item:hover, .schedule-day:hover { transform: translateY(-3px) scale(1.015); box-shadow: var(--s3); }
+    /* Login showcase cards — subtle real 3D tilt + glow */
+    .login-features { perspective: 1100px; }
+    .login-feat:hover { transform: translateY(-4px) rotateX(4deg); box-shadow: 0 18px 42px -14px rgba(59,91,255,.38); border-color: rgba(123,150,255,.4); }
+    /* Primary buttons — richer gradient, glow, 3D press */
+    .login-btn, .onboarding-btn {
+      background: var(--grad-primary) !important;
+      box-shadow: 0 8px 24px -6px rgba(59,91,255,.42), 0 2px 6px rgba(122,90,248,.22) !important;
+    }
+    .login-btn:hover:not(:disabled), .onboarding-btn:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 14px 36px -8px rgba(59,91,255,.52), 0 4px 12px rgba(122,90,248,.28) !important;
+    }
+    .login-btn:active:not(:disabled) { transform: translateY(1px) scale(.99) !important; box-shadow: 0 3px 12px -2px rgba(59,91,255,.4) !important; }
+    /* Login card float-in + premium depth on emblem/logo */
+    .login-card { animation: cardFloatIn .55s cubic-bezier(.34,1.4,.5,1) both; }
+    @keyframes cardFloatIn { from { opacity:0; transform: translateY(18px); } to { opacity:1; transform: translateY(0); } }
+    .login-emblem-mark, .loader-logo {
+      box-shadow: 0 12px 32px -8px rgba(59,91,255,.5), 0 4px 10px rgba(122,90,248,.3), inset 0 1px 0 rgba(255,255,255,.3) !important;
+    }
+    /* Input focus — extra depth */
+    .form-input:focus { box-shadow: 0 0 0 4px var(--gold-glow), 0 8px 18px -8px rgba(59,91,255,.32) !important; }
+    /* Richer hero gradient title */
+    .login-headline em { background: linear-gradient(120deg, #8ba5ff, #a596ff 55%, #c4b5fd) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; }
+    @media (prefers-reduced-motion: reduce) { .login-card, .glass-card, .login-feat, .login-btn { animation: none !important; transition: none !important; } }
   </style>
   <link rel="stylesheet" href="vendor/leaflet.css"/>
   <script src="vendor/leaflet.js" defer></script>
