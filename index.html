@@ -3667,7 +3667,12 @@
     .form-input:focus { box-shadow: 0 0 0 4px var(--gold-glow), 0 8px 18px -8px rgba(59,91,255,.32) !important; }
     /* Richer hero gradient title */
     .login-headline em { background: linear-gradient(120deg, #8ba5ff, #a596ff 55%, #c4b5fd) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; }
-    @media (prefers-reduced-motion: reduce) { .login-card, .glass-card, .login-feat, .login-btn { animation: none !important; transition: none !important; } }
+    /* Dashboard cards (logged-in views) — depth + tactile 3D hover */
+    .stat-card, .chart-card, .table-card { transition: transform .2s cubic-bezier(.34,1.4,.5,1), box-shadow .2s; }
+    .stat-card:hover, .chart-card:hover { transform: translateY(-3px); box-shadow: var(--s3); }
+    /* Stat number — crisper, slightly tabular for premium feel */
+    .stat-num { font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+    @media (prefers-reduced-motion: reduce) { .login-card, .glass-card, .login-feat, .login-btn, .stat-card, .chart-card { animation: none !important; transition: none !important; } }
   </style>
   <link rel="stylesheet" href="vendor/leaflet.css"/>
   <script src="vendor/leaflet.js" defer></script>
