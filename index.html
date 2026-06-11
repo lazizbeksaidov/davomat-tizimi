@@ -293,13 +293,6 @@
     }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 
-    .login-left {
-      display: flex; flex-direction: column; justify-content: center;
-      padding: 60px 70px; position: relative; z-index: 2;
-    }
-    .login-emblem {
-      display: flex; align-items: center; gap: 14px; margin-bottom: 56px;
-    }
     .login-emblem-mark {
       width: 48px; height: 48px;
       background: linear-gradient(135deg, #465fff, #7a5af8);
@@ -307,50 +300,6 @@
       display: flex; align-items: center; justify-content: center;
       box-shadow: 0 6px 24px rgba(70,95,255,.3);
       flex-shrink: 0;
-    }
-    .login-emblem-text h2 {
-      font-size: 11px; font-weight: 700; color: rgba(255,255,255,.7);
-      text-transform: uppercase; letter-spacing: 1.2px;
-    }
-    .login-emblem-text p { font-size: 11px; color: rgba(255,255,255,.3); margin-top: 3px; }
-    .login-headline {
-      font-family: 'Manrope', sans-serif;
-      font-size: 50px; font-weight: 800;
-      color: #fff; line-height: 1.1; margin-bottom: 22px;
-      letter-spacing: -1px;
-    }
-    .login-headline em {
-      font-style: normal;
-      background: linear-gradient(135deg, #7592ff, #9b8afb);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .login-desc { font-size: 14.5px; color: rgba(255,255,255,.38); line-height: 1.9; max-width: 380px; }
-    .login-features {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 52px;
-    }
-    .login-feat {
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.07);
-      border-radius: 12px; padding: 18px;
-      backdrop-filter: blur(8px);
-      transition: background .2s, border-color .2s;
-    }
-    .login-feat:hover { background: rgba(255,255,255,.07); border-color: rgba(70,95,255,.3); }
-    .login-feat-icon { font-size: 20px; margin-bottom: 10px; }
-    .login-feat-title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.8); margin-bottom: 5px; }
-    .login-feat-desc { font-size: 11px; color: rgba(255,255,255,.3); line-height: 1.6; }
-
-    .login-right {
-      background: #ffffff;
-      display: flex; align-items: center; justify-content: center;
-      padding: 48px 52px;
-      position: relative; z-index: 2;
-      box-shadow: -30px 0 60px rgba(0,0,0,.06);
-    }
-    .login-right::before {
-      content: '';
-      position: absolute; top: 0; left: 0; bottom: 0; width: 1px;
-      background: linear-gradient(180deg, transparent, rgba(70,95,255,.15), rgba(122,90,248,.1), transparent);
     }
     .login-center { position: relative; z-index: 3; width: 100%; max-width: 440px; }
     .login-card {
@@ -365,12 +314,6 @@
     .login-brand .login-emblem-mark { width: 46px; height: 46px; border-radius: 13px; margin-bottom: 0; }
     .login-brand-text h2 { font-size: 14px; font-weight: 800; color: var(--t1); letter-spacing: -.3px; line-height: 1.2; }
     .login-brand-text p { font-size: 11px; color: var(--t3); margin-top: 3px; line-height: 1.45; }
-    .login-card-eyebrow {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
-      color: var(--gold); margin-bottom: 20px;
-      background: var(--gold-pale); padding: 5px 12px; border-radius: 20px;
-    }
     .login-card-title { font-family:'Inter',sans-serif; font-size: 30px; font-weight: 800; color: var(--t1); margin-bottom: 6px; letter-spacing: -.5px; }
     .login-card-sub { font-size: 13.5px; color: var(--t3); margin-bottom: 36px; }
     .login-error {
@@ -1964,9 +1907,6 @@
 
     /* ─── RESPONSIVE ──────────────────────────── */
     @media(max-width:900px) {
-      .login-wrap { grid-template-columns: 1fr; }
-      .login-left { display: none; }
-      .login-right { min-height: 100vh; }
       .content { margin-left: 0 !important; }
       .stats-grid { grid-template-columns: repeat(2,1fr); }
       .kpi-label { min-width: 96px; max-width: 96px; }
@@ -2325,14 +2265,7 @@
       .pwa-install-btn, .pwa-dismiss-btn { flex: 1 !important; }
 
       /* ─── LOGIN ─── */
-      .login-right {
-        padding: 40px 24px !important;
-        box-shadow: none !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-      }
-      .login-card { max-width: 100% !important; width: 100% !important; }
+      .login-card { max-width: 100% !important; width: 100% !important; padding: 32px 22px !important; }
       .login-card-title { font-size: 28px !important; font-weight: 800 !important; letter-spacing: -.5px !important; }
       .login-card-sub { font-size: 14px !important; margin-bottom: 32px !important; color: var(--t3) !important; }
       .form-group { margin-bottom: 18px !important; }
@@ -2847,12 +2780,13 @@
     [data-theme="dark"] tbody tr:nth-child(even):hover {
       background: rgba(117,146,255,.1);
     }
-    [data-theme="dark"] .login-right {
-      background: rgba(22,27,34,0.85);
+    [data-theme="dark"] .login-card {
+      background: rgba(22,27,34,0.92);
       backdrop-filter: blur(24px);
-      box-shadow: -30px 0 80px rgba(0,0,0,.4);
+      border-color: rgba(255,255,255,.08);
+      box-shadow: 0 40px 90px -25px rgba(0,0,0,.7);
     }
-    [data-theme="dark"] .login-card-title { color: #e1e2ed; }
+    [data-theme="dark"] .login-card-title, [data-theme="dark"] .login-brand-text h2 { color: #e1e2ed; }
     [data-theme="dark"] .login-btn {
       background: linear-gradient(135deg, #7592ff, #9b8afb);
       color: #101828;
@@ -3655,13 +3589,10 @@
     /* Cards — deeper shadow + tactile 3D lift on hover */
     .glass-card { box-shadow: var(--s2); transition: transform .22s cubic-bezier(.34,1.4,.5,1), box-shadow .22s; }
     .glass-card:hover { transform: translateY(-3px); box-shadow: var(--s4); }
-    .podium-item, .msg-item, .schedule-day, .login-feat {
+    .podium-item, .msg-item, .schedule-day {
       transition: transform .22s cubic-bezier(.34,1.4,.5,1), box-shadow .22s, background .2s, border-color .2s;
     }
     .podium-item:hover, .msg-item:hover, .schedule-day:hover { transform: translateY(-3px) scale(1.015); box-shadow: var(--s3); }
-    /* Login showcase cards — subtle real 3D tilt + glow */
-    .login-features { perspective: 1100px; }
-    .login-feat:hover { transform: translateY(-4px) rotateX(4deg); box-shadow: 0 18px 42px -14px rgba(59,91,255,.38); border-color: rgba(123,150,255,.4); }
     /* Primary buttons — richer gradient, glow, 3D press */
     .login-btn, .onboarding-btn {
       background: var(--grad-primary) !important;
@@ -3680,8 +3611,6 @@
     }
     /* Input focus — extra depth */
     .form-input:focus { box-shadow: 0 0 0 4px var(--gold-glow), 0 8px 18px -8px rgba(59,91,255,.32) !important; }
-    /* Richer hero gradient title */
-    .login-headline em { background: linear-gradient(120deg, #8ba5ff, #a596ff 55%, #c4b5fd) !important; -webkit-background-clip: text !important; background-clip: text !important; -webkit-text-fill-color: transparent !important; }
     /* Dashboard cards (logged-in views) — depth + tactile 3D hover */
     .stat-card, .chart-card, .table-card { transition: transform .2s cubic-bezier(.34,1.4,.5,1), box-shadow .2s; }
     .stat-card:hover, .chart-card:hover { transform: translateY(-3px); box-shadow: var(--s3); }
