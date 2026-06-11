@@ -3672,8 +3672,10 @@
     .stat-card:hover, .chart-card:hover { transform: translateY(-3px); box-shadow: var(--s3); }
     /* Stat number — crisper, slightly tabular for premium feel */
     .stat-num { font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
-    @media (prefers-reduced-motion: reduce) { .login-card, .glass-card, .login-feat, .login-btn, .stat-card, .chart-card { animation: none !important; transition: none !important; } }
-  </style>
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; } }
+    /* Keyboard a11y: har qanday outline:none qilingan element ham fokus halqasini ko'rsatadi (sichqoncha bosishiga ta'sir qilmaydi) */
+    :focus-visible { outline: 2px solid var(--gold, #c8962a) !important; outline-offset: 2px !important; }
+</style>
   <link rel="stylesheet" href="vendor/leaflet.css"/>
   <script src="vendor/leaflet.js" defer></script>
 </head>
