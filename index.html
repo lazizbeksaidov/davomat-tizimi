@@ -3643,35 +3643,32 @@
 // Polls /version.txt every 60s. If version changes, reloads with cache bust.
 // This eliminates the "must clear cache to see new version" problem.
 (function(){
-  var VERSION_KEY = '__app_version__';
-  var currentVersion = null;
+  // Bu HTML qurilgan versiya — build paytida 1781602415389-366d1e45 o'rniga haqiqiy versiya yoziladi.
+  // version.txt bilan SHU "muhrlangan" versiyani solishtiramiz: agar WebView eski HTML'ni
+  // keshdan bergan bo'lsa ham (loaded != server), darhol aniqlanadi va yangilanadi.
+  var loaded = "1781602415389-366d1e45";
   function checkVersion(){
     fetch('/version.txt?t='+Date.now(), {cache:'no-store'})
       .then(function(r){ return r.text(); })
       .then(function(v){
         v = (v||'').trim();
-        if(!v) return;
-        var stored = '';
-        try { stored = localStorage.getItem(VERSION_KEY) || ''; } catch(_){}
-        if(currentVersion === null){
-          // First check — store current version
-          currentVersion = v;
-          try { localStorage.setItem(VERSION_KEY, v); } catch(_){}
-        } else if(currentVersion !== v){
-          // Version changed — new deploy detected, force reload with cache bust
-          console.log('[version-check] New version:', v, '(was '+currentVersion+'), reloading');
-          try { localStorage.setItem(VERSION_KEY, v); } catch(_){}
-          // Hard reload — bypasses cache
-          var u = new URL(location.href);
-          u.searchParams.set('_v', v);
-          location.replace(u.toString());
-        }
+        if(!v || !loaded || loaded.indexOf('__')===0) return; // noma'lum / build qilinmagan — tegmaymiz
+        if(v === loaded) return; // eng so'nggi versiya — hammasi joyida
+        // server versiyasi != yuklangan HTML → yangi deploy YOKI WebView eski HTML bergan.
+        // ?_v=... bilan qayta yuklaymiz (keshni chetlab). Bir versiyaga BIR marta — cheksiz tsikl bo'lmasin.
+        var guard='';
+        try { guard = sessionStorage.getItem('__vreload') || ''; } catch(_){}
+        if(guard === v) return;
+        try { sessionStorage.setItem('__vreload', v); } catch(_){}
+        console.log('[version-check] '+loaded+' -> '+v+' — yangilanmoqda');
+        var u = new URL(location.href);
+        u.searchParams.set('_v', v);
+        location.replace(u.toString());
       }).catch(function(){});
   }
-  // Check immediately + every 60s
+  // Darhol + har 60s + ilova ochilganda tekshiramiz
   checkVersion();
   setInterval(checkVersion, 60000);
-  // Also check when tab becomes visible (user returns to app)
   document.addEventListener('visibilitychange', function(){
     if(document.visibilityState === 'visible') checkVersion();
   });
